@@ -1,0 +1,434 @@
+import React, { useState } from 'react';
+import { Search, Filter, Award, ShieldCheck, Phone, MessageSquare, Building2, CheckCircle2, ChevronRight, Send, X, ArrowUpDown } from 'lucide-react';
+import { ProductListing, CraftCategory, BulkRFQInquiry, Language } from '../types';
+import { CURRENT_ARTISAN } from '../data/craftPresets';
+
+interface BuyerPortalProps {
+  products: ProductListing[];
+  onSelectProduct: (product: ProductListing) => void;
+  language?: Language;
+}
+
+export const BuyerPortal: React.FC<BuyerPortalProps> = ({
+  products,
+  onSelectProduct,
+  language = 'en'
+}) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedState, setSelectedState] = useState<string>('all');
+  const [onlyGICertified, setOnlyGICertified] = useState(false);
+  const [activeRFQProduct, setActiveRFQProduct] = useState<ProductListing | null>(null);
+  const [rfqSubmitted, setRfqSubmitted] = useState(false);
+
+  // RFQ Form State
+  const [rfqForm, setRfqForm] = useState({
+    companyName: 'FabIndia Crafts Procurement Ltd',
+    buyerName: 'Vikram Mehta',
+    email: 'procurement@fabindia-sample.com',
+    phone: '+91 98201 44552',
+    quantity: 25,
+    targetDate: '2025-04-15',
+    notes: 'Required for corporate festive gifting. Needs authentic MoSJE GI certification tag included.'
+  });
+
+  const categories = [
+    'all',
+    'Textiles & Handloom',
+    'Metalcraft & Dhokra',
+    'Clay & Terracotta',
+    'Traditional Painting',
+  ];
+
+  const states = [
+    { value: 'all', label: 'All States of India (सभी शिल्प राज्य)' },
+    { value: 'Andhra Pradesh', label: 'Andhra Pradesh (Kalamkari, Kondapalli, Dharmavaram)' },
+    { value: 'Assam', label: 'Assam (Muga Silk, Bamboo & Cane, Asharikandi Terracotta)' },
+    { value: 'Bihar', label: 'Bihar (Mithila Madhubani, Sikki Grass, Sujani)' },
+    { value: 'Chhattisgarh', label: 'Chhattisgarh (Bastar Dhokra, Kosa Silk, Wrought Iron)' },
+    { value: 'Gujarat', label: 'Gujarat (Ajrakh Block Print, Bandhani, Rogan Art, Patola)' },
+    { value: 'Himachal Pradesh', label: 'Himachal Pradesh (Kullu Shawls, Chamba Rumal, Woodcraft)' },
+    { value: 'Jammu & Kashmir', label: 'Jammu & Kashmir (Pashmina, Sozni, Walnut Wood, Kani)' },
+    { value: 'Karnataka', label: 'Karnataka (Channapatna Toys, Mysore Silk, Bidriware)' },
+    { value: 'Kerala', label: 'Kerala (Aranmula Mirror, Kasavu Handloom, Bell Metal)' },
+    { value: 'Madhya Pradesh', label: 'Madhya Pradesh (Chanderi, Maheshwari, Gond Art, Bagh Print)' },
+    { value: 'Maharashtra', label: 'Maharashtra (Paithani Sarees, Warli Art, Kolhapuri Leather)' },
+    { value: 'Manipur', label: 'Manipur (Kauna Reed Mats, Longpi Black Pottery)' },
+    { value: 'Nagaland', label: 'Nagaland (Naga Handloom, Cane & Bamboo Craft)' },
+    { value: 'Odisha', label: 'Odisha (Pattachitra, Sambalpuri Ikat, Silver Filigree)' },
+    { value: 'Punjab', label: 'Punjab (Phulkari Needlework, Traditional Jutti)' },
+    { value: 'Rajasthan', label: 'Rajasthan (Jaipur Blue Pottery, Sanganeri Print, Mojari)' },
+    { value: 'Tamil Nadu', label: 'Tamil Nadu (Kanchipuram Silk, Thanjavur Paintings, Swamimalai Bronze)' },
+    { value: 'Telangana', label: 'Telangana (Pochampally Ikat, Nirmal Toys, Pembarthi Brass)' },
+    { value: 'Uttar Pradesh', label: 'Uttar Pradesh (Banarasi Silk, Lucknow Chikankari, Moradabad Brass)' },
+    { value: 'West Bengal', label: 'West Bengal (Bankura Terracotta, Kantha Stitch, Baluchari, Dokra)' },
+  ];
+
+  // Filter products
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch =
+      p.titleEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.titleHi.includes(searchQuery) ||
+      p.craftTechnique.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.artisanName.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+    const matchesState = selectedState === 'all' || p.state === selectedState;
+    const matchesGI = !onlyGICertified || p.giCertified;
+
+    return matchesSearch && matchesCategory && matchesState && matchesGI;
+  });
+
+  const handleOpenRFQ = (product: ProductListing, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveRFQProduct(product);
+    setRfqSubmitted(false);
+  };
+
+  const handleSendRFQ = (e: React.FormEvent) => {
+    e.preventDefault();
+    setRfqSubmitted(true);
+    setTimeout(() => {
+      setActiveRFQProduct(null);
+      setRfqSubmitted(false);
+    }, 2500);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Government & B2B Buyer Linkage Banner */}
+      <div className="bg-gradient-to-r from-navy-950 via-stone-900 to-stone-800 rounded-3xl p-6 text-white shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5" />
+                GeM & TRIFED Integrated
+              </span>
+              <span className="text-[11px] text-stone-300 font-medium">
+                MoSJE Verified Artisan Registry
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-3xl font-black tracking-tight">
+              B2B Artisan Sourcing & Bulk Procurement
+            </h1>
+            <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
+              Direct market linkage for boutique retailers, export houses, interior designers, and corporate procurement. Purchase authentic GI-tagged handicrafts directly from master artisans with zero middleman commissions.
+            </p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur border border-white/15 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+            <span className="text-xs text-stone-300 uppercase font-bold tracking-wider">Fair Wage Impact</span>
+            <span className="text-2xl font-black text-amber-400 mt-0.5">100% Direct</span>
+            <span className="text-[10px] text-emerald-300 font-medium">DBT to Artisan Bank Accounts</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Search & Filter Bar */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200 space-y-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by craft, GI tag, material, artisan name..."
+              className="w-full pl-9 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-saffron-500"
+            />
+          </div>
+
+          {/* State Dropdown */}
+          <select
+            value={selectedState}
+            onChange={(e) => setSelectedState(e.target.value)}
+            className="w-full sm:w-auto px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-saffron-500 max-w-xs truncate"
+          >
+            {states.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+
+          {/* GI Certified Toggle */}
+          <label className="flex items-center space-x-2 text-xs font-semibold text-stone-700 cursor-pointer whitespace-nowrap bg-stone-50 px-3 py-2.5 rounded-xl border border-stone-200">
+            <input
+              type="checkbox"
+              checked={onlyGICertified}
+              onChange={(e) => setOnlyGICertified(e.target.checked)}
+              className="rounded text-saffron-600 focus:ring-saffron-500"
+            />
+            <span className="flex items-center gap-1">
+              <Award className="w-3.5 h-3.5 text-amber-600" />
+              GI Tag Certified Only
+            </span>
+          </label>
+        </div>
+
+        {/* Category Pills */}
+        <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pt-1">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+                selectedCategory === cat
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              {cat === 'all' ? 'All Craft Categories' : cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Results Header */}
+      <div className="flex justify-between items-center text-xs text-stone-500 px-1">
+        <span>Showing <strong className="text-stone-900">{filteredProducts.length}</strong> verified artisan listings</span>
+        <span className="flex items-center gap-1">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          MoSJE Beneficiary Verified
+        </span>
+      </div>
+
+      {/* Product Catalog Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filteredProducts.map((product) => (
+          <div
+            key={product.id}
+            onClick={() => onSelectProduct(product)}
+            className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-xs hover:shadow-xl transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div>
+              {/* Product Visual */}
+              <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
+                <img
+                  src={product.enhancedImage}
+                  alt={product.titleEn}
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                />
+
+                <div className="absolute top-3 left-3 flex flex-col gap-1">
+                  {product.giCertified && (
+                    <span className="bg-emerald-700/90 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-md backdrop-blur flex items-center gap-1 shadow-sm">
+                      <Award className="w-3 h-3 text-amber-300" />
+                      GI Certified
+                    </span>
+                  )}
+                  <span className="bg-stone-900/80 text-saffron-300 text-[9px] font-mono px-2 py-0.5 rounded-md backdrop-blur">
+                    {product.state}
+                  </span>
+                </div>
+
+                <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur text-stone-900 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                  {product.stockQuantity} in stock
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-4 space-y-2.5">
+                <div>
+                  <span className="text-[10px] font-bold text-saffron-700 uppercase tracking-wider">
+                    {product.category}
+                  </span>
+                  <h3 className="font-bold text-sm text-stone-900 line-clamp-1 group-hover:text-saffron-700 transition-colors">
+                    {product.titleEn}
+                  </h3>
+                  <p className="text-xs text-stone-500 line-clamp-2 mt-1 leading-relaxed">
+                    {product.descriptionEn}
+                  </p>
+                </div>
+
+                {/* Artisan Info Line */}
+                <div className="flex items-center space-x-2 pt-1">
+                  <img
+                    src={CURRENT_ARTISAN.avatarUrl}
+                    alt={product.artisanName}
+                    className="w-5 h-5 rounded-full object-cover border border-saffron-500"
+                  />
+                  <span className="text-xs font-semibold text-stone-700 truncate">
+                    {product.artisanName}
+                  </span>
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                </div>
+
+                {/* Pricing & Wholesale Tiers Pill */}
+                <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 space-y-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs text-stone-500">Retail MSRP:</span>
+                    <span className="text-sm font-black text-stone-900">
+                      ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between text-xs pt-1 border-t border-stone-200">
+                    <span className="font-semibold text-emerald-700">Bulk (10+ pcs):</span>
+                    <span className="font-bold text-emerald-700">
+                      ₹{product.pricing.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')} / pc
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="font-semibold text-navy-900">Govt Bulk (50+ pcs):</span>
+                    <span className="font-bold text-navy-900">
+                      ₹{product.pricing.wholesaleTiers[2].unitPrice.toLocaleString('en-IN')} / pc
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Card Footer Actions */}
+            <div className="p-4 pt-0 flex items-center justify-between gap-2">
+              <a
+                href={`https://wa.me/919848023145?text=Hello%20${encodeURIComponent(product.artisanName)},%20I%20am%20interested%20in%20bulk%20procurement%20for%20${encodeURIComponent(product.titleEn)}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="p-2.5 rounded-xl border border-stone-200 hover:bg-stone-100 text-stone-700 transition-colors"
+                title="Chat with Artisan on WhatsApp"
+              >
+                <MessageSquare className="w-4 h-4 text-emerald-600" />
+              </a>
+
+              <button
+                onClick={(e) => handleOpenRFQ(product, e)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-navy-900 hover:bg-black text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <Building2 className="w-3.5 h-3.5 text-saffron-400" />
+                <span>Request B2B Quote</span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Bulk RFQ Modal */}
+      {activeRFQProduct && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 relative animate-scaleIn">
+            <button
+              onClick={() => setActiveRFQProduct(null)}
+              className="absolute top-4 right-4 text-stone-400 hover:text-stone-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {rfqSubmitted ? (
+              <div className="text-center py-8 space-y-3">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-inner">
+                  <CheckCircle2 className="w-9 h-9" />
+                </div>
+                <h3 className="text-xl font-bold text-stone-900">RFQ Sent to Artisan!</h3>
+                <p className="text-xs text-stone-600 max-w-sm mx-auto">
+                  Your bulk quotation request for <strong>{rfqForm.quantity} units</strong> has been transmitted to master artisan <strong>{activeRFQProduct.artisanName}</strong> and registered on the MoSJE marketplace portal.
+                </p>
+                <div className="text-[11px] font-mono text-emerald-700 bg-emerald-50 py-1.5 px-3 rounded-xl inline-block">
+                  RFQ Reference: #RFQ-MoSJE-2025-{Math.floor(1000 + Math.random() * 9000)}
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSendRFQ} className="space-y-4">
+                <div>
+                  <span className="text-[10px] font-bold text-saffron-700 uppercase tracking-wider">
+                    B2B Wholesale RFQ
+                  </span>
+                  <h3 className="font-bold text-lg text-stone-900 leading-tight">
+                    {activeRFQProduct.titleEn}
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Artisan: {activeRFQProduct.artisanName} • {activeRFQProduct.craftTechnique}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">Company / Organization</label>
+                    <input
+                      type="text"
+                      value={rfqForm.companyName}
+                      onChange={(e) => setRfqForm({ ...rfqForm, companyName: e.target.value })}
+                      required
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-saffron-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">Buyer Name</label>
+                    <input
+                      type="text"
+                      value={rfqForm.buyerName}
+                      onChange={(e) => setRfqForm({ ...rfqForm, buyerName: e.target.value })}
+                      required
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-saffron-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">Required Quantity (Units)</label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="1000"
+                      value={rfqForm.quantity}
+                      onChange={(e) => setRfqForm({ ...rfqForm, quantity: Number(e.target.value) })}
+                      required
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 font-bold focus:ring-2 focus:ring-saffron-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">Estimated Unit Price</label>
+                    <div className="px-3 py-2 bg-stone-100 rounded-xl text-xs font-mono font-bold text-emerald-800">
+                      ₹{activeRFQProduct.pricing.wholesaleTiers[rfqForm.quantity >= 50 ? 2 : 1].unitPrice.toLocaleString('en-IN')} / unit
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">Delivery Target Date</label>
+                  <input
+                    type="date"
+                    value={rfqForm.targetDate}
+                    onChange={(e) => setRfqForm({ ...rfqForm, targetDate: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-saffron-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">Customization / Packaging Notes</label>
+                  <textarea
+                    rows={2}
+                    value={rfqForm.notes}
+                    onChange={(e) => setRfqForm({ ...rfqForm, notes: e.target.value })}
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-saffron-500 resize-none"
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveRFQProduct(null)}
+                    className="px-4 py-2.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Submit Official RFQ</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

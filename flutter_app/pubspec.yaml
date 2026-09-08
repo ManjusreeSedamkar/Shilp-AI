@@ -1,0 +1,28 @@
+name: shilp_ai
+description: "SHILP-AI: AI-Driven Market Linkage & Smart Cataloging Mobile Application for Marginalized Artisans - Ministry of Social Justice and Empowerment (MoSJE)"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.19.0
+  image_picker: ^1.1.2
+  speech_to_text: ^6.6.1
+  flutter_tts: ^4.0.2
+  cached_network_image: ^3.3.1
+  http: ^1.2.1
+  url_launcher: ^6.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
