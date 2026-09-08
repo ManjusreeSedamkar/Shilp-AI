@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { Search, Filter, Award, ShieldCheck, Phone, MessageSquare, Building2, CheckCircle2, ChevronRight, Send, X, ArrowUpDown } from 'lucide-react';
-import { ProductListing, CraftCategory, BulkRFQInquiry, Language } from '../types';
+import { Search, Award, ShieldCheck, MessageSquare, Building2, CheckCircle2, Send, X } from 'lucide-react';
+import { ProductListing, Language } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
 
 interface BuyerPortalProps {
   products: ProductListing[];
   onSelectProduct: (product: ProductListing) => void;
+  onStartConversation?: (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => void;
   language?: Language;
 }
 
 export const BuyerPortal: React.FC<BuyerPortalProps> = ({
   products,
   onSelectProduct,
+  onStartConversation,
   language = 'en'
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,6 +85,11 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
     e.stopPropagation();
     setActiveRFQProduct(product);
     setRfqSubmitted(false);
+  };
+
+  const handleChatWithArtisan = (product: ProductListing, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onStartConversation?.(product.artisanId, product.artisanName, product.id, product.titleEn);
   };
 
   const handleSendRFQ = (e: React.FormEvent) => {
@@ -207,7 +214,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
               {/* Product Visual */}
               <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
                 <img
-                  src={product.enhancedImage}
+                  src={product.originalImage}
                   alt={product.titleEn}
                   className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                 />
@@ -282,16 +289,13 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
 
             {/* Card Footer Actions */}
             <div className="p-4 pt-0 flex items-center justify-between gap-2">
-              <a
-                href={`https://wa.me/919848023145?text=Hello%20${encodeURIComponent(product.artisanName)},%20I%20am%20interested%20in%20bulk%20procurement%20for%20${encodeURIComponent(product.titleEn)}`}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="p-2.5 rounded-xl border border-stone-200 hover:bg-stone-100 text-stone-700 transition-colors"
-                title="Chat with Artisan on WhatsApp"
+              <button
+                onClick={(e) => handleChatWithArtisan(product, e)}
+                className="p-2.5 rounded-xl border border-stone-200 hover:bg-emerald-50 text-stone-700 transition-colors"
+                title="Chat with Artisan"
               >
                 <MessageSquare className="w-4 h-4 text-emerald-600" />
-              </a>
+              </button>
 
               <button
                 onClick={(e) => handleOpenRFQ(product, e)}

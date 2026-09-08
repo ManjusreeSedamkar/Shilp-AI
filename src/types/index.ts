@@ -107,3 +107,58 @@ export interface BulkRFQInquiry {
   status: 'pending' | 'accepted' | 'negotiating' | 'declined';
   createdAt: string;
 }
+
+// ============================================================
+// NEW: Messaging, Customization Requests, Reviews
+// ============================================================
+
+export interface CustomizationRequest {
+  color?: string;
+  size?: string;
+  material?: string;
+  design?: string;
+  quantity?: number;
+  otherRequirements?: string;
+  notes?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderRole: UserRole;
+  senderName: string;
+  text: string;
+  timestamp: string;
+  customizationRequest?: CustomizationRequest;
+  isRead: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  buyerId: string;
+  buyerName: string;
+  artisanId: string;
+  artisanName: string;
+  productId?: string;
+  productTitle?: string;
+  messages: ChatMessage[];
+  lastMessageAt: string;
+  unreadCount: number;
+}
+
+export interface ProductReview {
+  id: string;
+  productId: string;
+  buyerId: string;
+  buyerName: string;
+  rating: number; // 1-5
+  comment: string;
+  createdAt: string;
+  verifiedPurchase?: boolean;
+}
+
+// Translation dictionary type
+export type TranslationKey = string;
+export type TranslationDictionary = Record<TranslationKey, string>;
+export type LanguageTranslations = Record<Language, TranslationDictionary>;

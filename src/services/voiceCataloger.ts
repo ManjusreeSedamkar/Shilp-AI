@@ -1,10 +1,11 @@
-import { CraftCategory, ProductListing } from '../types';
+import { CraftCategory, ProductListing, Language } from '../types';
 import { DynamicPricingEngine } from './pricingEngine';
+import { getSpeechLangCode } from './translations';
 
 /**
  * SHILP-AI Multilingual Voice Cataloger & NLP Engine
  * 
- * Supports Web Speech Recognition (Hindi, English, Telugu, Tamil, Bengali, Marathi)
+ * Supports Web Speech Recognition (Hindi, English, Telugu, Tamil, Bengali, Marathi, Gujarati)
  * Extracts structured product attributes from natural artisan spoken voice
  * Generates dual-language listings (Hindi narrative + English SEO-optimized)
  */
@@ -42,7 +43,7 @@ export class VoiceCatalogerEngine {
 
     // 2. Detect Production Days
     let productionDays = 3;
-    const daysMatch = transcript.match(/(\d+)\s*(?:days?|दिन|दिनों)/i);
+    const daysMatch = transcript.match(/(\d+)\s*(?:days?|दिन|దినాలు|நாட்கள்|দিন|दिवस|દિવસ)/i);
     if (daysMatch && daysMatch[1]) {
       const parsed = parseInt(daysMatch[1], 10);
       if (!isNaN(parsed) && parsed > 0) productionDays = parsed;
@@ -56,42 +57,42 @@ export class VoiceCatalogerEngine {
     let titleEn = 'Handcrafted Artisan Heritage Product';
     let titleHi = 'हस्तनिर्मित कारीगर धरोहर उत्पाद';
 
-    if (text.includes('saree') || text.includes('साड़ी') || text.includes('pochampally') || text.includes('पोचमपल्ली') || text.includes('ikat') || text.includes('silk') || text.includes('रेशम') || text.includes('handloom') || text.includes('हथकरघा')) {
+    if (text.includes('saree') || text.includes('साड़ी') || text.includes('pochampally') || text.includes('పోచంపల్లి') || text.includes('போச்சம்பள்ளி') || text.includes('পোচামপল্লী') || text.includes('पोचमपल्ली') || text.includes('પોચમ્પલ્લી') || text.includes('ikat') || text.includes('silk') || text.includes('रेशम') || text.includes('రేషమ్') || text.includes('பட்டு') || text.includes('রেশম') || text.includes('रेशीम') || text.includes('રેશમ') || text.includes('handloom') || text.includes('हथकरघा') || text.includes('చేనేత') || text.includes('கைத்தறி') || text.includes('হাতে বোনা') || text.includes('हातमाग') || text.includes('હાથવણાટ')) {
       category = 'Textiles & Handloom';
       craftTechnique = 'Double Ikat Pit-Loom Weaving';
       primaryMaterial = '100% Pure Mulberry Silk & Zari Thread';
       color = 'Crimson Red & Mustard Gold';
       titleEn = 'Handwoven Pochampally Double Ikat Pure Silk Saree';
       titleHi = 'हस्तनिर्मित पोचमपल्ली डबल इकत शुद्ध रेशम साड़ी';
-    } else if (text.includes('dhokra') || text.includes('ढोकरा') || text.includes('brass') || text.includes('पीतल') || text.includes('metal') || text.includes('कांस्य') || text.includes('मूर्ति') || text.includes('nandi') || text.includes('नंदी')) {
+    } else if (text.includes('dhokra') || text.includes('ढोकरा') || text.includes('brass') || text.includes('పిత్తల') || text.includes('பித்தளை') || text.includes('পিতল') || text.includes('पितळ') || text.includes('પિત્તળ') || text.includes('पीतल') || text.includes('metal') || text.includes('కాంస్య') || text.includes('வெண்கல') || text.includes('কাঁসা') || text.includes('कांस्य') || text.includes('કાંસ્ય') || text.includes('मूर्ति') || text.includes('మూర్తి') || text.includes('சிலை') || text.includes('মূর্তি') || text.includes('मूर्ती') || text.includes('મૂર્તિ') || text.includes('nandi') || text.includes('నంది') || text.includes('நந்தி') || text.includes('নন্দী') || text.includes('नंदी') || text.includes('નંદી')) {
       category = 'Metalcraft & Dhokra';
       craftTechnique = 'Ancient Lost-Wax Casting (Cire Perdue)';
       primaryMaterial = 'Cast Bell-Metal & Brass Alloy';
       color = 'Antique Golden Patina';
       titleEn = 'Bastar Tribal Dhokra Lost-Wax Bell Metal Figurine';
       titleHi = 'बस्तर जनजातीय ढोकरा लॉस्ट-वैक्स कांस्य मूर्ति';
-    } else if (text.includes('terracotta') || text.includes('टेराकोटा') || text.includes('clay') || text.includes('मिट्टी') || text.includes('pottery') || text.includes('कुम्हार') || text.includes('vase') || text.includes('कलश')) {
+    } else if (text.includes('terracotta') || text.includes('టెర్రకోటా') || text.includes('டெரகோட்டா') || text.includes('টেরাকোটা') || text.includes('टेराकोटा') || text.includes('ટેરાકોટા') || text.includes('clay') || text.includes('మట్టి') || text.includes('களிமண்') || text.includes('মাটি') || text.includes('माती') || text.includes('માટી') || text.includes('मिट्टी') || text.includes('pottery') || text.includes('కుమ్మరి') || text.includes('குயவர்') || text.includes('কুম্ভকার') || text.includes('कुंभार') || text.includes('કુંભાર') || text.includes('कुम्हार') || text.includes('vase') || text.includes('కలశం') || text.includes('கலசம்') || text.includes('কলস') || text.includes('कलश') || text.includes('કળશ')) {
       category = 'Clay & Terracotta';
       craftTechnique = 'Wheel-Thrown & Hand-Etched Clay Firing';
       primaryMaterial = 'River Alluvial Clay & Natural Ochre';
       color = 'Rustic Terracotta Red';
       titleEn = 'Traditional Bankura Terracotta Handcrafted Urn';
       titleHi = 'पारंपरिक बांकुरा टेराकोटा नक्काशीदार कलश';
-    } else if (text.includes('madhubani') || text.includes('मधुबनी') || text.includes('mithila') || text.includes('मिथिला') || text.includes('painting') || text.includes('चित्र') || text.includes('चित्रकला')) {
+    } else if (text.includes('madhubani') || text.includes('మధుబని') || text.includes('மதுபானி') || text.includes('মধুবনী') || text.includes('मधुबनी') || text.includes('મધુબની') || text.includes('mithila') || text.includes('మిథిలా') || text.includes('மிதிலா') || text.includes('মিথিলা') || text.includes('मिथिला') || text.includes('મિથિલા') || text.includes('painting') || text.includes('చిత్రం') || text.includes('ஓவியம்') || text.includes('চিত্র') || text.includes('चित्र') || text.includes('ચિત્ર') || text.includes('चित्रकला') || text.includes('చిత్రకళ') || text.includes('ஓவியக்கலை') || text.includes('চিত্রকলা') || text.includes('चित्रकला') || text.includes('ચિત્રકળા')) {
       category = 'Traditional Painting';
       craftTechnique = 'Twig & Nib Hand-Painting with Botanical Dyes';
       primaryMaterial = 'Handmade Khadi Sheet & Natural Herbal Pigments';
       color = 'Multicolor Natural Indigo & Turmeric';
       titleEn = 'Authentic Mithila Madhubani Tree of Life Folk Canvas';
       titleHi = 'प्रामाणिक मिथिला मधुबनी जीवन वृक्ष लोक चित्रकला';
-    } else if (text.includes('pashmina') || text.includes('पश्मीना') || text.includes('shawl') || text.includes('शॉल') || text.includes('wool') || text.includes('ऊन')) {
+    } else if (text.includes('pashmina') || text.includes('పశ్మినా') || text.includes('பஷ்மினா') || text.includes('পশমিনা') || text.includes('पश्मीना') || text.includes('પશ્મીના') || text.includes('shawl') || text.includes('శాలువా') || text.includes('சால்வை') || text.includes('শাল') || text.includes('शॉल') || text.includes('શાલ') || text.includes('wool') || text.includes('ఉన్ని') || text.includes('கம்பளி') || text.includes('পশম') || text.includes('ऊन') || text.includes('ઊન')) {
       category = 'Textiles & Handloom';
       craftTechnique = 'Hand-Spun Weaving & Sozni Needle Embroidery';
       primaryMaterial = '100% Grade-A Changthangi Cashmere Wool';
       color = 'Natural Cream & Kashmiri Sozni';
       titleEn = 'Heritage Kashmiri Handwoven Pure Pashmina Shawl';
       titleHi = 'विरासत कश्मीरी हस्तनिर्मित शुद्ध पश्मीना शॉल';
-    } else if (text.includes('wood') || text.includes('लकड़ी') || text.includes('carving') || text.includes('नक्काशी')) {
+    } else if (text.includes('wood') || text.includes('కలప') || text.includes('மரம்') || text.includes('কাঠ') || text.includes('लाकूड') || text.includes('લાકડું') || text.includes('लकड़ी') || text.includes('carving') || text.includes('చెక్కడం') || text.includes('செதுக்குதல்') || text.includes('খোদাই') || text.includes('कोरीव') || text.includes('કોતરણી') || text.includes('नक्काशी')) {
       category = 'Woodcraft & Carving';
       craftTechnique = 'Hand-Chiseled Relief Wood Carving';
       primaryMaterial = 'Seasoned Teakwood & Sheesham';
@@ -150,8 +151,9 @@ Key Highlights:
 
   /**
    * Synthesize text-to-speech for low-literacy artisans
+   * Supports all 7 languages with natural voice selection
    */
-  static speak(text: string, lang: 'hi-IN' | 'en-IN' = 'en-IN'): Promise<void> {
+  static speak(text: string, lang: string = 'en-IN'): Promise<void> {
     return new Promise((resolve) => {
       if (!('speechSynthesis' in window)) {
         console.warn('SpeechSynthesis not supported in this browser.');
@@ -170,13 +172,21 @@ Key Highlights:
 
       // Try to find native voices
       const voices = window.speechSynthesis.getVoices();
-      const matchingVoice = voices.find(v => v.lang.startsWith(lang.slice(0, 2)));
+      const langPrefix = lang.slice(0, 2);
+      const matchingVoice = voices.find(v => v.lang.startsWith(langPrefix));
       if (matchingVoice) {
         utterance.voice = matchingVoice;
       }
 
       window.speechSynthesis.speak(utterance);
     });
+  }
+
+  /**
+   * Speak text in the user's selected language
+   */
+  static speakInLanguage(text: string, language: Language): Promise<void> {
+    return VoiceCatalogerEngine.speak(text, getSpeechLangCode(language));
   }
 
   static stopSpeaking() {

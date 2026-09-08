@@ -314,12 +314,12 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
               {/* Image with AI Studio badge */}
               <div className="relative aspect-square bg-stone-100 overflow-hidden">
                 <img
-                  src={product.enhancedImage}
+                  src={product.originalImage}
                   alt={product.titleEn}
                   className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                 />
-                <span className="absolute top-2.5 right-2.5 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">
-                  ✨ Studio Enhanced
+                <span className="absolute top-2.5 right-2.5 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                  📷 Original Photo
                 </span>
                 {product.giCertified && (
                   <span className="absolute top-2.5 left-2.5 bg-navy-900/90 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur">

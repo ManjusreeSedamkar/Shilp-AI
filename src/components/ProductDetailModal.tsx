@@ -1,25 +1,36 @@
 import React, { useState } from 'react';
-import { X, Award, ShieldCheck, Check, Phone, MessageSquare, Building2, Calendar, MapPin, Volume2 } from 'lucide-react';
-import { ProductListing, Language } from '../types';
+import { X, Award, ShieldCheck, Phone, MessageSquare, Building2, MapPin, Volume2, ShoppingBag, Palette, Star } from 'lucide-react';
+import { ProductListing, Language, ProductReview } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
+import { ReviewsSection } from './ReviewsSection';
 
 interface ProductDetailModalProps {
   product: ProductListing | null;
   onClose: () => void;
   onRequestQuote: (product: ProductListing) => void;
+  onBuyNow?: (product: ProductListing) => void;
+  onStartConversation?: (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => void;
   language?: Language;
+  reviews?: ProductReview[];
+  onAddReview?: (review: ProductReview) => void;
+  currentBuyerName?: string;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   product,
   onClose,
   onRequestQuote,
-  language = 'en'
+  onBuyNow,
+  onStartConversation,
+  language = 'en',
+  reviews = [],
+  onAddReview,
+  currentBuyerName = 'Vikram Mehta'
 }) => {
   const [activeLang, setActiveLang] = useState<'hi' | 'en'>(language === 'hi' ? 'hi' : 'en');
-  const [showOriginal, setShowOriginal] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'reviews'>('overview');
 
   if (!product) return null;
 
@@ -32,9 +43,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     setIsSpeaking(false);
   };
 
+  const productReviews = reviews.filter((r) => r.productId === product.id);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 relative flex flex-col no-scrollbar">
+      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 relative flex flex-col no-scrollbar my-4">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -43,24 +56,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Product Media Header */}
+        {/* Product Media Header - Exact Original Image */}
         <div className="relative aspect-video sm:aspect-[16/10] bg-stone-100 overflow-hidden">
           <img
-            src={showOriginal ? product.originalImage : product.enhancedImage}
+            src={product.originalImage}
             alt={product.titleEn}
             className="w-full h-full object-contain"
           />
 
-          {/* Toggle Raw vs Studio Button */}
-          <button
-            onClick={() => setShowOriginal(!showOriginal)}
-            className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl bg-black/70 hover:bg-black/90 text-white text-xs font-semibold backdrop-blur transition-all flex items-center gap-1.5"
-          >
-            <span>{showOriginal ? 'Showing: Raw Photo' : '✨ Showing: AI Studio Photo'}</span>
-            <span className="text-[10px] text-stone-300">(Click to switch)</span>
-          </button>
-
-          {/* GI & MoSJE Badges */}
+          {/* Verification Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1">
             {product.giCertified && (
               <span className="bg-emerald-600/90 backdrop-blur text-white text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">
@@ -69,184 +73,232 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               </span>
             )}
             <span className="bg-navy-900/90 backdrop-blur text-saffron-300 text-[10px] font-bold px-2 py-0.5 rounded-lg">
-              MoSJE Beneficiary
+              MoSJE Beneficiary Verified
             </span>
           </div>
+
+          <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg">
+            📷 Original Artisan Photo Preserved
+          </div>
         </div>
 
-        {/* Modal Content Body */}
-        <div className="p-5 sm:p-6 space-y-5">
-          {/* Title & Price Header */}
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-stone-100 pb-4">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-saffron-700 uppercase tracking-wider">
-                {product.category} • {product.state}
-              </span>
-              <h2 className="text-lg sm:text-xl font-black text-stone-900 leading-tight">
-                {isHindi ? product.titleHi : product.titleEn}
-              </h2>
-              <div className="flex items-center space-x-2 text-xs text-stone-500">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-stone-400" />
-                  {product.artisanName} ({product.state})
+        {/* Modal Navigation Tabs (Overview vs Reviews) */}
+        <div className="flex border-b border-stone-200 px-6 pt-3 bg-stone-50">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`pb-2.5 px-3 text-xs font-bold transition-all border-b-2 ${
+              activeTab === 'overview'
+                ? 'border-saffron-600 text-saffron-700'
+                : 'border-transparent text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            Product Overview & Pricing
+          </button>
+          <button
+            onClick={() => setActiveTab('reviews')}
+            className={`pb-2.5 px-3 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 ${
+              activeTab === 'reviews'
+                ? 'border-saffron-600 text-saffron-700'
+                : 'border-transparent text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+            <span>Buyer Reviews ({productReviews.length})</span>
+          </button>
+        </div>
+
+        {/* Tab 1: Overview */}
+        {activeTab === 'overview' ? (
+          <div className="p-5 sm:p-6 space-y-5">
+            {/* Title & Price Header */}
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-stone-100 pb-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-saffron-700 uppercase tracking-wider">
+                  {product.category} • {product.state}
                 </span>
-                <span>•</span>
-                <span>{product.productionDays} {isHindi ? 'दिन की कारीगरी' : 'days crafting time'}</span>
+                <h2 className="text-lg sm:text-xl font-black text-stone-900 leading-tight">
+                  {isHindi ? product.titleHi : product.titleEn}
+                </h2>
+                <div className="flex items-center space-x-2 text-xs text-stone-500">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-stone-400" />
+                    {product.artisanName} ({product.state})
+                  </span>
+                  <span>•</span>
+                  <span>{product.productionDays} {isHindi ? 'दिन की कारीगरी' : 'days crafting time'}</span>
+                </div>
+              </div>
+
+              <div className="sm:text-right">
+                <span className="text-xs text-stone-500 font-medium">Direct Artisan Price</span>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-700">
+                  ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
+                </div>
+                <span className="text-[10px] text-stone-400">Zero Middleman Markup</span>
               </div>
             </div>
 
-            <div className="sm:text-right">
-              <span className="text-xs text-stone-500 font-medium">Recommended Price</span>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-700">
-                ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
+            {/* Description & Cultural Story (Bilingual Switcher) */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 bg-stone-100 p-1 rounded-xl">
+                  <button
+                    onClick={() => setActiveLang('hi')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      activeLang === 'hi' ? 'bg-white text-saffron-700 shadow-sm' : 'text-stone-600'
+                    }`}
+                  >
+                    🇮🇳 हिन्दी विवरण
+                  </button>
+                  <button
+                    onClick={() => setActiveLang('en')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      activeLang === 'en' ? 'bg-white text-saffron-700 shadow-sm' : 'text-stone-600'
+                    }`}
+                  >
+                    🇬🇧 English SEO
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleSpeak}
+                  className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-saffron-600" />
+                  <span>{isSpeaking ? (isHindi ? 'बोल रहा है...' : 'Speaking...') : (isHindi ? 'सुनें' : 'Listen')}</span>
+                </button>
               </div>
-              <span className="text-[10px] text-stone-400">Ex-works artisan rate</span>
+
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 text-xs text-stone-700 leading-relaxed whitespace-pre-line">
+                {isHindi ? product.descriptionHi : product.descriptionEn}
+              </div>
             </div>
-          </div>
 
-          {/* Description & Cultural Story (Bilingual Switcher) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 bg-stone-100 p-1 rounded-xl">
-                <button
-                  onClick={() => setActiveLang('hi')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    activeLang === 'hi' ? 'bg-white text-saffron-700 shadow-sm' : 'text-stone-600'
-                  }`}
-                >
-                  🇮🇳 हिन्दी विवरण
-                </button>
-                <button
-                  onClick={() => setActiveLang('en')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                    activeLang === 'en' ? 'bg-white text-saffron-700 shadow-sm' : 'text-stone-600'
-                  }`}
-                >
-                  🇬🇧 English SEO
-                </button>
+            {/* Key Specifications Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
+                <span className="text-stone-500 text-[10px]">Craft Technique</span>
+                <p className="font-bold text-stone-900 mt-0.5">{product.craftTechnique}</p>
+              </div>
+              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
+                <span className="text-stone-500 text-[10px]">Primary Material</span>
+                <p className="font-bold text-stone-900 mt-0.5">{product.primaryMaterial}</p>
+              </div>
+              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
+                <span className="text-stone-500 text-[10px]">Fair Artisan Wage</span>
+                <p className="font-bold text-blue-700 mt-0.5">₹{product.pricing.totalLaborWage.toLocaleString('en-IN')}</p>
+              </div>
+              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
+                <span className="text-stone-500 text-[10px]">In Stock / Capacity</span>
+                <p className="font-bold text-emerald-700 mt-0.5">{product.stockQuantity} units available</p>
+              </div>
+            </div>
+
+            {/* B2B Wholesale Tiers Table */}
+            <div className="border border-stone-200 rounded-2xl overflow-hidden">
+              <div className="bg-stone-100 px-4 py-2 flex justify-between items-center text-xs font-bold text-stone-800">
+                <span className="flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-stone-600" />
+                  B2B Bulk Volume Pricing
+                </span>
+                <span className="text-[10px] text-stone-500 font-normal">GeM & Wholesale Linked</span>
+              </div>
+              <div className="divide-y divide-stone-100 text-xs">
+                {product.pricing.wholesaleTiers.map((tier, idx) => (
+                  <div key={idx} className="px-4 py-2.5 flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold text-stone-800">{tier.tier}</span>
+                      {tier.discountPercent > 0 && (
+                        <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                          {tier.discountPercent}% Wholesale Discount
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-mono font-bold text-stone-900">
+                      ₹{tier.unitPrice.toLocaleString('en-IN')} <span className="text-[10px] text-stone-500">/ pc</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Artisan Verification Card */}
+            <div className="p-3.5 bg-saffron-50/50 rounded-2xl border border-saffron-200 flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center space-x-3">
+                <img
+                  src={CURRENT_ARTISAN.avatarUrl}
+                  alt={CURRENT_ARTISAN.name}
+                  className="w-11 h-11 rounded-full object-cover border-2 border-saffron-500 shadow-sm"
+                />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="font-bold text-xs text-stone-900">{CURRENT_ARTISAN.name}</h4>
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  </div>
+                  <p className="text-[11px] text-stone-600">
+                    {CURRENT_ARTISAN.craftCluster}, {CURRENT_ARTISAN.state}
+                  </p>
+                  <span className="text-[10px] font-mono text-saffron-800">
+                    ID: {CURRENT_ARTISAN.beneficiaryId}
+                  </span>
+                </div>
               </div>
 
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => onStartConversation?.(product.artisanId, product.artisanName, product.id, product.titleEn)}
+                  className="px-3 py-2 rounded-xl bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Chat & Discuss</span>
+                </button>
+                <button
+                  onClick={() => onStartConversation?.(product.artisanId, product.artisanName, product.id, product.titleEn)}
+                  className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                >
+                  <Palette className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Customization</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Primary Action Buttons: Buy Now & Bulk RFQ */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-stone-100">
               <button
-                onClick={handleSpeak}
-                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl border border-stone-300 hover:bg-stone-50 text-stone-700 text-xs font-semibold"
               >
-                <Volume2 className="w-3.5 h-3.5 text-saffron-600" />
-                <span>{isSpeaking ? (isHindi ? 'बोल रहा है...' : 'Speaking...') : (isHindi ? 'सुनें' : 'Listen')}</span>
+                Close
+              </button>
+              <button
+                onClick={() => onRequestQuote(product)}
+                className="px-5 py-2.5 rounded-xl bg-stone-800 hover:bg-black text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
+              >
+                <Building2 className="w-4 h-4 text-saffron-400" />
+                <span>Bulk RFQ</span>
+              </button>
+              <button
+                onClick={() => onBuyNow?.(product)}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-saffron-600 to-amber-600 hover:from-saffron-700 hover:to-amber-700 text-white text-xs font-black shadow-md shadow-saffron-600/25 transition-all flex items-center gap-2"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Buy Now (₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')})</span>
               </button>
             </div>
-
-            <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 text-xs text-stone-700 leading-relaxed whitespace-pre-line">
-              {isHindi ? product.descriptionHi : product.descriptionEn}
-            </div>
           </div>
-
-          {/* Key Specifications Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-            <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-              <span className="text-stone-500 text-[10px]">Craft Technique</span>
-              <p className="font-bold text-stone-900 mt-0.5">{product.craftTechnique}</p>
-            </div>
-            <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-              <span className="text-stone-500 text-[10px]">Primary Material</span>
-              <p className="font-bold text-stone-900 mt-0.5">{product.primaryMaterial}</p>
-            </div>
-            <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-              <span className="text-stone-500 text-[10px]">Fair Artisan Wage</span>
-              <p className="font-bold text-blue-700 mt-0.5">₹{product.pricing.totalLaborWage.toLocaleString('en-IN')}</p>
-            </div>
-            <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-              <span className="text-stone-500 text-[10px]">In Stock / Capacity</span>
-              <p className="font-bold text-emerald-700 mt-0.5">{product.stockQuantity} units available</p>
-            </div>
+        ) : (
+          /* Tab 2: Reviews */
+          <div className="p-6">
+            <ReviewsSection
+              productId={product.id}
+              productTitle={product.titleEn}
+              reviews={productReviews}
+              language={language}
+              currentBuyerName={currentBuyerName}
+              onAddReview={onAddReview || (() => {})}
+            />
           </div>
-
-          {/* B2B Wholesale Tiers Table */}
-          <div className="border border-stone-200 rounded-2xl overflow-hidden">
-            <div className="bg-stone-100 px-4 py-2 flex justify-between items-center text-xs font-bold text-stone-800">
-              <span className="flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-stone-600" />
-                B2B Bulk Volume Pricing
-              </span>
-              <span className="text-[10px] text-stone-500 font-normal">GeM & Wholesale Linked</span>
-            </div>
-            <div className="divide-y divide-stone-100 text-xs">
-              {product.pricing.wholesaleTiers.map((tier, idx) => (
-                <div key={idx} className="px-4 py-2.5 flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-stone-800">{tier.tier}</span>
-                    {tier.discountPercent > 0 && (
-                      <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
-                        {tier.discountPercent}% Wholesale Discount
-                      </span>
-                    )}
-                  </div>
-                  <div className="font-mono font-bold text-stone-900">
-                    ₹{tier.unitPrice.toLocaleString('en-IN')} <span className="text-[10px] text-stone-500">/ pc</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Artisan Verification Card */}
-          <div className="p-3.5 bg-saffron-50/50 rounded-2xl border border-saffron-200 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center space-x-3">
-              <img
-                src={CURRENT_ARTISAN.avatarUrl}
-                alt={CURRENT_ARTISAN.name}
-                className="w-11 h-11 rounded-full object-cover border-2 border-saffron-500 shadow-sm"
-              />
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h4 className="font-bold text-xs text-stone-900">{CURRENT_ARTISAN.name}</h4>
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                </div>
-                <p className="text-[11px] text-stone-600">
-                  {CURRENT_ARTISAN.craftCluster}, {CURRENT_ARTISAN.state}
-                </p>
-                <span className="text-[10px] font-mono text-saffron-800">
-                  ID: {CURRENT_ARTISAN.beneficiaryId}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <a
-                href={`tel:${CURRENT_ARTISAN.phone}`}
-                className="p-2 rounded-xl bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 text-xs font-semibold flex items-center gap-1 shadow-sm"
-              >
-                <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Call</span>
-              </a>
-              <a
-                href={`https://wa.me/919848023145?text=Hello%20${encodeURIComponent(product.artisanName)},%20I%20am%20interested%20in%20your%20${encodeURIComponent(product.titleEn)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 shadow-sm"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>WhatsApp</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-stone-300 hover:bg-stone-50 text-stone-700 text-xs font-semibold"
-            >
-              Close
-            </button>
-            <button
-              onClick={() => onRequestQuote(product)}
-              className="px-6 py-2.5 rounded-xl bg-navy-900 hover:bg-black text-white text-xs font-bold shadow-md transition-all flex items-center gap-2"
-            >
-              <Building2 className="w-4 h-4 text-saffron-400" />
-              <span>Submit B2B Bulk RFQ Inquiry</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

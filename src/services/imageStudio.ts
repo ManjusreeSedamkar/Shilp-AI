@@ -20,14 +20,14 @@ export interface ImageProcessingOptions {
 }
 
 export const DEFAULT_IMAGE_OPTIONS: ImageProcessingOptions = {
-  removeBackground: true,
-  enhanceLighting: true,
-  addStudioShadow: true,
+  removeBackground: false,
+  enhanceLighting: false,
+  addStudioShadow: false,
   backdrop: 'pure-white',
-  brightness: 10,
-  contrast: 15,
-  vibrance: 20,
-  paddingPercent: 12,
+  brightness: 0,
+  contrast: 0,
+  vibrance: 0,
+  paddingPercent: 0,
 };
 
 export interface ProcessedImageResult {

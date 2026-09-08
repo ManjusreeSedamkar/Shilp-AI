@@ -424,9 +424,9 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
 
           <button
             onClick={() => {
-              if (processedResult) {
-                onPhotoSelected?.(processedResult.enhancedDataUrl);
-              }
+              // IMPORTANT: Always pass the ORIGINAL image, not the enhanced version
+              // AI can analyze the image but must never replace the user's original photo
+              onPhotoSelected?.(currentImageSrc);
             }}
             className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-saffron-600 to-amber-600 hover:from-saffron-700 hover:to-amber-700 text-white text-xs font-bold shadow-md shadow-saffron-600/25 transition-all"
           >

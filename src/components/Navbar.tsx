@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Sparkles, ShoppingBag, UserCheck, Smartphone, Monitor, Globe, Award, Cpu } from 'lucide-react';
+import { Sparkles, ShoppingBag, UserCheck, Smartphone, Monitor, Globe, Award, Cpu, ShieldCheck, LogIn, LogOut, HelpCircle, User } from 'lucide-react';
 import { UserRole, Language } from '../types';
 import { AppLogo } from './AppLogo';
 import { ApiSettingsModal } from './ApiSettingsModal';
+import { AuthUser } from './AuthModal';
+import { translate } from '../services/translations';
 
 interface NavbarProps {
   role: UserRole;
@@ -11,6 +13,11 @@ interface NavbarProps {
   setLanguage: (lang: Language) => void;
   isMobileFrame: boolean;
   setIsMobileFrame: (val: boolean) => void;
+  currentUser: AuthUser | null;
+  onOpenAuth: () => void;
+  onLogout: () => void;
+  onOpenCardModal: () => void;
+  onOpenTutorial: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,39 +26,47 @@ export const Navbar: React.FC<NavbarProps> = ({
   language,
   setLanguage,
   isMobileFrame,
-  setIsMobileFrame
+  setIsMobileFrame,
+  currentUser,
+  onOpenAuth,
+  onLogout,
+  onOpenCardModal,
+  onOpenTutorial,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const t = (key: string) => translate(language, key);
+
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-stone-200 shadow-sm">
       {/* Government & Ministry Banner */}
-      <div className="bg-gradient-to-r from-saffron-700 via-stone-800 to-emerald-800 text-white text-xs px-4 py-1.5 flex justify-between items-center flex-wrap gap-2">
-        <div className="flex items-center space-x-2 font-medium">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>सामाजिक न्याय और अधिकारिता मंत्रालय | Ministry of Social Justice and Empowerment (MoSJE)</span>
+      <div className="bg-gradient-to-r from-saffron-700 via-stone-800 to-emerald-800 text-white text-[11px] sm:text-xs px-3 sm:px-4 py-1.5 flex justify-between items-center flex-wrap gap-1.5">
+        <div className="flex items-center space-x-2 font-medium truncate">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+          <span className="truncate">सामाजिक न्याय और अधिकारिता मंत्रालय | Ministry of Social Justice and Empowerment (MoSJE)</span>
         </div>
-        <div className="flex items-center space-x-3 text-[11px] text-stone-200">
+        <div className="flex items-center space-x-3 text-[11px] text-stone-200 shrink-0">
           <span className="flex items-center gap-1">
             <Award className="w-3.5 h-3.5 text-saffron-300" />
             Shilp Samagam & GeM Certified
           </span>
-          <span className="hidden sm:inline">|</span>
-          <span className="hidden sm:inline">Govt of India Initiative</span>
+          <span className="hidden md:inline">|</span>
+          <span className="hidden md:inline">Govt of India</span>
         </div>
       </div>
 
       {/* Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Logo & Tagline */}
-        <div className="cursor-pointer" onClick={() => setRole('artisan')}>
+        <div className="cursor-pointer shrink-0" onClick={() => setRole('artisan')}>
           <AppLogo size="md" showTagline={true} />
         </div>
 
         {/* Role Switcher Pills */}
-        <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200">
+        <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0">
           <button
             onClick={() => setRole('artisan')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               role === 'artisan'
                 ? 'bg-white text-saffron-700 shadow-sm border border-stone-200/60'
                 : 'text-stone-600 hover:text-stone-900'
@@ -59,11 +74,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <UserCheck className="w-3.5 h-3.5" />
             <span>Artisan App</span>
-            <span className="hidden md:inline text-[10px] text-stone-400">(कारीगर)</span>
+            <span className="hidden lg:inline text-[10px] text-stone-400">(कारीगर)</span>
           </button>
           <button
             onClick={() => setRole('buyer')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               role === 'buyer'
                 ? 'bg-navy-900 text-white shadow-sm'
                 : 'text-stone-600 hover:text-stone-900'
@@ -71,86 +86,155 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             <span>B2B & MoSJE Portal</span>
-            <span className="hidden md:inline text-[10px] opacity-75">(खरीदार)</span>
+            <span className="hidden lg:inline text-[10px] opacity-75">(खरीदार)</span>
           </button>
         </div>
 
-        {/* Controls: Language & Mobile Simulator Toggle */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Language Selector & Quick Toggle */}
-          <div className="flex items-center space-x-1.5">
-            {/* Quick 1-Click EN / HI Toggle */}
-            <div className="hidden sm:flex items-center bg-stone-100 rounded-lg p-0.5 border border-stone-200">
-              <button
-                onClick={() => setLanguage('en')}
-                className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${
-                  language === 'en'
-                    ? 'bg-white text-saffron-700 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-900'
-                }`}
-              >
-                English
-              </button>
-              <button
-                onClick={() => setLanguage('hi')}
-                className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${
-                  language === 'hi'
-                    ? 'bg-white text-saffron-700 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-900'
-                }`}
-              >
-                हिन्दी
-              </button>
-            </div>
+        {/* Controls: Language, Digital Card, Tutorial, Mobile View & User Auth */}
+        <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          {/* Digital Smart ID Card Quick Button (Artisans) */}
+          <button
+            onClick={onOpenCardModal}
+            title="View Official MoSJE Artisan Smart ID Card"
+            className="hidden sm:flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all shadow-2xs"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+            <span className="hidden lg:inline">Smart ID Card</span>
+          </button>
 
-            {/* Full Regional Language Selector */}
-            <div className="relative flex items-center">
-              <Globe className="w-3.5 h-3.5 text-stone-500 absolute left-2 pointer-events-none" />
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value as Language)}
-                className="pl-7 pr-2 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-semibold text-stone-800 focus:outline-none focus:ring-2 focus:ring-saffron-500 cursor-pointer shadow-xs"
-                title="Select Interface Language"
-              >
-                <option value="en">English (EN)</option>
-                <option value="hi">हिन्दी (Hindi)</option>
-                <option value="te">తెలుగు (Telugu)</option>
-                <option value="ta">தமிழ் (Tamil)</option>
-                <option value="bn">বাংলা (Bengali)</option>
-                <option value="mr">मराठी (Marathi)</option>
-                <option value="gu">ગુજરાતી (Gujarati)</option>
-              </select>
-            </div>
+          {/* Regional Language Selector */}
+          <div className="relative flex items-center">
+            <Globe className="w-3.5 h-3.5 text-stone-500 absolute left-2 pointer-events-none" />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as Language)}
+              className="pl-7 pr-2 py-1.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-saffron-500 cursor-pointer shadow-2xs"
+              title="Select Interface Language"
+            >
+              <option value="en">English (EN)</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+              <option value="te">తెలుగు (Telugu)</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+              <option value="bn">বাংলা (Bengali)</option>
+              <option value="mr">मराठी (Marathi)</option>
+              <option value="gu">ગુજરાતી (Gujarati)</option>
+            </select>
           </div>
 
-          {/* View Mode Toggle: Mobile Frame vs Full Desktop */}
+          {/* Tutorial / Help Button */}
+          <button
+            onClick={onOpenTutorial}
+            title="App Guidance & Tutorial"
+            className="p-1.5 sm:px-2 sm:py-1.5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium transition-colors flex items-center gap-1"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-saffron-600" />
+            <span className="hidden xl:inline">Guide</span>
+          </button>
+
+          {/* View Mode: Mobile Frame vs Desktop */}
           <button
             onClick={() => setIsMobileFrame(!isMobileFrame)}
-            title={isMobileFrame ? "Switch to Fullscreen Responsive View" : "Simulate Native Mobile App View"}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium transition-colors"
+            title={isMobileFrame ? "Switch to Fullscreen Desktop View" : "Simulate Mobile Smartphone Frame"}
+            className="hidden md:flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium transition-colors"
           >
             {isMobileFrame ? (
               <>
                 <Monitor className="w-3.5 h-3.5 text-saffron-600" />
-                <span className="hidden sm:inline">Desktop View</span>
+                <span className="hidden lg:inline">Desktop</span>
               </>
             ) : (
               <>
                 <Smartphone className="w-3.5 h-3.5 text-saffron-600" />
-                <span className="hidden sm:inline">Mobile App View</span>
+                <span className="hidden lg:inline">Mobile Frame</span>
               </>
             )}
           </button>
 
-          {/* AI Engine & API Status Button */}
+          {/* AI Settings Button */}
           <button
             onClick={() => setIsSettingsOpen(true)}
-            title="AI Architecture & Optional API Keys"
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-medium transition-colors"
+            title="Configure Gemini API Key & AI Settings"
+            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-colors flex items-center gap-1"
           >
             <Cpu className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden md:inline">AI Engines</span>
+            <span className="hidden lg:inline">AI Settings</span>
           </button>
+
+          {/* User Auth Profile / Login Button */}
+          {currentUser ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                className="flex items-center space-x-1.5 p-1 sm:px-2.5 sm:py-1 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-200 transition-colors"
+              >
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.name}
+                  className="w-7 h-7 rounded-lg object-cover border border-saffron-500"
+                />
+                <div className="hidden sm:block text-left text-xs">
+                  <div className="font-bold text-stone-800 truncate max-w-[90px]">{currentUser.name.split(' ')[0]}</div>
+                  <div className="text-[9px] text-stone-500 capitalize">{currentUser.role}</div>
+                </div>
+              </button>
+
+              {/* User Dropdown */}
+              {showUserDropdown && (
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-stone-200 py-2 z-50 text-xs animate-scaleIn">
+                  <div className="px-3.5 py-2 border-b border-stone-100">
+                    <p className="font-bold text-stone-900 truncate">{currentUser.name}</p>
+                    <p className="text-[10px] text-stone-500 truncate">{currentUser.phoneOrEmail}</p>
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded bg-saffron-50 text-saffron-700 font-bold text-[9px] uppercase border border-saffron-200">
+                      {currentUser.role}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      onOpenCardModal();
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-stone-50 text-stone-700 flex items-center gap-2 font-medium"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Digital Smart ID Card</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      onOpenTutorial();
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-stone-50 text-stone-700 flex items-center gap-2 font-medium"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-blue-600" />
+                    <span>How to Use Shilp-AI</span>
+                  </button>
+
+                  <div className="border-t border-stone-100 my-1"></div>
+
+                  <button
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      onLogout();
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 font-bold"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out / Logout</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-saffron-600 hover:bg-saffron-700 text-white text-xs font-bold shadow-xs transition-colors"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Login</span>
+            </button>
+          )}
         </div>
       </div>
 
