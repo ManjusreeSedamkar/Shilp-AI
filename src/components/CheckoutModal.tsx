@@ -70,7 +70,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         id: `ORD-${Date.now().toString().slice(-6)}`,
         productId: product.id,
         productTitle: language === 'hi' ? product.titleHi : product.titleEn,
-        productImage: product.originalImage,
+        productImage: product.enhancedImage || product.originalImage,
         artisanId: product.artisanId,
         artisanName: product.artisanName,
         quantity,
@@ -99,8 +99,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-stone-200 overflow-hidden animate-scaleIn my-4">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-xl w-full max-h-[92dvh] overflow-y-auto shadow-2xl border border-stone-200 animate-scaleIn my-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-saffron-700 via-stone-900 to-navy-900 text-white p-5 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
@@ -190,7 +190,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {/* Product Summary Row */}
             <div className="flex items-center gap-3.5 p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
               <img
-                src={product.originalImage}
+                src={product.enhancedImage || product.originalImage}
                 alt={product.titleEn}
                 className="w-16 h-16 rounded-xl object-cover border border-stone-200 shadow-xs shrink-0"
               />

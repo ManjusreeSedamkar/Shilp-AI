@@ -62,7 +62,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200 space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
         <div className="flex items-center space-x-2">
           <span className="p-1.5 rounded-lg bg-amber-100 text-amber-700">
             <Star className="w-4 h-4 fill-amber-500 text-amber-500" />

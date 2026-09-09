@@ -54,7 +54,7 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col h-[700px] overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col h-[calc(100dvh-180px)] min-h-[380px] max-h-[720px] w-full max-w-full overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-navy-900 via-stone-900 to-saffron-700 p-4 text-white flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-3">

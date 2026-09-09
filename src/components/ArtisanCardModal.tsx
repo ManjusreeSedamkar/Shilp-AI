@@ -31,8 +31,8 @@ export const ArtisanCardModal: React.FC<ArtisanCardModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden animate-scaleIn space-y-0">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-lg w-full max-h-[92dvh] overflow-y-auto shadow-2xl border border-stone-200 animate-scaleIn space-y-0">
         {/* Modal Top Bar */}
         <div className="p-4 bg-stone-900 text-white flex items-center justify-between">
           <div className="flex items-center space-x-2">

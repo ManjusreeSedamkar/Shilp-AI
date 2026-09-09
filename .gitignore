@@ -29,3 +29,7 @@ Thumbs.db
 
 # Misc
 *.local
+# Local backups / temporary archives
+src_old/
+src_old(2)/
+*.zip

@@ -1,22 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, Square, Sparkles, Check, Globe, RefreshCw, ArrowRight, Tag, BookOpen, Image as ImageIcon, Camera, Upload, CheckCircle2 } from 'lucide-react';
+import { Mic, MicOff, Volume2, Square, Sparkles, Check, Globe, RefreshCw, ArrowRight, Tag, BookOpen, Image as ImageIcon, Camera, Upload, CheckCircle2, Copy, FileText, X } from 'lucide-react';
 import { VoiceCatalogerEngine, ExtractedProductAttributes } from '../services/voiceCataloger';
 import { DynamicPricingEngine } from '../services/pricingEngine';
 import { CRAFT_PRESETS } from '../data/craftPresets';
 import { Language, ProductListing } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
 import { getSpeechLangCode, translate } from '../services/translations';
+import { AIImageStudio, DEFAULT_IMAGE_OPTIONS } from '../services/imageStudio';
 
 interface VoiceCatalogerModalProps {
   language?: Language;
   onListingCreated?: (listing: ProductListing) => void;
   selectedPhotoUrl?: string;
+  originalPhotoUrl?: string;
 }
 
 export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
   language = 'en',
   onListingCreated,
-  selectedPhotoUrl
+  selectedPhotoUrl,
+  originalPhotoUrl
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -24,10 +27,14 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
   const [extractedData, setExtractedData] = useState<ExtractedProductAttributes | null>(null);
   const [activeTab, setActiveTab] = useState<'hindi' | 'english'>('hindi');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [spokenCatalogTranscript, setSpokenCatalogTranscript] = useState<string | null>(null);
+  const [isTranscriptCopied, setIsTranscriptCopied] = useState(false);
   const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
   
-  // Staged product photo state - always keeps the exact original image
-  const [currentPhoto, setCurrentPhoto] = useState<string>(selectedPhotoUrl || CRAFT_PRESETS[0].rawImage);
+  // Staged product photo state - AI enhanced studio photo
+  const [currentPhoto, setCurrentPhoto] = useState<string>(selectedPhotoUrl || CRAFT_PRESETS[0].enhancedImage);
+  const [originalPhoto, setOriginalPhoto] = useState<string>(originalPhotoUrl || CRAFT_PRESETS[0].rawImage);
+  const [isEnhancingUpload, setIsEnhancingUpload] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const t = (key: string) => translate(language, key);
@@ -38,7 +45,10 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
     if (selectedPhotoUrl) {
       setCurrentPhoto(selectedPhotoUrl);
     }
-  }, [selectedPhotoUrl]);
+    if (originalPhotoUrl) {
+      setOriginalPhoto(originalPhotoUrl);
+    }
+  }, [selectedPhotoUrl, originalPhotoUrl]);
 
   // Sync language code when language prop changes
   useEffect(() => {
@@ -106,13 +116,13 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
 
   const handleToggleSpeak = async (text: string, langCode: string) => {
     if (isSpeaking) {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      VoiceCatalogerEngine.stopSpeaking();
       setIsSpeaking(false);
+      // Keep spokenCatalogTranscript intact so user can read what was spoken!
       return;
     }
 
+    setSpokenCatalogTranscript(text);
     setIsSpeaking(true);
     try {
       await VoiceCatalogerEngine.speak(text, langCode as any);
@@ -127,9 +137,19 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         if (event.target?.result) {
-          setCurrentPhoto(event.target.result as string);
+          const rawUrl = event.target.result as string;
+          setOriginalPhoto(rawUrl);
+          setIsEnhancingUpload(true);
+          try {
+            const res = await AIImageStudio.processImage(rawUrl, DEFAULT_IMAGE_OPTIONS);
+            setCurrentPhoto(res.enhancedDataUrl);
+          } catch {
+            setCurrentPhoto(rawUrl);
+          } finally {
+            setIsEnhancingUpload(false);
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -161,11 +181,11 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
       color: extractedData.color,
       productionDays: extractedData.productionDays,
       rawMaterialCost: extractedData.rawMaterialCost,
-      // EXACT ORIGINAL IMAGE IS PRESERVED
-      originalImage: currentPhoto,
+      // Store original and AI enhanced images
+      originalImage: originalPhoto || currentPhoto,
       enhancedImage: currentPhoto,
-      hasBackgroundRemoved: false,
-      hasLightingEnhanced: false,
+      hasBackgroundRemoved: true,
+      hasLightingEnhanced: true,
       descriptionEn: extractedData.descriptionEn,
       descriptionHi: extractedData.descriptionHi,
       seoKeywords: extractedData.seoKeywords,
@@ -206,32 +226,33 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
         </div>
       </div>
 
-      {/* Product Photo Confirmation Card (Original Photo Preserved) */}
+      {/* Product Photo Confirmation Card (AI Enhanced Studio Photo) */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center space-x-3 w-full sm:w-auto">
           <div className="relative shrink-0">
             <img
               src={currentPhoto}
               alt="Craft"
-              className="w-16 h-16 rounded-xl object-cover border-2 border-saffron-500 shadow-sm"
+              className="w-16 h-16 rounded-xl object-contain bg-stone-50 border-2 border-saffron-500 shadow-sm"
             />
             <div className="absolute -bottom-1 -right-1 bg-emerald-600 text-white rounded-full p-0.5 shadow">
-              <CheckCircle2 className="w-3 h-3" />
+              <Sparkles className="w-3 h-3 text-white" />
             </div>
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-stone-900">
-                {isHindi ? 'उत्पाद की मूल फोटो' : 'Product Photo (Original Kept)'}
+                {isHindi ? 'एआई संवर्धित उत्पाद फोटो' : 'AI Enhanced Product Photo'}
               </span>
-              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">
-                100% Original
+              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
+                {isHindi ? 'एआई स्टूडियो क्लीन' : 'AI Studio Ready'}
               </span>
             </div>
             <p className="text-[11px] text-stone-500 leading-tight mt-0.5">
               {isHindi 
-                ? 'आपकी फोटो को बदला नहीं जाएगा। यह फोटो सीधे कैटलॉग और खरीदार पोर्टल पर दिखाई देगी।'
-                : 'Exact photo preserved without background removal or synthetic modification.'}
+                ? 'स्वच्छ पृष्ठभूमि और स्टूडियो लाइटिंग वाली फोटो कैटलॉग और खरीदार पोर्टल पर दिखाई देगी।'
+                : 'Studio-enhanced photo ready to be shown at published products on the marketplace.'}
             </p>
           </div>
         </div>
@@ -247,10 +268,20 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-colors"
+            disabled={isEnhancingUpload}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-colors disabled:opacity-50"
           >
-            <Upload className="w-3.5 h-3.5 text-stone-500" />
-            <span>{isHindi ? 'फोटो बदलें' : 'Change Photo'}</span>
+            {isEnhancingUpload ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 text-stone-500 animate-spin" />
+                <span>{isHindi ? 'संवर्धन हो रहा है...' : 'Enhancing...'}</span>
+              </>
+            ) : (
+              <>
+                <Upload className="w-3.5 h-3.5 text-stone-500" />
+                <span>{isHindi ? 'फोटो बदलें' : 'Change Photo'}</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -419,14 +450,27 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
 
             {activeTab === 'hindi' ? (
               <div className="p-3.5 bg-saffron-50/40 rounded-xl border border-saffron-200/60 space-y-2">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-center gap-2">
                   <h4 className="font-bold text-stone-900 text-sm">{extractedData.titleHi}</h4>
                   <button
                     onClick={() => handleToggleSpeak(extractedData.descriptionHi, 'hi-IN')}
-                    className="flex items-center space-x-1 text-xs text-saffron-700 font-semibold hover:underline"
+                    className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold shadow-xs transition-all ${
+                      isSpeaking && spokenCatalogTranscript === extractedData.descriptionHi
+                        ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 ring-2 ring-red-300 animate-pulse'
+                        : 'bg-saffron-100/90 text-saffron-900 border border-saffron-300/80 hover:bg-saffron-200'
+                    }`}
                   >
-                    {isSpeaking ? <Square className="w-3.5 h-3.5 text-red-600" /> : <Volume2 className="w-3.5 h-3.5" />}
-                    <span>{isSpeaking ? 'रुकें (Stop)' : 'सुनें (Listen)'}</span>
+                    {isSpeaking && spokenCatalogTranscript === extractedData.descriptionHi ? (
+                      <>
+                        <Square className="w-3.5 h-3.5 fill-red-600 text-red-600" />
+                        <span>रुकें (Stop AI Speech)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5 text-saffron-700" />
+                        <span>सुनें (Listen)</span>
+                      </>
+                    )}
                   </button>
                 </div>
                 <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-line">
@@ -435,19 +479,83 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
               </div>
             ) : (
               <div className="p-3.5 bg-blue-50/40 rounded-xl border border-blue-200/60 space-y-2">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-center gap-2">
                   <h4 className="font-bold text-stone-900 text-sm">{extractedData.titleEn}</h4>
                   <button
                     onClick={() => handleToggleSpeak(extractedData.descriptionEn, 'en-IN')}
-                    className="flex items-center space-x-1 text-xs text-blue-700 font-semibold hover:underline"
+                    className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold shadow-xs transition-all ${
+                      isSpeaking && spokenCatalogTranscript === extractedData.descriptionEn
+                        ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 ring-2 ring-red-300 animate-pulse'
+                        : 'bg-blue-100/90 text-blue-900 border border-blue-300/80 hover:bg-blue-200'
+                    }`}
                   >
-                    {isSpeaking ? <Square className="w-3.5 h-3.5 text-red-600" /> : <Volume2 className="w-3.5 h-3.5" />}
-                    <span>{isSpeaking ? 'Stop' : 'Listen'}</span>
+                    {isSpeaking && spokenCatalogTranscript === extractedData.descriptionEn ? (
+                      <>
+                        <Square className="w-3.5 h-3.5 fill-red-600 text-red-600" />
+                        <span>Stop AI Speech</span>
+                      </>
+                    ) : (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5 text-blue-700" />
+                        <span>Listen</span>
+                      </>
+                    )}
                   </button>
                 </div>
                 <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-line">
                   {extractedData.descriptionEn}
                 </p>
+              </div>
+            )}
+
+            {/* Dedicated Audio Transcription Card when AI is Speaking or Stopped */}
+            {spokenCatalogTranscript && (
+              <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 text-stone-800 space-y-2 animate-in fade-in duration-200 shadow-xs">
+                <div className="flex items-center justify-between text-[11px] font-bold border-b border-amber-200/80 pb-1.5">
+                  <span className="flex items-center gap-1.5 text-amber-900">
+                    <FileText className="w-3.5 h-3.5 text-amber-700" />
+                    {isHindi ? 'AI ऑडियो ट्रांसक्रिप्शन (Live Audio Transcript):' : 'AI Speech Audio Transcription:'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
+                      isSpeaking ? 'bg-red-100 text-red-700 animate-pulse border border-red-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                      {isSpeaking ? (isHindi ? 'AI बोल रहा है...' : 'AI Speaking...') : (isHindi ? 'रोका गया / पढ़ने के लिए तैयार' : 'Stopped / Ready to Read')}
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(spokenCatalogTranscript);
+                        setIsTranscriptCopied(true);
+                        setTimeout(() => setIsTranscriptCopied(false), 2000);
+                      }}
+                      className="text-stone-500 hover:text-stone-800 p-1 rounded hover:bg-amber-100/80 transition-colors"
+                      title={isHindi ? 'प्रतिलिपि कॉपी करें' : 'Copy transcript'}
+                    >
+                      {isTranscriptCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (isSpeaking) {
+                          VoiceCatalogerEngine.stopSpeaking();
+                          setIsSpeaking(false);
+                        }
+                        setSpokenCatalogTranscript(null);
+                      }}
+                      className="text-stone-400 hover:text-stone-700 p-1 rounded hover:bg-amber-100/80 transition-colors"
+                      title="Dismiss"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-stone-700 font-mono leading-relaxed bg-white/70 p-2.5 rounded-lg border border-amber-200/50 select-text">
+                  "{spokenCatalogTranscript}"
+                </p>
+                <div className="flex items-center justify-between text-[10px] text-stone-500 pt-0.5">
+                  <span>{isHindi ? '💡 ध्यान से सुनने या पढ़ने के लिए प्ले/स्टॉप का उपयोग करें।' : '💡 Listen carefully or read the exact speech transcript above.'}</span>
+                  {isTranscriptCopied && <span className="text-emerald-700 font-semibold">{isHindi ? 'कॉपी कर लिया गया!' : 'Transcript copied!'}</span>}
+                </div>
               </div>
             )}
           </div>

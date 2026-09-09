@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IndianRupee, TrendingUp, Info, Volume2, ShieldCheck, Check, Sparkles, Building2 } from 'lucide-react';
+import { IndianRupee, TrendingUp, Info, Volume2, ShieldCheck, Check, Sparkles, Building2, Square, FileText, Copy, X } from 'lucide-react';
 import { PricingBreakdown, Language } from '../types';
 import { DynamicPricingEngine } from '../services/pricingEngine';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
@@ -23,6 +23,8 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
   const [days, setDays] = useState<number>(initialPricing?.productionDays || 5);
   const [marginPercent, setMarginPercent] = useState<number>(initialPricing?.artisanMarginPercent || 28);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [pricingTranscript, setPricingTranscript] = useState<string | null>(null);
+  const [isCopiedTranscript, setIsCopiedTranscript] = useState(false);
 
   // Recalculate dynamically
   const pricing = DynamicPricingEngine.calculatePricing({
@@ -36,10 +38,27 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
   });
 
   const handleSpeechExplanation = async () => {
-    setIsSpeaking(true);
+    if (isSpeaking) {
+      VoiceCatalogerEngine.stopSpeaking();
+      setIsSpeaking(false);
+      return;
+    }
+
     const explanation = DynamicPricingEngine.getPricingExplanation(pricing, language === 'hi' ? 'hi' : 'en');
-    await VoiceCatalogerEngine.speak(explanation, language === 'hi' ? 'hi-IN' : 'en-IN');
-    setIsSpeaking(false);
+    setPricingTranscript(explanation);
+    setIsSpeaking(true);
+
+    try {
+      await VoiceCatalogerEngine.speak(explanation, language === 'hi' ? 'hi-IN' : 'en-IN');
+    } finally {
+      setIsSpeaking(false);
+    }
+  };
+
+  const handleCopyTranscript = (text: string) => {
+    navigator.clipboard?.writeText(text);
+    setIsCopiedTranscript(true);
+    setTimeout(() => setIsCopiedTranscript(false), 2000);
   };
 
   const isHindi = language === 'hi';
@@ -64,20 +83,70 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
           </p>
         </div>
 
-        {/* Audio Readout Button for Low Literacy */}
+        {/* Audio Readout Button with Start / Stop */}
         <button
           onClick={handleSpeechExplanation}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
             isSpeaking
-              ? 'bg-emerald-600 text-white animate-pulse'
+              ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-sm'
               : 'bg-stone-100 hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 border border-stone-200'
           }`}
-          title="Listen to plain-language explanation"
+          title={isSpeaking ? (isHindi ? 'रोकें (Stop)' : 'Stop Speech') : (isHindi ? 'व्याख्या सुनें' : 'Listen to explanation')}
         >
-          <Volume2 className="w-3.5 h-3.5" />
-          <span>{isSpeaking ? (isHindi ? 'बोल रहा है...' : 'Speaking...') : (isHindi ? 'सुनें' : 'Listen')}</span>
+          {isSpeaking ? (
+            <>
+              <Square className="w-3.5 h-3.5 fill-white text-white" />
+              <span>{isHindi ? 'रोकें (Stop)' : 'Stop'}</span>
+            </>
+          ) : (
+            <>
+              <Volume2 className="w-3.5 h-3.5" />
+              <span>{isHindi ? 'सुनें' : 'Listen'}</span>
+            </>
+          )}
         </button>
       </div>
+
+      {/* AI Speech Transcript Box */}
+      {pricingTranscript && (
+        <div className="p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl text-xs space-y-1.5 animate-fadeIn">
+          <div className="flex items-center justify-between text-emerald-950 font-bold text-[11px]">
+            <span className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-emerald-700" />
+              {isHindi ? 'मूल्य निर्धारण वाणी प्रतिलेख (AI Pricing Transcript):' : 'AI Pricing Explanation Transcript:'}
+              {isSpeaking ? (
+                <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.2 rounded-full animate-pulse flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                  {isHindi ? 'बोल रहा है...' : 'Speaking...'}
+                </span>
+              ) : (
+                <span className="bg-stone-200 text-stone-700 text-[9px] px-1.5 py-0.2 rounded-full font-mono">
+                  {isHindi ? 'रोका गया (Stopped)' : 'Stopped'}
+                </span>
+              )}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleCopyTranscript(pricingTranscript)}
+                className="text-stone-600 hover:text-stone-900 text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-100 transition-colors"
+              >
+                {isCopiedTranscript ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                {isCopiedTranscript ? (isHindi ? 'कॉपी हुआ' : 'Copied') : (isHindi ? 'कॉपी' : 'Copy')}
+              </button>
+              <button
+                onClick={() => setPricingTranscript(null)}
+                className="text-stone-400 hover:text-stone-700 p-0.5 rounded"
+                title="Close"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+          <p className="text-stone-800 bg-white p-2.5 rounded-xl border border-emerald-200/60 leading-relaxed text-xs">
+            "{pricingTranscript}"
+          </p>
+        </div>
+      )}
 
       {/* Primary Recommended Price Box */}
       <div className="bg-gradient-to-br from-emerald-500 to-teal-700 rounded-2xl p-4 text-white shadow-md shadow-emerald-700/20">
@@ -218,7 +287,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
         </div>
 
         {/* Legend */}
-        <div className="grid grid-cols-3 gap-2 text-[11px] pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2 text-[11px] pt-1">
           <div className="flex items-center space-x-1 text-stone-600">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
             <span>{isHindi ? 'सामग्री:' : 'Materials:'} ₹{pricing.rawMaterialCost.toLocaleString('en-IN')}</span>

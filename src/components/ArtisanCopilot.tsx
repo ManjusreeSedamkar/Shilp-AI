@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Mic, MicOff, Volume2, VolumeX, Sparkles, Bot, User, ArrowRight, CheckCircle2, Settings, Loader2, Play, Square } from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, VolumeX, Sparkles, Bot, User, ArrowRight, CheckCircle2, Settings, Loader2, Play, Square, Copy, FileText, Check, X } from 'lucide-react';
 import { CopilotMessage, ProductListing, Language } from '../types';
 import { ArtisanCopilotService } from '../services/copilotService';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
@@ -24,6 +24,8 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeakingMessageId, setIsSpeakingMessageId] = useState<string | null>(null);
+  const [spokenTranscripts, setSpokenTranscripts] = useState<{ [messageId: string]: string }>({});
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -192,9 +194,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
   };
 
   const handleStopVoice = () => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    VoiceCatalogerEngine.stopSpeaking();
     setIsSpeakingMessageId(null);
   };
 
@@ -204,6 +204,12 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
 
     const textToSpeak = msg.audioText || msg.text;
     const langCode = getSpeechLangCode(language);
+
+    // Save into spoken transcripts so it remains displayed and readable when stopped!
+    setSpokenTranscripts((prev) => ({
+      ...prev,
+      [msg.id]: textToSpeak
+    }));
 
     try {
       await VoiceCatalogerEngine.speak(textToSpeak, langCode as any);
@@ -215,7 +221,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col h-[650px] sm:h-[700px] overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col h-[calc(100dvh-180px)] min-h-[380px] max-h-[720px] w-full max-w-full overflow-hidden">
       {/* Copilot Header */}
       <div className="bg-gradient-to-r from-saffron-700 via-stone-900 to-navy-900 p-4 text-white flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-3">
@@ -285,9 +291,9 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                   {!isUser && (
                     <button
                       onClick={() => handleToggleVoice(msg)}
-                      className={`flex items-center gap-1 px-2 py-0.5 rounded-md font-bold transition-all ${
+                      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md font-bold transition-all text-[10px] ${
                         isCurrentlyPlaying
-                          ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300'
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 ring-2 ring-red-200 animate-pulse'
                           : 'bg-saffron-50 text-saffron-800 hover:bg-saffron-100 border border-saffron-200'
                       }`}
                       title={isCurrentlyPlaying ? 'Stop Voice' : 'Listen with AI Voice'}
@@ -295,13 +301,13 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                       {isCurrentlyPlaying ? (
                         <>
                           <Square className="w-2.5 h-2.5 fill-red-600 text-red-600" />
-                          <span>Stop</span>
+                          <span>{isHindi ? 'रुकें (Stop)' : 'Stop'}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span>
                         </>
                       ) : (
                         <>
-                          <Volume2 className="w-3 h-3 text-saffron-600" />
-                          <span>Play</span>
+                          <Volume2 className="w-2.5 h-2.5 text-saffron-600" />
+                          <span>{isHindi ? 'सुनें (Listen)' : 'Listen'}</span>
                         </>
                       )}
                     </button>
@@ -313,12 +319,69 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                   {msg.text}
                 </p>
 
+                {/* AI Audio Transcription Box when speaking or when stopped */}
+                {!isUser && spokenTranscripts[msg.id] && (
+                  <div className="mt-2 p-2.5 bg-amber-50/90 rounded-xl border border-amber-200 text-stone-800 space-y-1.5 animate-in fade-in duration-200 shadow-2xs">
+                    <div className="flex items-center justify-between text-[10px] font-bold border-b border-amber-200/80 pb-1">
+                      <span className="flex items-center gap-1 text-amber-900">
+                        <FileText className="w-3 h-3 text-amber-700" />
+                        {isHindi ? 'AI ऑडियो ट्रांसक्रिप्शन:' : 'AI Spoken Audio Transcription:'}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-semibold flex items-center gap-1 ${
+                          isCurrentlyPlaying
+                            ? 'bg-red-100 text-red-700 animate-pulse border border-red-200'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}>
+                          <span className={`w-1 h-1 rounded-full ${isCurrentlyPlaying ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                          {isCurrentlyPlaying ? (isHindi ? 'बोल रहा है...' : 'Speaking...') : (isHindi ? 'रोका गया / पढ़ें' : 'Stopped / Read')}
+                        </span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(spokenTranscripts[msg.id]);
+                            setCopiedMessageId(msg.id);
+                            setTimeout(() => setCopiedMessageId(null), 2000);
+                          }}
+                          className="text-stone-500 hover:text-stone-800 p-0.5 rounded hover:bg-amber-100 transition-colors"
+                          title="Copy transcript"
+                        >
+                          {copiedMessageId === msg.id ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (isCurrentlyPlaying) {
+                              handleStopVoice();
+                            }
+                            setSpokenTranscripts((prev) => {
+                              const copy = { ...prev };
+                              delete copy[msg.id];
+                              return copy;
+                            });
+                          }}
+                          className="text-stone-400 hover:text-stone-700 p-0.5 rounded hover:bg-amber-100 transition-colors"
+                          title="Dismiss"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] font-mono text-stone-700 leading-relaxed bg-white/80 p-2 rounded-lg border border-amber-200/60 select-text">
+                      "{spokenTranscripts[msg.id]}"
+                    </p>
+                    {copiedMessageId === msg.id && (
+                      <div className="text-[9px] text-emerald-700 font-semibold text-right">
+                        {isHindi ? 'कॉपी कर लिया गया!' : 'Transcript copied to clipboard!'}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Action Card: Listing Ready Embedded Card */}
                 {msg.actionCard?.type === 'listing_ready' && msg.actionCard.data && (
                   <div className="mt-3 p-3 bg-stone-50 rounded-xl border border-stone-200 text-stone-900 space-y-2">
                     <div className="flex items-center gap-2">
                       <img
-                        src={msg.actionCard.data.originalImage}
+                        src={msg.actionCard.data.enhancedImage || msg.actionCard.data.originalImage}
                         alt="Product"
                         className="w-14 h-14 rounded-lg object-cover border border-stone-200 shadow-sm"
                       />

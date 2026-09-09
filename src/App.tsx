@@ -14,10 +14,12 @@ import { ReviewsSection } from './components/ReviewsSection';
 import { ArtisanCardModal } from './components/ArtisanCardModal';
 import { AuthModal, AuthUser } from './components/AuthModal';
 import { CheckoutModal, PlacedOrder } from './components/CheckoutModal';
+import { TutorialPage } from './components/TutorialPage';
 import { INITIAL_PRODUCTS, CURRENT_ARTISAN } from './data/craftPresets';
 import { ProductListing, UserRole, Language, Conversation, ChatMessage, CustomizationRequest, ProductReview } from './types';
-import { Home, Camera, Mic, Bot, IndianRupee, Sparkles, CheckCircle2, ShoppingBag, MessageSquare, Star, ShieldCheck } from 'lucide-react';
+import { Home, Camera, Mic, Bot, IndianRupee, Sparkles, CheckCircle2, ShoppingBag, MessageSquare, Star, ShieldCheck, Video } from 'lucide-react';
 import { translate } from './services/translations';
+import { LanguageAutoTranslator } from './components/LanguageAutoTranslator';
 
 // Sample initial conversations
 const INITIAL_CONVERSATIONS: Conversation[] = [
@@ -91,7 +93,7 @@ export function App() {
   const [role, setRole] = useState<UserRole>('artisan');
   const [language, setLanguage] = useState<Language>('en');
   const [isMobileFrame, setIsMobileFrame] = useState<boolean>(false);
-  const [artisanTab, setArtisanTab] = useState<'dashboard' | 'studio' | 'voice' | 'copilot' | 'pricing' | 'chat' | 'reviews'>('dashboard');
+  const [artisanTab, setArtisanTab] = useState<'dashboard' | 'studio' | 'voice' | 'copilot' | 'pricing' | 'chat' | 'reviews' | 'tutorials'>('dashboard');
   
   // Persistent Products State
   const [products, setProducts] = useState<ProductListing[]>(() => {
@@ -146,6 +148,7 @@ export function App() {
   const [selectedProduct, setSelectedProduct] = useState<ProductListing | null>(null);
   const [productToCheckout, setProductToCheckout] = useState<ProductListing | null>(null);
   const [stagedPhotoUrl, setStagedPhotoUrl] = useState<string | null>(null);
+  const [stagedOriginalPhotoUrl, setStagedOriginalPhotoUrl] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const [showCardModal, setShowCardModal] = useState<boolean>(false);
@@ -219,10 +222,13 @@ export function App() {
   };
 
   // Staging Photo from Studio to Smart Catalog
-  const handlePhotoSelectedFromStudio = (photoUrl: string) => {
-    setStagedPhotoUrl(photoUrl);
+  const handlePhotoSelectedFromStudio = (enhancedUrl: string, originalUrl?: string) => {
+    setStagedPhotoUrl(enhancedUrl);
+    if (originalUrl) {
+      setStagedOriginalPhotoUrl(originalUrl);
+    }
     setArtisanTab('voice');
-    showToast('Original photo selected for Smart Catalog!');
+    showToast(language === 'hi' ? 'एआई संवर्धित फोटो स्मार्ट कैटलॉग के लिए चुनी गई!' : 'AI enhanced photo selected for Smart Catalog!');
   };
 
   // 1-to-1 Chat Messaging System
@@ -323,7 +329,9 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-900 font-sans flex flex-col">
+    <>
+      <LanguageAutoTranslator language={language} />
+    <div className="min-h-screen min-h-[100dvh] bg-stone-100 text-stone-900 font-sans flex flex-col w-full max-w-full overflow-x-hidden">
       {/* Universal Government & Application Navbar */}
       <Navbar
         role={role}
@@ -392,9 +400,9 @@ export function App() {
       )}
 
       {/* Main Content Area wrapped in optional Mobile Smartphone Simulator Frame */}
-      <main className="flex-1 w-full flex flex-col justify-start">
+      <main className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col justify-start">
         <MobileFrame isMobileFrame={isMobileFrame}>
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-5 w-full flex-1 flex flex-col">
+          <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-5 w-full max-w-full overflow-x-hidden flex-1 flex flex-col">
             {role === 'buyer' ? (
               /* Buyer / Government Portal View */
               <BuyerPortal
@@ -405,12 +413,12 @@ export function App() {
               />
             ) : (
               /* Artisan App View with Navigation */
-              <div className="space-y-4 flex-1 flex flex-col">
+              <div className="space-y-3 sm:space-y-4 flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
                 {/* Mobile / Low-Literacy Quick Switcher Bar */}
-                <div className="bg-white p-1.5 rounded-2xl border border-stone-200 shadow-xs flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
+                <div className="bg-white p-1 sm:p-1.5 rounded-2xl border border-stone-200 shadow-xs flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar w-full max-w-full touch-pan-x">
                   <button
                     onClick={() => setArtisanTab('dashboard')}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'dashboard'
                         ? 'bg-saffron-600 text-white shadow-sm'
                         : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -422,7 +430,7 @@ export function App() {
 
                   <button
                     onClick={() => setArtisanTab('studio')}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'studio'
                         ? 'bg-saffron-600 text-white shadow-sm'
                         : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -434,7 +442,7 @@ export function App() {
 
                   <button
                     onClick={() => setArtisanTab('voice')}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'voice'
                         ? 'bg-saffron-600 text-white shadow-sm'
                         : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -446,7 +454,7 @@ export function App() {
 
                   <button
                     onClick={() => setArtisanTab('copilot')}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'copilot'
                         ? 'bg-gradient-to-r from-saffron-600 to-amber-600 text-white shadow-sm'
                         : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -458,7 +466,7 @@ export function App() {
 
                   <button
                     onClick={() => setArtisanTab('pricing')}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'pricing'
                         ? 'bg-emerald-600 text-white shadow-sm'
                         : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -471,7 +479,7 @@ export function App() {
                   {/* Messages Tab */}
                   <button
                     onClick={() => setArtisanTab('chat')}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'chat'
                         ? 'bg-blue-600 text-white shadow-sm'
                         : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -489,7 +497,7 @@ export function App() {
                   {/* Reviews Tab */}
                   <button
                     onClick={() => setArtisanTab('reviews')}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'reviews'
                         ? 'bg-amber-600 text-white shadow-sm'
                         : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -497,6 +505,22 @@ export function App() {
                   >
                     <Star className="w-4 h-4" />
                     <span>{t('review.title')}</span>
+                  </button>
+
+                  {/* Tutorials Tab */}
+                  <button
+                    onClick={() => setArtisanTab('tutorials')}
+                    className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                      artisanTab === 'tutorials'
+                        ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-sm'
+                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                    }`}
+                  >
+                    <Video className="w-4 h-4" />
+                    <span>{language === 'hi' ? 'ट्यूटोरियल' : 'Tutorials'}</span>
+                    <span className="bg-amber-200 text-amber-950 text-[9px] font-black px-1.5 py-0.2 rounded-full border border-amber-400">
+                      2
+                    </span>
                   </button>
                 </div>
 
@@ -509,7 +533,15 @@ export function App() {
                       onOpenVoice={() => setArtisanTab('voice')}
                       onOpenCopilot={() => setArtisanTab('copilot')}
                       onOpenPricing={() => setArtisanTab('pricing')}
+                      onOpenTutorials={() => setArtisanTab('tutorials')}
                       onSelectProduct={(prod) => setSelectedProduct(prod)}
+                      language={language}
+                    />
+                  )}
+
+                  {artisanTab === 'tutorials' && (
+                    <TutorialPage
+                      onBack={() => setArtisanTab('dashboard')}
                       language={language}
                     />
                   )}
@@ -525,6 +557,7 @@ export function App() {
                     <VoiceCatalogerModal
                       language={language}
                       selectedPhotoUrl={stagedPhotoUrl || undefined}
+                      originalPhotoUrl={stagedOriginalPhotoUrl || undefined}
                       onListingCreated={handleListingCreated}
                     />
                   )}
@@ -611,6 +644,7 @@ export function App() {
         </div>
       </footer>
     </div>
+    </>
   );
 }
 

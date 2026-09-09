@@ -38,65 +38,71 @@ export const Navbar: React.FC<NavbarProps> = ({
   const t = (key: string) => translate(language, key);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-stone-200 shadow-sm">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-stone-200 shadow-sm w-full max-w-full overflow-hidden">
       {/* Government & Ministry Banner */}
-      <div className="bg-gradient-to-r from-saffron-700 via-stone-800 to-emerald-800 text-white text-[11px] sm:text-xs px-3 sm:px-4 py-1.5 flex justify-between items-center flex-wrap gap-1.5">
-        <div className="flex items-center space-x-2 font-medium truncate">
+      <div className="bg-gradient-to-r from-saffron-700 via-stone-800 to-emerald-800 text-white text-[10px] sm:text-xs px-2.5 sm:px-4 py-1 flex justify-between items-center gap-1.5 w-full max-w-full overflow-hidden">
+        <div className="flex items-center space-x-1.5 font-medium truncate min-w-0 flex-1">
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
-          <span className="truncate">सामाजिक न्याय और अधिकारिता मंत्रालय | Ministry of Social Justice and Empowerment (MoSJE)</span>
+          <span className="truncate">Ministry of Social Justice & Empowerment (MoSJE)</span>
         </div>
-        <div className="flex items-center space-x-3 text-[11px] text-stone-200 shrink-0">
+        <div className="flex items-center space-x-2 text-[10px] text-stone-200 shrink-0">
           <span className="flex items-center gap-1">
-            <Award className="w-3.5 h-3.5 text-saffron-300" />
-            Shilp Samagam & GeM Certified
+            <Award className="w-3 h-3 text-saffron-300" />
+            <span className="hidden sm:inline">Shilp Samagam</span>
+            <span className="sm:hidden">Govt of India</span>
           </span>
-          <span className="hidden md:inline">|</span>
-          <span className="hidden md:inline">Govt of India</span>
         </div>
       </div>
 
       {/* Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-1 sm:gap-4 w-full max-w-full">
         {/* Logo & Tagline */}
         <div className="cursor-pointer shrink-0" onClick={() => setRole('artisan')}>
-          <AppLogo size="md" showTagline={true} />
+          <div className="hidden sm:block">
+            <AppLogo size="md" showTagline={true} />
+          </div>
+          <div className="sm:hidden">
+            <AppLogo size="sm" showTagline={false} />
+          </div>
         </div>
 
         {/* Role Switcher Pills */}
-        <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0">
+        <div className="flex items-center bg-stone-100 p-0.5 sm:p-1 rounded-xl border border-stone-200 shrink-0">
           <button
             onClick={() => setRole('artisan')}
-            className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold transition-all ${
               role === 'artisan'
                 ? 'bg-white text-saffron-700 shadow-sm border border-stone-200/60'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Artisan App</span>
+            <span className="hidden sm:inline">Artisan App</span>
+            <span className="sm:hidden text-[11px] font-bold">Artisan</span>
             <span className="hidden lg:inline text-[10px] text-stone-400">(कारीगर)</span>
           </button>
           <button
             onClick={() => setRole('buyer')}
-            className={`flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold transition-all ${
               role === 'buyer'
                 ? 'bg-navy-900 text-white shadow-sm'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             <ShoppingBag className="w-3.5 h-3.5" />
-            <span>B2B & MoSJE Portal</span>
+            <span className="hidden sm:inline">B2B & MoSJE Portal</span>
+            <span className="sm:hidden text-[11px] font-bold">Buyer</span>
             <span className="hidden lg:inline text-[10px] opacity-75">(खरीदार)</span>
           </button>
         </div>
 
         {/* Controls: Language, Digital Card, Tutorial, Mobile View & User Auth */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
           {/* Digital Smart ID Card Quick Button (Artisans) */}
           <button
             onClick={onOpenCardModal}
             title="View Official MoSJE Artisan Smart ID Card"
-            className="hidden sm:flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all shadow-2xs"
+            className="hidden md:flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all shadow-2xs"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
             <span className="hidden lg:inline">Smart ID Card</span>
@@ -104,20 +110,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Regional Language Selector */}
           <div className="relative flex items-center">
-            <Globe className="w-3.5 h-3.5 text-stone-500 absolute left-2 pointer-events-none" />
+            <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-500 absolute left-1.5 sm:left-2 pointer-events-none" />
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value as Language)}
-              className="pl-7 pr-2 py-1.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-saffron-500 cursor-pointer shadow-2xs"
+              className="pl-5 sm:pl-7 pr-1 sm:pr-2 py-1 sm:py-1.5 bg-stone-50 border border-stone-300 rounded-xl text-[11px] sm:text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-saffron-500 cursor-pointer shadow-2xs max-w-[68px] sm:max-w-none"
               title="Select Interface Language"
             >
-              <option value="en">English (EN)</option>
-              <option value="hi">हिन्दी (Hindi)</option>
-              <option value="te">తెలుగు (Telugu)</option>
-              <option value="ta">தமிழ் (Tamil)</option>
-              <option value="bn">বাংলা (Bengali)</option>
-              <option value="mr">मराठी (Marathi)</option>
-              <option value="gu">ગુજરાતી (Gujarati)</option>
+              <option value="en">EN</option>
+              <option value="hi">हिन्दी</option>
+              <option value="te">తెలుగు</option>
+              <option value="ta">தமிழ்</option>
+              <option value="bn">বাংলা</option>
+              <option value="mr">मराठी</option>
+              <option value="gu">ગુજરાતી</option>
             </select>
           </div>
 
@@ -125,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={onOpenTutorial}
             title="App Guidance & Tutorial"
-            className="p-1.5 sm:px-2 sm:py-1.5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium transition-colors flex items-center gap-1"
+            className="hidden sm:flex p-1.5 sm:px-2 sm:py-1.5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-medium transition-colors items-center gap-1"
           >
             <HelpCircle className="w-3.5 h-3.5 text-saffron-600" />
             <span className="hidden xl:inline">Guide</span>
@@ -154,7 +160,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => setIsSettingsOpen(true)}
             title="Configure Gemini API Key & AI Settings"
-            className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-colors flex items-center gap-1"
+            className="hidden sm:flex p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-colors items-center gap-1"
           >
             <Cpu className="w-3.5 h-3.5 text-emerald-600" />
             <span className="hidden lg:inline">AI Settings</span>
@@ -209,6 +215,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     <HelpCircle className="w-3.5 h-3.5 text-blue-600" />
                     <span>How to Use Shilp-AI</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowUserDropdown(false);
+                      setIsSettingsOpen(true);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-stone-50 text-stone-700 flex items-center gap-2 font-medium"
+                  >
+                    <Cpu className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>AI Engine Settings</span>
                   </button>
 
                   <div className="border-t border-stone-100 my-1"></div>

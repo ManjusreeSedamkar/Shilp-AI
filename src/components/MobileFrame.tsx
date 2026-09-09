@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wifi, Battery, Signal } from 'lucide-react';
 
 interface MobileFrameProps {
@@ -7,8 +7,20 @@ interface MobileFrameProps {
 }
 
 export const MobileFrame: React.FC<MobileFrameProps> = ({ isMobileFrame, children }) => {
-  if (!isMobileFrame) {
-    return <div className="w-full min-h-screen pb-12">{children}</div>;
+  const [isMobileScreen, setIsMobileScreen] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  if (!isMobileFrame || isMobileScreen) {
+    return <div className="w-full min-h-[100dvh] max-w-full overflow-x-hidden">{children}</div>;
   }
 
   return (

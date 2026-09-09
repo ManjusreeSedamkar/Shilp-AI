@@ -214,7 +214,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
               {/* Product Visual */}
               <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
                 <img
-                  src={product.originalImage}
+                  src={product.enhancedImage || product.originalImage}
                   alt={product.titleEn}
                   className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                 />
@@ -311,8 +311,8 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
 
       {/* Bulk RFQ Modal */}
       {activeRFQProduct && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 relative animate-scaleIn">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[92dvh] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-stone-200 relative animate-scaleIn my-auto">
             <button
               onClick={() => setActiveRFQProduct(null)}
               className="absolute top-4 right-4 text-stone-400 hover:text-stone-700"
@@ -347,7 +347,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-stone-700 mb-1">Company / Organization</label>
                     <input
@@ -370,7 +370,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-stone-700 mb-1">Required Quantity (Units)</label>
                     <input

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Award, ShieldCheck, Phone, MessageSquare, Building2, MapPin, Volume2, ShoppingBag, Palette, Star } from 'lucide-react';
+import { X, Award, ShieldCheck, Phone, MessageSquare, Building2, MapPin, Volume2, ShoppingBag, Palette, Star, Sparkles, Square, FileText, Copy, Check } from 'lucide-react';
 import { ProductListing, Language, ProductReview } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
@@ -30,24 +30,43 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 }) => {
   const [activeLang, setActiveLang] = useState<'hi' | 'en'>(language === 'hi' ? 'hi' : 'en');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [spokenTranscript, setSpokenTranscript] = useState<string | null>(null);
+  const [isCopiedTranscript, setIsCopiedTranscript] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews'>('overview');
 
   if (!product) return null;
 
   const isHindi = activeLang === 'hi';
 
-  const handleSpeak = async () => {
-    setIsSpeaking(true);
+  const handleToggleSpeak = async () => {
+    if (isSpeaking) {
+      VoiceCatalogerEngine.stopSpeaking();
+      setIsSpeaking(false);
+      return;
+    }
+
     const textToSpeak = isHindi ? product.descriptionHi : product.descriptionEn;
-    await VoiceCatalogerEngine.speak(textToSpeak, isHindi ? 'hi-IN' : 'en-IN');
-    setIsSpeaking(false);
+    setSpokenTranscript(textToSpeak);
+    setIsSpeaking(true);
+
+    try {
+      await VoiceCatalogerEngine.speak(textToSpeak, isHindi ? 'hi-IN' : 'en-IN');
+    } finally {
+      setIsSpeaking(false);
+    }
+  };
+
+  const handleCopyTranscript = (text: string) => {
+    navigator.clipboard?.writeText(text);
+    setIsCopiedTranscript(true);
+    setTimeout(() => setIsCopiedTranscript(false), 2000);
   };
 
   const productReviews = reviews.filter((r) => r.productId === product.id);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-200 relative flex flex-col no-scrollbar my-4">
+      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[92dvh] overflow-y-auto shadow-2xl border border-stone-200 relative flex flex-col no-scrollbar my-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -56,10 +75,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Product Media Header - Exact Original Image */}
+        {/* Product Media Header - AI Enhanced Studio Photo */}
         <div className="relative aspect-video sm:aspect-[16/10] bg-stone-100 overflow-hidden">
           <img
-            src={product.originalImage}
+            src={product.enhancedImage || product.originalImage}
             alt={product.titleEn}
             className="w-full h-full object-contain"
           />
@@ -77,8 +96,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </span>
           </div>
 
-          <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg">
-            📷 Original Artisan Photo Preserved
+          <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-amber-300" />
+            {language === 'hi' ? 'एआई संवर्धित स्टूडियो फोटो' : 'AI Enhanced Studio Photo'}
           </div>
         </div>
 
@@ -161,13 +181,68 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
 
                 <button
-                  onClick={handleSpeak}
-                  className="flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
+                  onClick={handleToggleSpeak}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    isSpeaking
+                      ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-sm'
+                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                  }`}
+                  title={isSpeaking ? (isHindi ? 'रोकें (Stop)' : 'Stop Speech') : (isHindi ? 'विवरण सुनें' : 'Listen to description')}
                 >
-                  <Volume2 className="w-3.5 h-3.5 text-saffron-600" />
-                  <span>{isSpeaking ? (isHindi ? 'बोल रहा है...' : 'Speaking...') : (isHindi ? 'सुनें' : 'Listen')}</span>
+                  {isSpeaking ? (
+                    <>
+                      <Square className="w-3.5 h-3.5 fill-white text-white" />
+                      <span>{isHindi ? 'रोकें (Stop)' : 'Stop'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="w-3.5 h-3.5 text-saffron-600" />
+                      <span>{isHindi ? 'सुनें' : 'Listen'}</span>
+                    </>
+                  )}
                 </button>
               </div>
+
+              {/* Spoken Transcript Box */}
+              {spokenTranscript && (
+                <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl text-xs space-y-1.5 animate-fadeIn">
+                  <div className="flex items-center justify-between text-amber-900 font-bold text-[11px]">
+                    <span className="flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-amber-700" />
+                      {isHindi ? 'एआई विवरण वाणी प्रतिलेख (AI Spoken Transcript):' : 'AI Speech Transcription:'}
+                      {isSpeaking ? (
+                        <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded-full animate-pulse flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                          {isHindi ? 'बोल रहा है...' : 'Speaking...'}
+                        </span>
+                      ) : (
+                        <span className="bg-stone-200 text-stone-700 text-[9px] px-1.5 py-0.2 rounded-full font-mono">
+                          {isHindi ? 'रोका गया (Stopped)' : 'Stopped'}
+                        </span>
+                      )}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleCopyTranscript(spokenTranscript)}
+                        className="text-stone-600 hover:text-stone-900 text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-amber-200 hover:bg-amber-100 transition-colors"
+                      >
+                        {isCopiedTranscript ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        {isCopiedTranscript ? (isHindi ? 'कॉपी हुआ' : 'Copied') : (isHindi ? 'कॉपी' : 'Copy')}
+                      </button>
+                      <button
+                        onClick={() => setSpokenTranscript(null)}
+                        className="text-stone-400 hover:text-stone-700 p-0.5"
+                        title="Close"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-stone-800 bg-white p-2.5 rounded-xl border border-amber-200/60 leading-relaxed whitespace-pre-line text-xs">
+                    "{spokenTranscript}"
+                  </p>
+                </div>
+              )}
 
               <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 text-xs text-stone-700 leading-relaxed whitespace-pre-line">
                 {isHindi ? product.descriptionHi : product.descriptionEn}
@@ -292,7 +367,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <ReviewsSection
               productId={product.id}
               productTitle={product.titleEn}
-              reviews={productReviews}
+              reviews={reviews}
               language={language}
               currentBuyerName={currentBuyerName}
               onAddReview={onAddReview || (() => {})}

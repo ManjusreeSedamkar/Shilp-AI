@@ -43,8 +43,8 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({ language
   const Icon = step.icon;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden animate-scaleIn">
+    <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-lg w-full max-h-[92dvh] overflow-y-auto shadow-2xl border border-stone-200 animate-scaleIn my-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-saffron-700 via-stone-900 to-navy-900 p-5 text-white relative">
           <button
