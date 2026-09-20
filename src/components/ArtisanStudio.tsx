@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, Sparkles, Sliders, CheckCircle2, Download, ArrowRight, Wand2, RefreshCw, X, RotateCcw, AlertCircle } from 'lucide-react';
+import { Camera, Upload, Sparkles, Sliders, CheckCircle2, Download, ArrowRight, Wand2, RefreshCw, X, RotateCcw, AlertCircle, Scissors, SunMedium, Palette, Crop, SplitSquareVertical, Columns } from 'lucide-react';
 import { CRAFT_PRESETS, CraftPreset } from '../data/craftPresets';
 import { AIImageStudio, ImageProcessingOptions, DEFAULT_IMAGE_OPTIONS, ProcessedImageResult } from '../services/imageStudio';
 import { Language } from '../types';
@@ -15,6 +15,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
   const [processedResult, setProcessedResult] = useState<ProcessedImageResult | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [sliderPosition, setSliderPosition] = useState<number>(50); // 0 to 100 for split view
+  const [viewMode, setViewMode] = useState<'showcase' | 'slider'>('showcase');
   const [options, setOptions] = useState<ImageProcessingOptions>(DEFAULT_IMAGE_OPTIONS);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,7 +131,10 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
   };
 
   useEffect(() => {
-    runEnhancement(currentImageSrc, options);
+    const timer = setTimeout(() => {
+      runEnhancement(currentImageSrc, options);
+    }, 80);
+    return () => clearTimeout(timer);
   }, [currentImageSrc, options]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,19 +167,19 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
   return (
     <div className="space-y-5">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-saffron-600 via-amber-600 to-craft-terracotta rounded-2xl p-5 text-white shadow-lg shadow-saffron-600/20">
+      <div className="bg-stone-900 rounded-2xl p-5 text-white border border-stone-800 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur">
-              <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur text-amber-300">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               {isHindi ? 'कंप्यूटर विजन स्टूडियो' : 'AI Computer Vision Studio'}
             </span>
             <h2 className="text-xl sm:text-2xl font-black">
               {isHindi ? 'एआई फोटो क्लीनर व स्टूडियो फ्रेम' : 'AI Image Enhancer & Studio'}
             </h2>
-            <p className="text-xs sm:text-sm text-saffron-100 max-w-xl">
+            <p className="text-xs sm:text-sm text-stone-300 max-w-xl">
               {isHindi
-                ? 'कारीगर की अव्यवस्थित कार्यशाला की साधारण फोटो को पेशेवर ई-कॉमर्स (GeM/Amazon) उत्पाद फोटो में बदलें।'
+                ? 'कारीगर की अव्यवस्थित कार्यशाला की साधारण फोटो को पेशेवर ई-कॉमर्स उत्पाद फोटो में बदलें।'
                 : 'Turn raw workshop photos into studio-grade e-commerce listings with automatic background removal & lighting correction.'}
             </p>
           </div>
@@ -204,7 +208,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 onClick={() => handlePresetSelect(preset)}
                 className={`flex flex-col items-center p-2 rounded-xl text-center transition-all border ${
                   isSelected
-                    ? 'border-saffron-500 bg-saffron-50 ring-2 ring-saffron-400/30'
+                    ? 'border-stone-900 bg-white ring-2 ring-stone-900/10 shadow-xs'
                     : 'border-stone-200 hover:border-stone-300 bg-stone-50'
                 }`}
               >
@@ -225,7 +229,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
 
       {/* Image Interactive Comparison Stage */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-stone-200 space-y-4">
-        {/* Upload & Camera Buttons */}
+        {/* Upload & Camera Buttons and View Mode Switcher */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center space-x-2">
             <input
@@ -237,130 +241,243 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors"
+              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold transition-colors"
             >
-              <Upload className="w-3.5 h-3.5 text-stone-600" />
+              <Upload className="w-3.5 h-3.5 text-stone-700" />
               <span>{isHindi ? 'फोटो अपलोड करें' : 'Upload Photo'}</span>
             </button>
             <button
               onClick={() => startCamera()}
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-saffron-600 hover:bg-saffron-700 text-white text-xs font-semibold transition-colors shadow-sm"
+              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold transition-colors shadow-xs"
             >
-              <Camera className="w-3.5 h-3.5" />
+              <Camera className="w-3.5 h-3.5 text-amber-300" />
               <span>{isHindi ? 'कैमरा फोटो लें' : 'Take Photo'}</span>
             </button>
           </div>
 
-          <div className="flex items-center space-x-2 text-xs">
-            <span className="px-2 py-1 rounded-md bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" />
-              {isHindi ? '1:1 ई-कॉमर्स मानक' : '1:1 E-Commerce Ready'}
-            </span>
+          <div className="flex items-center space-x-1.5 bg-stone-100 p-1 rounded-xl border border-stone-200">
+            <button
+              onClick={() => setViewMode('showcase')}
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'showcase'
+                  ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <Columns className="w-3.5 h-3.5 text-amber-600" />
+              <span>{isHindi ? 'शोकेस दृश्य' : 'Before / After'}</span>
+            </button>
+            <button
+              onClick={() => setViewMode('slider')}
+              className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                viewMode === 'slider'
+                  ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <SplitSquareVertical className="w-3.5 h-3.5 text-amber-600" />
+              <span>{isHindi ? 'स्प्लिट स्लाइडर' : 'Slider'}</span>
+            </button>
           </div>
         </div>
 
-        {/* Split Comparison Interactive Viewport */}
-        <div className="relative aspect-square w-full max-w-md mx-auto rounded-2xl overflow-hidden border-2 border-stone-200 shadow-inner bg-stone-100 select-none">
-          {/* Enhanced Image (Background layer) */}
-          {processedResult && (
-            <img
-              src={processedResult.enhancedDataUrl}
-              alt="Enhanced"
-              className="absolute inset-0 w-full h-full object-contain"
-            />
-          )}
+        {/* View Mode 1: Exact Before / After Showcase from User Reference */}
+        {viewMode === 'showcase' ? (
+          <div className="bg-white rounded-3xl overflow-hidden border border-stone-200 shadow-sm max-w-2xl mx-auto">
+            {/* Dual Images Split */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 border-b border-stone-200">
+              {/* Before (Original) */}
+              <div className="relative aspect-[3/4] bg-stone-100 overflow-hidden sm:border-r border-stone-200">
+                <img
+                  src={currentImageSrc}
+                  alt="Before (Original)"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-3 left-3 bg-[#2D3338]/90 backdrop-blur text-white text-[11px] font-medium px-3 py-1 rounded-full shadow-sm">
+                  {isHindi ? 'पहले (मूल फोटो)' : 'Before (Original)'}
+                </div>
+              </div>
 
-          {/* Original Raw Image (Clipped layer based on slider) */}
-          <div
-            className="absolute inset-0 overflow-hidden"
-            style={{ width: `${sliderPosition}%` }}
-          >
-            <img
-              src={currentImageSrc}
-              alt="Raw Workshop Photo"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{
-                width: '100%',
-                height: '100%',
-                maxWidth: 'none'
-              }}
-            />
-            {/* Raw Label */}
-            <div className="absolute top-3 left-3 bg-black/70 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur">
-              {isHindi ? 'मूल फोटो (कच्चा)' : 'RAW PHOTO (Cluttered)'}
+              {/* After (Enhanced) */}
+              <div className="relative aspect-[3/4] bg-[#FAF7F2] overflow-hidden">
+                <img
+                  src={processedResult?.enhancedDataUrl || currentImageSrc}
+                  alt="After (Enhanced)"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-3 left-3 bg-[#2D5A43]/90 backdrop-blur text-white text-[11px] font-medium px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                  <span>{isHindi ? 'बाद में (एआई संवर्धित)' : 'After (Enhanced)'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 5 Feature Badges Row from User's Reference Screenshot */}
+            <div className="bg-[#FAF7F2] px-3 sm:px-6 py-4 grid grid-cols-5 gap-1.5 sm:gap-4 items-center justify-between text-center">
+              {/* 1. Background Removal */}
+              <div className="flex flex-col items-center justify-center space-y-1">
+                <div className="w-8 h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                  <Scissors className="w-3.5 h-3.5 text-stone-700" />
+                </div>
+                <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
+                  {isHindi ? <>बैकग्राउंड<br />हटाना</> : <>Background<br />Removal</>}
+                </span>
+              </div>
+
+              {/* 2. Better Lighting */}
+              <div className="flex flex-col items-center justify-center space-y-1">
+                <div className="w-8 h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                  <SunMedium className="w-3.5 h-3.5 text-stone-700" />
+                </div>
+                <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
+                  {isHindi ? <>बेहतर<br />लाइटिंग</> : <>Better<br />Lighting</>}
+                </span>
+              </div>
+
+              {/* 3. Natural Color Correction */}
+              <div className="flex flex-col items-center justify-center space-y-1">
+                <div className="w-8 h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                  <Palette className="w-3.5 h-3.5 text-stone-700" />
+                </div>
+                <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
+                  {isHindi ? <>प्राकृतिक रंग<br />सुधार</> : <>Natural Color<br />Correction</>}
+                </span>
+              </div>
+
+              {/* 4. Proper Positioning & Cropping */}
+              <div className="flex flex-col items-center justify-center space-y-1">
+                <div className="w-8 h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                  <Crop className="w-3.5 h-3.5 text-stone-700" />
+                </div>
+                <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
+                  {isHindi ? <>उचित स्थिति<br />व क्रॉपिंग</> : <>Proper Positioning<br />& Cropping</>}
+                </span>
+              </div>
+
+              {/* 5. Enhanced Quality */}
+              <div className="flex flex-col items-center justify-center space-y-1">
+                <div className="w-8 h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                </div>
+                <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
+                  {isHindi ? <>संवर्धित<br />गुणवत्ता</> : <>Enhanced<br />Quality</>}
+                </span>
+              </div>
             </div>
           </div>
+        ) : (
+          /* View Mode 2: Split Comparison Interactive Viewport */
+          <div className="space-y-3 max-w-md mx-auto">
+            <div className="relative aspect-square w-full rounded-2xl overflow-hidden border-2 border-stone-200 shadow-inner bg-stone-100 select-none">
+              {/* Enhanced Image (Background layer) */}
+              {processedResult && (
+                <img
+                  src={processedResult.enhancedDataUrl}
+                  alt="Enhanced"
+                  className="absolute inset-0 w-full h-full object-contain"
+                />
+              )}
 
-          {/* Enhanced Label */}
-          <div className="absolute top-3 right-3 bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">
-            {isHindi ? 'एआई स्टूडियो (स्वच्छ)' : 'AI STUDIO (1:1 Clean)'}
-          </div>
+              {/* Original Raw Image (Clipped layer based on slider) */}
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{ width: `${sliderPosition}%` }}
+              >
+                <img
+                  src={currentImageSrc}
+                  alt="Raw Workshop Photo"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: 'none'
+                  }}
+                />
+                {/* Raw Label */}
+                <div className="absolute top-3 left-3 bg-[#2D3338]/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur">
+                  {isHindi ? 'मूल फोटो (कच्चा)' : 'Before (Original)'}
+                </div>
+              </div>
 
-          {/* Draggable Divider Line */}
-          <div
-            className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize shadow-[0_0_10px_rgba(0,0,0,0.5)] flex items-center justify-center"
-            style={{ left: `${sliderPosition}%` }}
-          >
-            <div className="w-6 h-6 rounded-full bg-white text-stone-700 shadow-md flex items-center justify-center text-[10px] font-bold border border-stone-300">
-              ↔
+              {/* Enhanced Label */}
+              <div className="absolute top-3 right-3 bg-[#2D5A43]/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+                {isHindi ? 'एआई स्टूडियो' : 'After (Enhanced)'}
+              </div>
+
+              {/* Draggable Divider Line */}
+              <div
+                className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize shadow-[0_0_10px_rgba(0,0,0,0.5)] flex items-center justify-center"
+                style={{ left: `${sliderPosition}%` }}
+              >
+                <div className="w-6 h-6 rounded-full bg-white text-stone-700 shadow-md flex items-center justify-center text-[10px] font-bold border border-stone-300">
+                  ↔
+                </div>
+              </div>
+
+              {/* Invisible Range Input for touch/mouse interaction */}
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={sliderPosition}
+                onChange={(e) => setSliderPosition(Number(e.target.value))}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
+              />
+
+              {/* Loading Indicator */}
+              {isProcessing && (
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center text-white z-30 space-y-2">
+                  <RefreshCw className="w-8 h-8 animate-spin text-saffron-400" />
+                  <span className="text-xs font-semibold">
+                    {isHindi ? 'एआई पृष्ठभूमि साफ कर रहा है...' : 'AI Segmenting & Correcting Lighting...'}
+                  </span>
+                </div>
+              )}
             </div>
+
+            <p className="text-center text-[11px] text-stone-500">
+              {isHindi ? 'स्लाइडर को खींचकर पहले और बाद का अंतर देखें' : '← Drag slider to compare Raw Workshop Photo vs AI Studio Output →'}
+            </p>
           </div>
-
-          {/* Invisible Range Input for touch/mouse interaction */}
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={sliderPosition}
-            onChange={(e) => setSliderPosition(Number(e.target.value))}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20"
-          />
-
-          {/* Loading Indicator */}
-          {isProcessing && (
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center text-white z-30 space-y-2">
-              <RefreshCw className="w-8 h-8 animate-spin text-saffron-400" />
-              <span className="text-xs font-semibold">
-                {isHindi ? 'एआई पृष्ठभूमि साफ कर रहा है...' : 'AI Segmenting & Correcting Lighting...'}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Slider Hint */}
-        <p className="text-center text-[11px] text-stone-500">
-          {isHindi ? 'स्लाइडर को खींचकर पहले और बाद का अंतर देखें' : '← Drag slider to compare Raw Workshop Photo vs AI Studio Output →'}
-        </p>
+        )}
 
         {/* AI Enhancement Metrics Grid */}
         {processedResult && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-stone-100">
-            <div className="bg-stone-50 p-2.5 rounded-xl text-center">
-              <span className="text-[10px] text-stone-500 uppercase">{isHindi ? 'प्रोसेसिंग समय' : 'Latency'}</span>
+            <div className="bg-stone-50 p-2.5 rounded-xl text-center border border-stone-200/60">
+              <span className="text-[10px] text-stone-500 uppercase font-semibold">{isHindi ? 'प्रोसेसिंग समय' : 'Latency'}</span>
               <p className="text-sm font-bold text-stone-800">{processedResult.processingTimeMs} ms</p>
             </div>
-            <div className="bg-stone-50 p-2.5 rounded-xl text-center">
-              <span className="text-[10px] text-stone-500 uppercase">{isHindi ? 'पृष्ठभूमि सफाई' : 'BG Removal'}</span>
+            <div className="bg-stone-50 p-2.5 rounded-xl text-center border border-stone-200/60">
+              <span className="text-[10px] text-stone-500 uppercase font-semibold">{isHindi ? 'पृष्ठभूमि सफाई' : 'BG Removal'}</span>
               <p className="text-sm font-bold text-emerald-600">{processedResult.stats.backgroundPurity}</p>
             </div>
-            <div className="bg-stone-50 p-2.5 rounded-xl text-center">
-              <span className="text-[10px] text-stone-500 uppercase">{isHindi ? 'प्रकाश स्पष्टता' : 'Lighting Boost'}</span>
-              <p className="text-sm font-bold text-saffron-700">{processedResult.stats.contrastImprovement}</p>
+            <div className="bg-stone-50 p-2.5 rounded-xl text-center border border-stone-200/60">
+              <span className="text-[10px] text-stone-500 uppercase font-semibold">{isHindi ? 'प्रकाश स्पष्टता' : 'Lighting Boost'}</span>
+              <p className="text-sm font-bold text-amber-700">{processedResult.stats.contrastImprovement}</p>
             </div>
-            <div className="bg-stone-50 p-2.5 rounded-xl text-center">
-              <span className="text-[10px] text-stone-500 uppercase">{isHindi ? 'ई-कॉमर्स मानक' : 'Format'}</span>
-              <p className="text-sm font-bold text-blue-700">1:1 Square</p>
+            <div className="bg-stone-50 p-2.5 rounded-xl text-center border border-stone-200/60">
+              <span className="text-[10px] text-stone-500 uppercase font-semibold">{isHindi ? 'ई-कॉमर्स मानक' : 'Format'}</span>
+              <p className="text-sm font-bold text-stone-900">1:1 Square</p>
             </div>
           </div>
         )}
 
         {/* Studio Controls & Backdrop Selector */}
-        <div className="bg-stone-50 rounded-xl p-3.5 space-y-3 border border-stone-200">
+        <div className="bg-stone-50 rounded-xl p-3.5 space-y-3.5 border border-stone-200">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5 text-stone-500" />
-              {isHindi ? 'स्टूडियो नियंत्रण (Studio Settings)' : 'Studio AI Controls'}
+              {isHindi ? 'स्टूडियो व फोटो नियंत्रण (Studio & Light Controls)' : 'Studio AI & Photographic Controls'}
             </span>
+            <button
+              onClick={() => setOptions(DEFAULT_IMAGE_OPTIONS)}
+              className="flex items-center gap-1 text-[11px] font-semibold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200/80 transition-colors shadow-2xs"
+              title={isHindi ? 'एआई की सर्वोत्तम सेटिंग्स पर रीसेट करें' : 'Reset to AI optimal settings'}
+            >
+              <RotateCcw className="w-3 h-3 text-amber-700" />
+              <span>{isHindi ? 'एआई इष्टतम रीसेट' : 'Reset to AI Optimal'}</span>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -370,7 +487,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 type="checkbox"
                 checked={options.removeBackground}
                 onChange={(e) => setOptions({ ...options, removeBackground: e.target.checked })}
-                className="rounded text-saffron-600 focus:ring-saffron-500"
+                className="rounded text-stone-900 accent-stone-900 focus:ring-stone-400"
               />
               <span>{isHindi ? 'पृष्ठभूमि हटाएं' : 'Remove BG'}</span>
             </label>
@@ -381,7 +498,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 type="checkbox"
                 checked={options.enhanceLighting}
                 onChange={(e) => setOptions({ ...options, enhanceLighting: e.target.checked })}
-                className="rounded text-saffron-600 focus:ring-saffron-500"
+                className="rounded text-stone-900 accent-stone-900 focus:ring-stone-400"
               />
               <span>{isHindi ? 'लाइटिंग सुधारें' : 'Studio Lighting'}</span>
             </label>
@@ -392,10 +509,88 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 type="checkbox"
                 checked={options.addStudioShadow}
                 onChange={(e) => setOptions({ ...options, addStudioShadow: e.target.checked })}
-                className="rounded text-saffron-600 focus:ring-saffron-500"
+                className="rounded text-stone-900 accent-stone-900 focus:ring-stone-400"
               />
               <span>{isHindi ? 'स्टूडियो छाया' : 'Ground Shadow'}</span>
             </label>
+          </div>
+
+          {/* Photographic Enhancement Sliders: Brightness, Contrast, Saturation */}
+          <div className="bg-white p-3 rounded-xl border border-stone-200/80 space-y-3">
+            <div className="flex items-center justify-between text-[11px] font-bold text-stone-700">
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-600" />
+                {isHindi ? 'फोटोग्राफिक फाइन-ट्यूनिंग (Brightness, Saturation, Contrast)' : 'Photographic Fine-Tuning'}
+              </span>
+              <span className="text-[10px] text-stone-400 font-normal">
+                {isHindi ? 'लाइव समायोजन' : 'Live Realtime'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Brightness Slider */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-stone-600 font-medium flex items-center gap-1">
+                    <SunMedium className="w-3 h-3 text-amber-500" />
+                    {isHindi ? 'चमक (Brightness)' : 'Brightness'}
+                  </span>
+                  <span className="font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">
+                    {options.brightness > 0 ? `+${options.brightness}` : options.brightness}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="-30"
+                  max="50"
+                  value={options.brightness}
+                  onChange={(e) => setOptions({ ...options, brightness: Number(e.target.value) })}
+                  className="w-full accent-stone-900 cursor-pointer h-1.5 bg-stone-200 rounded-lg"
+                />
+              </div>
+
+              {/* Contrast Slider */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-stone-600 font-medium flex items-center gap-1">
+                    <Sliders className="w-3 h-3 text-stone-500" />
+                    {isHindi ? 'कंट्रास्ट (Contrast)' : 'Contrast'}
+                  </span>
+                  <span className="font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">
+                    {options.contrast > 0 ? `+${options.contrast}` : options.contrast}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="-20"
+                  max="50"
+                  value={options.contrast}
+                  onChange={(e) => setOptions({ ...options, contrast: Number(e.target.value) })}
+                  className="w-full accent-stone-900 cursor-pointer h-1.5 bg-stone-200 rounded-lg"
+                />
+              </div>
+
+              {/* Saturation / Vibrance Slider */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-stone-600 font-medium flex items-center gap-1">
+                    <Palette className="w-3 h-3 text-rose-500" />
+                    {isHindi ? 'रंग संतृप्ति (Saturation)' : 'Saturation'}
+                  </span>
+                  <span className="font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">
+                    {options.vibrance > 0 ? `+${options.vibrance}` : options.vibrance}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="-20"
+                  max="50"
+                  value={options.vibrance}
+                  onChange={(e) => setOptions({ ...options, vibrance: Number(e.target.value) })}
+                  className="w-full accent-stone-900 cursor-pointer h-1.5 bg-stone-200 rounded-lg"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Backdrop Selector */}
@@ -415,8 +610,8 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                   onClick={() => setOptions({ ...options, backdrop: b.id as any })}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 border transition-all ${
                     options.backdrop === b.id
-                      ? 'border-saffron-600 bg-saffron-50 text-saffron-800 ring-1 ring-saffron-500'
-                      : 'border-stone-200 bg-white text-stone-700'
+                      ? 'border-stone-900 bg-stone-900 text-white shadow-2xs'
+                      : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
                   }`}
                 >
                   <span className={`w-3 h-3 rounded-full border border-stone-300 ${b.bg}`}></span>
@@ -444,7 +639,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
               onPhotoSelected?.(enhancedPhoto, currentImageSrc);
             }}
             disabled={isProcessing}
-            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-saffron-600 to-amber-600 hover:from-saffron-700 hover:to-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold shadow-md shadow-saffron-600/25 transition-all"
+            className="flex items-center space-x-2 px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold shadow-sm transition-all"
           >
             {isProcessing ? (
               <>
@@ -551,10 +746,10 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
               {/* Shutter Capture Button */}
               <button
                 onClick={capturePhoto}
-                className="w-20 h-20 rounded-full bg-white border-4 border-saffron-500 shadow-xl flex items-center justify-center transform active:scale-90 transition-transform group"
+                className="w-20 h-20 rounded-full bg-white border-4 border-stone-800 shadow-xl flex items-center justify-center transform active:scale-90 transition-transform group"
                 title="Snap Picture"
               >
-                <div className="w-14 h-14 rounded-full bg-saffron-500 group-hover:bg-saffron-600 transition-colors"></div>
+                <div className="w-14 h-14 rounded-full bg-stone-900 group-hover:bg-black transition-colors"></div>
               </button>
 
               {/* Fallback to Upload */}

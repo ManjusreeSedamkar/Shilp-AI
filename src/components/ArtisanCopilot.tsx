@@ -223,10 +223,10 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col h-[calc(100dvh-180px)] min-h-[380px] max-h-[720px] w-full max-w-full overflow-hidden">
       {/* Copilot Header */}
-      <div className="bg-gradient-to-r from-saffron-700 via-stone-900 to-navy-900 p-4 text-white flex items-center justify-between shadow-sm">
+      <div className="bg-stone-900 p-4 text-white flex items-center justify-between border-b border-stone-800">
         <div className="flex items-center space-x-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-saffron-500 to-amber-400 flex items-center justify-center text-white font-bold shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-stone-800 border border-stone-700 flex items-center justify-center text-amber-400 font-bold shadow-xs">
               <Bot className="w-5 h-5" />
             </div>
             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-stone-900"></span>
@@ -274,16 +274,16 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[90%] sm:max-w-[80%] rounded-2xl p-3.5 shadow-sm text-xs ${
+                className={`max-w-[90%] sm:max-w-[80%] rounded-2xl p-3.5 shadow-2xs text-xs ${
                   isUser
-                    ? 'bg-gradient-to-r from-saffron-600 to-amber-600 text-white rounded-br-none'
-                    : 'bg-white text-stone-800 border border-stone-200 rounded-bl-none'
+                    ? 'bg-stone-900 text-white rounded-br-xs'
+                    : 'bg-white text-stone-800 border border-stone-200/90 rounded-bl-xs'
                 }`}
               >
                 {/* Header: Sender & Voice Play/Stop Controls */}
                 <div className="flex items-center justify-between mb-1.5 text-[10px] opacity-80 border-b border-stone-100/50 pb-1">
                   <span className="font-bold flex items-center gap-1">
-                    {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3 text-saffron-600" />}
+                    {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3 text-stone-700" />}
                     {isUser ? (isHindi ? 'आप (कारीगर)' : 'You (Artisan)') : 'SHILP Copilot AI'}
                   </span>
 
@@ -294,7 +294,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                       className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md font-bold transition-all text-[10px] ${
                         isCurrentlyPlaying
                           ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 ring-2 ring-red-200 animate-pulse'
-                          : 'bg-saffron-50 text-saffron-800 hover:bg-saffron-100 border border-saffron-200'
+                          : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
                       }`}
                       title={isCurrentlyPlaying ? 'Stop Voice' : 'Listen with AI Voice'}
                     >
@@ -306,7 +306,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                         </>
                       ) : (
                         <>
-                          <Volume2 className="w-2.5 h-2.5 text-saffron-600" />
+                          <Volume2 className="w-2.5 h-2.5 text-stone-600" />
                           <span>{isHindi ? 'सुनें (Listen)' : 'Listen'}</span>
                         </>
                       )}
@@ -508,14 +508,14 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                 ? (isHindi ? 'सुन रहा हूँ... बोलिए' : 'Listening... speak now')
                 : (isHindi ? 'शिल्प, कीमत या ऐप के बारे में पूछें...' : 'Ask Copilot anything about craft, pricing or app...')
             }
-            className="flex-1 px-4 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-saffron-500 focus:bg-white transition-all"
+            className="flex-1 px-4 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-stone-400 focus:bg-white transition-all"
           />
 
           {/* Send Button */}
           <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
-            className="p-2.5 bg-saffron-600 hover:bg-saffron-700 disabled:opacity-40 text-white rounded-xl shadow-md transition-all flex items-center justify-center"
+            className="p-2.5 bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-white rounded-xl shadow-xs transition-all flex items-center justify-center"
           >
             <Send className="w-4 h-4" />
           </button>

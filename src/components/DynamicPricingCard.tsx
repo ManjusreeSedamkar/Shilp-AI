@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IndianRupee, TrendingUp, Info, Volume2, ShieldCheck, Check, Sparkles, Building2, Square, FileText, Copy, X } from 'lucide-react';
+import { IndianRupee, TrendingUp, Volume2, ShieldCheck, Check, Sparkles, Building2, Square, FileText, Copy, X, Sliders, Layers } from 'lucide-react';
 import { PricingBreakdown, Language } from '../types';
 import { DynamicPricingEngine } from '../services/pricingEngine';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
@@ -22,11 +22,13 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
   const [rawCost, setRawCost] = useState<number>(initialPricing?.rawMaterialCost || 2500);
   const [days, setDays] = useState<number>(initialPricing?.productionDays || 5);
   const [marginPercent, setMarginPercent] = useState<number>(initialPricing?.artisanMarginPercent || 28);
+  const [productSize, setProductSize] = useState<'Small' | 'Medium' | 'Large' | 'Extra-Large'>('Medium');
+  const [qualityTier, setQualityTier] = useState<'Standard' | 'Premium Heritage' | 'Masterpiece'>('Standard');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [pricingTranscript, setPricingTranscript] = useState<string | null>(null);
   const [isCopiedTranscript, setIsCopiedTranscript] = useState(false);
 
-  // Recalculate dynamically
+  // Recalculate dynamically using XGBoost Regressor
   const pricing = DynamicPricingEngine.calculatePricing({
     category,
     craftTechnique,
@@ -34,7 +36,9 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
     rawMaterialCost: rawCost,
     productionDays: days,
     artisanMarginPercent: marginPercent,
-    isGICertified: true
+    isGICertified: true,
+    productSize,
+    qualityTier,
   });
 
   const handleSpeechExplanation = async () => {
@@ -62,45 +66,51 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
   };
 
   const isHindi = language === 'hi';
+  const recommendedPrice = pricing.recommendedPrice || pricing.suggestedRetailPrice;
+  const rangeMin = pricing.fairPriceRange?.min || pricing.fairMinimumPrice;
+  const rangeMax = pricing.fairPriceRange?.max || pricing.marketBenchmarkMax;
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-200 space-y-5">
-      {/* Header with Title & Audio Readout Button */}
-      <div className="flex items-start justify-between gap-2 border-b border-stone-100 pb-3">
+    <div className="bg-white rounded-2xl p-5 shadow-xs border border-stone-200/80 space-y-5">
+      {/* Header with Minimal Elegant Styling */}
+      <div className="flex items-start justify-between gap-2 border-b border-stone-100 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700">
+            <span className="p-1.5 rounded-lg bg-stone-100 text-stone-700">
               <TrendingUp className="w-4 h-4" />
             </span>
             <h3 className="font-bold text-stone-900 text-base">
-              {isHindi ? 'एआई गतिशील मूल्य निर्धारण सहायक' : 'AI Dynamic Pricing Assistant'}
+              {isHindi ? 'एक्सजीबूस्ट (XGBoost) एआई उचित मूल्य निर्धारण' : 'XGBoost Fair Pricing Assistant'}
             </h3>
+            <span className="text-[10px] bg-stone-100 text-stone-600 font-mono px-2 py-0.5 rounded-md border border-stone-200/70">
+              ML Regressor
+            </span>
           </div>
           <p className="text-xs text-stone-500 mt-1">
             {isHindi
-              ? 'एमओएसजेई कुशल कारीगर मजदूरी मानक व बाजार मांग पर आधारित'
-              : 'Based on MoSJE Fair Artisan Wage standards & real-time market trends'}
+              ? 'सामग्री, श्रम, आकार, गुणवत्ता और बाजार मांग के आधार पर निष्पक्ष मूल्य'
+              : 'Predicts fair market valuation balancing artisan livelihood and buyer demand'}
           </p>
         </div>
 
-        {/* Audio Readout Button with Start / Stop */}
+        {/* Audio Readout Button */}
         <button
           onClick={handleSpeechExplanation}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
             isSpeaking
-              ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-sm'
-              : 'bg-stone-100 hover:bg-emerald-50 text-stone-700 hover:text-emerald-700 border border-stone-200'
+              ? 'bg-stone-900 text-white'
+              : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200'
           }`}
-          title={isSpeaking ? (isHindi ? 'रोकें (Stop)' : 'Stop Speech') : (isHindi ? 'व्याख्या सुनें' : 'Listen to explanation')}
+          title={isSpeaking ? (isHindi ? 'रोकें' : 'Stop') : (isHindi ? 'व्याख्या सुनें' : 'Listen to explanation')}
         >
           {isSpeaking ? (
             <>
               <Square className="w-3.5 h-3.5 fill-white text-white" />
-              <span>{isHindi ? 'रोकें (Stop)' : 'Stop'}</span>
+              <span>{isHindi ? 'रोकें' : 'Stop'}</span>
             </>
           ) : (
             <>
-              <Volume2 className="w-3.5 h-3.5" />
+              <Volume2 className="w-3.5 h-3.5 text-stone-600" />
               <span>{isHindi ? 'सुनें' : 'Listen'}</span>
             </>
           )}
@@ -109,91 +119,135 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
 
       {/* AI Speech Transcript Box */}
       {pricingTranscript && (
-        <div className="p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl text-xs space-y-1.5 animate-fadeIn">
-          <div className="flex items-center justify-between text-emerald-950 font-bold text-[11px]">
+        <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl text-xs space-y-1.5 animate-fadeIn">
+          <div className="flex items-center justify-between text-stone-800 font-bold text-[11px]">
             <span className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-emerald-700" />
-              {isHindi ? 'मूल्य निर्धारण वाणी प्रतिलेख (AI Pricing Transcript):' : 'AI Pricing Explanation Transcript:'}
-              {isSpeaking ? (
-                <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.2 rounded-full animate-pulse flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-                  {isHindi ? 'बोल रहा है...' : 'Speaking...'}
-                </span>
-              ) : (
-                <span className="bg-stone-200 text-stone-700 text-[9px] px-1.5 py-0.2 rounded-full font-mono">
-                  {isHindi ? 'रोका गया (Stopped)' : 'Stopped'}
-                </span>
-              )}
+              <FileText className="w-3.5 h-3.5 text-stone-600" />
+              {isHindi ? 'मूल्य निर्धारण वाणी प्रतिलेख:' : 'AI Pricing Explanation:'}
             </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleCopyTranscript(pricingTranscript)}
-                className="text-stone-600 hover:text-stone-900 text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                className="text-stone-600 hover:text-stone-900 text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-stone-200 transition-colors"
               >
                 {isCopiedTranscript ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                {isCopiedTranscript ? (isHindi ? 'कॉपी हुआ' : 'Copied') : (isHindi ? 'कॉपी' : 'Copy')}
+                {isCopiedTranscript ? 'Copied' : 'Copy'}
               </button>
               <button
                 onClick={() => setPricingTranscript(null)}
                 className="text-stone-400 hover:text-stone-700 p-0.5 rounded"
-                title="Close"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
-          <p className="text-stone-800 bg-white p-2.5 rounded-xl border border-emerald-200/60 leading-relaxed text-xs">
+          <p className="text-stone-700 bg-white p-2.5 rounded-lg border border-stone-200 leading-relaxed text-xs">
             "{pricingTranscript}"
           </p>
         </div>
       )}
 
-      {/* Primary Recommended Price Box */}
-      <div className="bg-gradient-to-br from-emerald-500 to-teal-700 rounded-2xl p-4 text-white shadow-md shadow-emerald-700/20">
-        <div className="flex justify-between items-start">
+      {/* Recommended Price + Fair Price Range (Minimalist Warm Card) */}
+      <div className="bg-stone-900 rounded-2xl p-5 text-white shadow-xs border border-stone-800">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
-            <span className="text-xs text-emerald-100 font-medium uppercase tracking-wider">
-              {isHindi ? 'अनुशंसित बिक्री मूल्य (MSRP)' : 'Recommended Selling Price'}
+            <span className="text-[11px] font-bold text-stone-300 uppercase tracking-wider">
+              {isHindi ? 'अनुशंसित बिक्री मूल्य (Recommended Price)' : 'Recommended Price'}
             </span>
-            <div className="flex items-baseline space-x-1 mt-1">
-              <span className="text-3xl font-black">₹{pricing.suggestedRetailPrice.toLocaleString('en-IN')}</span>
-              <span className="text-xs text-emerald-200 font-medium">/ unit</span>
+            <div className="flex items-baseline space-x-1.5 mt-1">
+              <span className="text-3xl font-extrabold text-white">₹{recommendedPrice.toLocaleString('en-IN')}</span>
+              <span className="text-xs text-stone-400">/ piece</span>
             </div>
           </div>
-          <div className="text-right">
-            <span className="inline-flex items-center gap-1 text-[11px] bg-white/20 backdrop-blur px-2 py-0.5 rounded-full font-medium">
-              <ShieldCheck className="w-3 h-3 text-emerald-200" />
-              {isHindi ? 'उचित मजदूरी सुरक्षित' : 'Fair Wage Guaranteed'}
+
+          {/* Fair Price Range Display */}
+          <div className="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/10 text-left sm:text-right">
+            <span className="text-[10px] font-bold text-amber-200 uppercase tracking-wider block">
+              {isHindi ? 'उचित मूल्य सीमा (Fair Price Range)' : 'Fair Price Range'}
             </span>
-            <p className="text-xs text-emerald-100 mt-1">
-              {isHindi ? `शुद्ध लाभ: ₹${pricing.artisanProfitAmount.toLocaleString('en-IN')}` : `Artisan Profit: ₹${pricing.artisanProfitAmount.toLocaleString('en-IN')}`}
-            </p>
+            <div className="text-base font-bold text-white mt-0.5">
+              ₹{rangeMin.toLocaleString('en-IN')} – ₹{rangeMax.toLocaleString('en-IN')}
+            </div>
+            <span className="text-[10px] text-stone-300">
+              {isHindi ? 'जीविकोपार्जन फर्श से प्रीमियम तक' : 'Living wage floor to market ceiling'}
+            </span>
           </div>
         </div>
 
-        {/* Range Benchmarks */}
-        <div className="mt-3 pt-3 border-t border-emerald-400/30 flex justify-between text-xs text-emerald-100">
+        {/* Feature Sub-Stats */}
+        <div className="mt-4 pt-3 border-t border-stone-800 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-stone-300">
           <div>
-            <span className="opacity-75">{isHindi ? 'न्यूनतम सुरक्षा मूल्य:' : 'Fair Min Floor:'}</span>{' '}
-            <span className="font-semibold text-white">₹{pricing.fairMinimumPrice.toLocaleString('en-IN')}</span>
+            <span className="text-stone-400 text-[10px] block">{isHindi ? 'श्रम मजदूरी (Labor):' : 'Labor Wage:'}</span>
+            <span className="font-semibold text-white">₹{pricing.totalLaborWage.toLocaleString('en-IN')}</span>
           </div>
           <div>
-            <span className="opacity-75">{isHindi ? 'ई-कॉमर्स बाजार दायरा:' : 'Market Benchmark:'}</span>{' '}
-            <span className="font-semibold text-white">₹{pricing.marketBenchmarkMin.toLocaleString('en-IN')} - ₹{pricing.marketBenchmarkMax.toLocaleString('en-IN')}</span>
+            <span className="text-stone-400 text-[10px] block">{isHindi ? 'कच्चा माल (Materials):' : 'Materials + Buffer:'}</span>
+            <span className="font-semibold text-white">₹{(pricing.rawMaterialCost + pricing.wastageBuffer).toLocaleString('en-IN')}</span>
+          </div>
+          <div>
+            <span className="text-stone-400 text-[10px] block">{isHindi ? 'कारीगर लाभ (Profit):' : 'Artisan Margin:'}</span>
+            <span className="font-semibold text-emerald-400">+₹{pricing.artisanProfitAmount.toLocaleString('en-IN')}</span>
           </div>
         </div>
       </div>
 
-      {/* Interactive Sliders for Artisan */}
-      <div className="bg-stone-50 rounded-xl p-3.5 space-y-3 border border-stone-200/80">
-        <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-          {isHindi ? 'मापदंड समायोजित करें (Interactive Sliders)' : 'Adjust Craft Inputs'}
+      {/* Interactive Controls & Feature Sliders */}
+      <div className="bg-stone-50 rounded-xl p-4 space-y-4 border border-stone-200/70">
+        <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center justify-between">
+          <span>{isHindi ? 'उत्पाद मापदंड (Product Features)' : 'Adjust Product Features'}</span>
+          <span className="text-[10px] text-stone-500 font-normal">Auto-recalculates with XGBoost</span>
         </h4>
+
+        {/* Product Size Selector */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-stone-600 block">
+            {isHindi ? 'उत्पाद का आकार (Size):' : 'Craft Size:'}
+          </label>
+          <div className="grid grid-cols-4 gap-1.5">
+            {(['Small', 'Medium', 'Large', 'Extra-Large'] as const).map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setProductSize(size)}
+                className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition-all border ${
+                  productSize === size
+                    ? 'bg-stone-900 text-white border-stone-900'
+                    : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
+                }`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Quality Tier Selector */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-stone-600 block">
+            {isHindi ? 'कारीगरी गुणवत्ता (Quality Tier):' : 'Quality & Finish Tier:'}
+          </label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {(['Standard', 'Premium Heritage', 'Masterpiece'] as const).map((tier) => (
+              <button
+                key={tier}
+                type="button"
+                onClick={() => setQualityTier(tier)}
+                className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition-all border ${
+                  qualityTier === tier
+                    ? 'bg-stone-900 text-white border-stone-900'
+                    : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
+                }`}
+              >
+                {tier}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Raw Material Cost Slider */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-medium">
-            <span className="text-stone-600">{isHindi ? 'कच्चा माल खर्च (Raw Material Cost):' : 'Raw Material Cost:'}</span>
+            <span className="text-stone-600">{isHindi ? 'कच्चा माल खर्च:' : 'Raw Material Cost:'}</span>
             <span className="font-bold text-stone-900">₹{rawCost.toLocaleString('en-IN')}</span>
           </div>
           <input
@@ -202,21 +256,15 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
             max="15000"
             step="100"
             value={rawCost}
-            onChange={(e) => {
-              const val = Number(e.target.value);
-              setRawCost(val);
-              onPriceUpdate?.(DynamicPricingEngine.calculatePricing({
-                category, craftTechnique, primaryMaterial: 'Craft', rawMaterialCost: val, productionDays: days, artisanMarginPercent: marginPercent
-              }));
-            }}
-            className="w-full accent-saffron-600 cursor-pointer"
+            onChange={(e) => setRawCost(Number(e.target.value))}
+            className="w-full accent-stone-800 cursor-pointer"
           />
         </div>
 
         {/* Production Days Slider */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-medium">
-            <span className="text-stone-600">{isHindi ? 'श्रम समय (Production Days):' : 'Artisan Crafting Days:'}</span>
+            <span className="text-stone-600">{isHindi ? 'श्रम समय:' : 'Artisan Crafting Days:'}</span>
             <span className="font-bold text-stone-900">{days} {isHindi ? 'दिन' : 'days'} (₹{days * 750} wage)</span>
           </div>
           <input
@@ -225,22 +273,16 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
             max="20"
             step="1"
             value={days}
-            onChange={(e) => {
-              const val = Number(e.target.value);
-              setDays(val);
-              onPriceUpdate?.(DynamicPricingEngine.calculatePricing({
-                category, craftTechnique, primaryMaterial: 'Craft', rawMaterialCost: rawCost, productionDays: val, artisanMarginPercent: marginPercent
-              }));
-            }}
-            className="w-full accent-saffron-600 cursor-pointer"
+            onChange={(e) => setDays(Number(e.target.value))}
+            className="w-full accent-stone-800 cursor-pointer"
           />
         </div>
 
         {/* Profit Margin % */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-medium">
-            <span className="text-stone-600">{isHindi ? 'कारीगर लाभ मार्जिन (Profit Margin):' : 'Artisan Margin:'}</span>
-            <span className="font-bold text-emerald-700">{marginPercent}%</span>
+            <span className="text-stone-600">{isHindi ? 'लाभ मार्जिन:' : 'Artisan Margin:'}</span>
+            <span className="font-bold text-stone-900">{marginPercent}%</span>
           </div>
           <input
             type="range"
@@ -248,77 +290,46 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
             max="50"
             step="1"
             value={marginPercent}
-            onChange={(e) => {
-              const val = Number(e.target.value);
-              setMarginPercent(val);
-              onPriceUpdate?.(DynamicPricingEngine.calculatePricing({
-                category, craftTechnique, primaryMaterial: 'Craft', rawMaterialCost: rawCost, productionDays: days, artisanMarginPercent: val
-              }));
-            }}
-            className="w-full accent-emerald-600 cursor-pointer"
+            onChange={(e) => setMarginPercent(Number(e.target.value))}
+            className="w-full accent-stone-800 cursor-pointer"
           />
         </div>
       </div>
 
-      {/* Transparent Cost Breakdown Bar */}
-      <div className="space-y-2">
-        <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider flex items-center justify-between">
-          <span>{isHindi ? 'पारदर्शी लागत विवरण (Transparent Breakdown)' : 'Transparent Cost Breakdown'}</span>
-          <span className="text-[10px] text-stone-500 font-normal">{isHindi ? '100% कारीगर के पक्ष में' : 'Zero Hidden Deductions'}</span>
-        </h4>
-
-        {/* Visual Stacked Progress Bar */}
-        <div className="h-3 w-full rounded-full overflow-hidden flex bg-stone-200">
-          <div
-            style={{ width: `${(pricing.rawMaterialCost / pricing.suggestedRetailPrice) * 100}%` }}
-            className="bg-amber-500"
-            title="Raw Materials"
-          />
-          <div
-            style={{ width: `${(pricing.totalLaborWage / pricing.suggestedRetailPrice) * 100}%` }}
-            className="bg-blue-600"
-            title="Labor Wages"
-          />
-          <div
-            style={{ width: `${(pricing.artisanProfitAmount / pricing.suggestedRetailPrice) * 100}%` }}
-            className="bg-emerald-500"
-            title="Artisan Profit"
-          />
-        </div>
-
-        {/* Legend */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2 text-[11px] pt-1">
-          <div className="flex items-center space-x-1 text-stone-600">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-            <span>{isHindi ? 'सामग्री:' : 'Materials:'} ₹{pricing.rawMaterialCost.toLocaleString('en-IN')}</span>
-          </div>
-          <div className="flex items-center space-x-1 text-stone-600">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-            <span>{isHindi ? 'श्रम मजदूरी:' : 'Labor:'} ₹{pricing.totalLaborWage.toLocaleString('en-IN')}</span>
-          </div>
-          <div className="flex items-center space-x-1 text-stone-600">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            <span>{isHindi ? 'मुनाफा:' : 'Profit:'} ₹{pricing.artisanProfitAmount.toLocaleString('en-IN')}</span>
+      {/* XGBoost Feature Contribution Breakdown */}
+      {pricing.featureContributions && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center justify-between">
+            <span>{isHindi ? 'एक्सजीबूस्ट फीचर प्रभाव (Feature Importance)' : 'XGBoost Feature Contributions'}</span>
+            <span className="text-[10px] text-stone-500 font-mono">Ensemble Trees</span>
+          </h4>
+          <div className="space-y-1.5 bg-stone-50 p-3 rounded-xl border border-stone-200/60">
+            {pricing.featureContributions.map((fc, i) => (
+              <div key={i} className="flex items-center justify-between text-xs">
+                <span className="text-stone-600 text-[11px] truncate max-w-[210px]">{fc.feature}</span>
+                <span className="font-mono font-semibold text-stone-900 text-[11px]">{fc.impact}</span>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
       {/* B2B Wholesale & Government Marketplace Tiers */}
-      <div className="border border-stone-200 rounded-xl overflow-hidden">
-        <div className="bg-stone-100 px-3 py-2 flex items-center justify-between">
+      <div className="border border-stone-200/80 rounded-xl overflow-hidden">
+        <div className="bg-stone-50 px-3 py-2 flex items-center justify-between border-b border-stone-200/80">
           <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
             <Building2 className="w-3.5 h-3.5 text-stone-600" />
-            {isHindi ? 'थोक व सरकारी मार्केटप्लेस दरें (B2B Tiers)' : 'B2B Wholesale & Bulk Tiers'}
+            {isHindi ? 'थोक व सरकारी मार्केटप्लेस दरें' : 'B2B Wholesale & Bulk Tiers'}
           </span>
-          <span className="text-[10px] text-stone-500">{isHindi ? 'बल्क आर्डरों के लिए' : 'Pre-negotiated'}</span>
+          <span className="text-[10px] text-stone-500">Volume Discounts</span>
         </div>
         <div className="divide-y divide-stone-100 text-xs">
           {pricing.wholesaleTiers.map((tier, idx) => (
-            <div key={idx} className="px-3 py-2 flex items-center justify-between hover:bg-stone-50">
+            <div key={idx} className="px-3.5 py-2.5 flex items-center justify-between hover:bg-stone-50 transition-colors">
               <div>
                 <span className="font-semibold text-stone-800">{tier.tier}</span>
                 {tier.discountPercent > 0 && (
-                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">
+                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 font-medium border border-stone-200">
                     {tier.discountPercent}% OFF
                   </span>
                 )}

@@ -43,20 +43,20 @@ export interface CraftPreset {
 
 export const CRAFT_PRESETS: CraftPreset[] = [
   {
-    id: 'preset-pochampally-saree',
-    name: 'Handwoven Pochampally Ikat Silk Saree',
+    id: 'preset-banarasi-saree',
+    name: 'Handcrafted Banarasi Katan Silk Saree with Tested Zari',
     category: 'Textiles & Handloom',
-    craftTechnique: 'Double Ikat Handloom Weaving',
-    primaryMaterial: '100% Pure Mulberry Silk & Natural Zari',
-    state: 'Telangana',
-    color: 'Crimson Red & Mustard Gold',
-    typicalDays: 5,
-    typicalRawCost: 2500,
-    sampleVoiceHindi: 'यह पारंपरिक पोचमपल्ली रेशम की साड़ी है। इसे हथकरघे पर बुनने में मुझे 5 दिन लगे। शुद्ध रेशम और प्राकृतिक जरी के धागे का कच्चा माल 2,500 रुपये का था।',
-    sampleVoiceEnglish: 'This is a handwoven Pochampally Ikat saree. It took me 5 days to weave on traditional pit-loom. The pure silk yarn and zari cost ₹2,500.',
-    rawImage: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
-    enhancedImage: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=800&q=80',
-    seoKeywords: ['Pochampally Saree', 'Ikat Silk Saree', 'Handloom Saree', 'GI Tagged Handloom', 'MoSJE Artisan Silk', 'Wedding Saree']
+    craftTechnique: 'Kadhwa Handloom Weaving with Tested Zari',
+    primaryMaterial: '100% Pure Mulberry Silk & Gold Tested Zari',
+    state: 'Uttar Pradesh',
+    color: 'Rich Magenta Silk & Radiant Antique Gold',
+    typicalDays: 6,
+    typicalRawCost: 3200,
+    sampleVoiceHindi: 'यह पारंपरिक बनारसी कतान सिल्क की साड़ी है। कढ़वा हथकरघे पर बुनने में मुझे 6 दिन लगे। शुद्ध रेशम और सोने की जरी का कच्चा माल 3,200 रुपये का था।',
+    sampleVoiceEnglish: 'This is a handwoven Banarasi Katan silk saree with tested zari. It took 6 days to weave on traditional pit-loom using Kadhwa technique. Pure mulberry silk and zari cost ₹3,200.',
+    rawImage: '/crafts/saree_raw_photo.png',
+    enhancedImage: '/crafts/saree_enhanced_studio.png',
+    seoKeywords: ['Banarasi Saree', 'Katan Silk Saree', 'Tested Zari Saree', 'Kadhwa Handloom', 'GI Tagged Handloom', 'MoSJE Artisan Silk', 'Bridal Saree']
   },
   {
     id: 'preset-dhokra-figurine',
@@ -140,47 +140,47 @@ export const CRAFT_PRESETS: CraftPreset[] = [
   }
 ];
 
-export const INITIAL_PRODUCTS: ProductListing[] = [
+const RAW_INITIAL_PRODUCTS: ProductListing[] = [
   {
     id: 'prod-001',
     artisanId: 'art-101',
     artisanName: 'Rameshwaram Koli',
-    state: 'Telangana',
-    titleEn: 'Heritage Pochampally Ikat Pure Silk Saree (GI Certified)',
-    titleHi: 'पारंपरिक पोचमपल्ली इकत शुद्ध रेशम साड़ी (जीआई प्रमाणित)',
+    state: 'Uttar Pradesh',
+    titleEn: 'Heritage Banarasi Katan Silk Saree with Tested Zari (GI Certified)',
+    titleHi: 'पारंपरिक बनारसी कतान सिल्क हथकरघा साड़ी (जीआई प्रमाणित)',
     category: 'Textiles & Handloom',
-    craftTechnique: 'Double Ikat Handloom Weaving',
-    primaryMaterial: '100% Pure Mulberry Silk & Natural Zari',
-    color: 'Crimson Red & Mustard Gold',
-    productionDays: 5,
-    rawMaterialCost: 2500,
+    craftTechnique: 'Kadhwa Handloom Weaving with Tested Zari',
+    primaryMaterial: '100% Pure Mulberry Silk & Gold Tested Zari',
+    color: 'Rich Magenta Silk & Radiant Antique Gold',
+    productionDays: 6,
+    rawMaterialCost: 3200,
     originalImage: CRAFT_PRESETS[0].rawImage,
     enhancedImage: CRAFT_PRESETS[0].enhancedImage,
     hasBackgroundRemoved: true,
     hasLightingEnhanced: true,
-    descriptionEn: 'Meticulously handwoven on traditional pit-looms by master weaver Rameshwaram Koli in the historic Bhoodan Pochampally cluster. Features geometric double-Ikat motifs dyed using eco-friendly natural mineral dyes. Certified under Geographical Indication (GI Application #4) and supported by Ministry of Social Justice and Empowerment (MoSJE).',
-    descriptionHi: 'ऐतिहासिक भूदान पोचमपल्ली क्लस्टर में मास्टर बुनकर रामेश्वरम कोली द्वारा पारंपरिक गड्ढा-करघे पर सावधानीपूर्वक हाथ से बुनी गई। प्राकृतिक खनिज रंगों से रंगे ज्यामितीय डबल-इकत पैटर्न की विशेषता। जीआई प्रमाणित एवं सामाजिक न्याय और अधिकारिता मंत्रालय (MoSJE) द्वारा समर्थित।',
-    seoKeywords: ['Pochampally Saree', 'Ikat Silk Saree', 'Handloom Saree', 'MoSJE Artisan Silk', 'GI Tagged Textile'],
+    descriptionEn: 'Meticulously handwoven on traditional pit-looms in the Varanasi artisan cluster using the exquisite Kadhwa technique. Features tested gold zari motifs with radiant pure mulberry silk sheen. Certified under Geographical Indication and supported by Ministry of Social Justice and Empowerment (MoSJE).',
+    descriptionHi: 'वाराणसी के पारंपरिक हथकरघा क्लस्टर में कुशल बुनकर द्वारा कढ़वा तकनीक से हाथ से बुनी गई। असली परखी हुई सोने की जरी और शुद्ध शहतूत रेशम की अनूठी चमक। जीआई प्रमाणित एवं सामाजिक न्याय और अधिकारिता मंत्रालय द्वारा समर्थित।',
+    seoKeywords: ['Banarasi Saree', 'Katan Silk Saree', 'Tested Zari Handloom', 'MoSJE Artisan Silk', 'GI Tagged Textile', 'Bridal Silk'],
     pricing: {
-      rawMaterialCost: 2500,
-      wastageBuffer: 375,
-      productionDays: 5,
-      dailyLaborRate: 750,
-      totalLaborWage: 3750,
-      giComplexityMultiplier: 1.25,
-      artisanMarginPercent: 28,
-      artisanProfitAmount: 1855,
-      suggestedRetailPrice: 8480,
-      fairMinimumPrice: 6625,
-      marketBenchmarkMin: 7800,
-      marketBenchmarkMax: 11500,
+      rawMaterialCost: 3200,
+      wastageBuffer: 480,
+      productionDays: 6,
+      dailyLaborRate: 850,
+      totalLaborWage: 5100,
+      giComplexityMultiplier: 1.3,
+      artisanMarginPercent: 30,
+      artisanProfitAmount: 3424,
+      suggestedRetailPrice: 14840,
+      fairMinimumPrice: 9650,
+      marketBenchmarkMin: 13500,
+      marketBenchmarkMax: 22000,
       wholesaleTiers: [
-        { tier: 'Retail (1-9 pcs)', minUnits: 1, discountPercent: 0, unitPrice: 8480 },
-        { tier: 'B2B Wholesale (10-49 pcs)', minUnits: 10, discountPercent: 18, unitPrice: 6950 },
-        { tier: 'Govt / Bulk Export (50+ pcs)', minUnits: 50, discountPercent: 28, unitPrice: 6100 }
+        { tier: 'Retail (1-9 pcs)', minUnits: 1, discountPercent: 0, unitPrice: 14840 },
+        { tier: 'B2B Wholesale (10-49 pcs)', minUnits: 10, discountPercent: 18, unitPrice: 12160 },
+        { tier: 'Govt / Bulk Export (50+ pcs)', minUnits: 50, discountPercent: 28, unitPrice: 10680 }
       ]
     },
-    targetBuyers: ['Handloom Boutiques', 'FabIndia & Jaypore Retailers', 'State Handloom Empos', 'Wedding Planners'],
+    targetBuyers: ['Handloom Boutiques', 'FabIndia & Taneira Retailers', 'State Handloom Empos', 'Wedding Planners'],
     stockQuantity: 12,
     giCertified: true,
     createdAt: '2025-02-15',
@@ -542,3 +542,10 @@ export const INITIAL_PRODUCTS: ProductListing[] = [
     createdAt: '2025-02-28'
   }
 ];
+
+export const INITIAL_PRODUCTS: ProductListing[] = RAW_INITIAL_PRODUCTS.map((p) => ({
+  ...p,
+  originalImageUrl: p.originalImageUrl || p.originalImage,
+  enhancedImageUrl: p.enhancedImageUrl || p.enhancedImage,
+}));
+

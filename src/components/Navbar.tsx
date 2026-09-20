@@ -38,24 +38,24 @@ export const Navbar: React.FC<NavbarProps> = ({
   const t = (key: string) => translate(language, key);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-stone-200 shadow-sm w-full max-w-full overflow-hidden">
+    <header className="sticky top-0 z-50 bg-[#FBF9F5] border-b border-stone-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.03)] w-full max-w-full overflow-hidden">
       {/* Government & Ministry Banner */}
-      <div className="bg-gradient-to-r from-saffron-700 via-stone-800 to-emerald-800 text-white text-[10px] sm:text-xs px-2.5 sm:px-4 py-1 flex justify-between items-center gap-1.5 w-full max-w-full overflow-hidden">
-        <div className="flex items-center space-x-1.5 font-medium truncate min-w-0 flex-1">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
-          <span className="truncate">Ministry of Social Justice & Empowerment (MoSJE)</span>
+      <div className="bg-stone-900 text-stone-300 text-[10px] sm:text-xs px-3 sm:px-6 py-1.5 flex justify-between items-center gap-2 border-b border-stone-800 w-full max-w-full overflow-hidden">
+        <div className="flex items-center space-x-2 font-medium truncate min-w-0 flex-1">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+          <span className="truncate text-stone-300">Ministry of Social Justice & Empowerment (MoSJE) • Govt of India</span>
         </div>
-        <div className="flex items-center space-x-2 text-[10px] text-stone-200 shrink-0">
-          <span className="flex items-center gap-1">
-            <Award className="w-3 h-3 text-saffron-300" />
-            <span className="hidden sm:inline">Shilp Samagam</span>
-            <span className="sm:hidden">Govt of India</span>
+        <div className="flex items-center space-x-2 text-[10px] text-stone-400 shrink-0">
+          <span className="flex items-center gap-1 font-medium">
+            <Award className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Official Artisan Registry Partner</span>
+            <span className="sm:hidden">Official Registry</span>
           </span>
         </div>
       </div>
 
       {/* Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-1 sm:gap-4 w-full max-w-full">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 w-full max-w-full">
         {/* Logo & Tagline */}
         <div className="cursor-pointer shrink-0" onClick={() => setRole('artisan')}>
           <div className="hidden sm:block">
@@ -67,45 +67,45 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Role Switcher Pills */}
-        <div className="flex items-center bg-stone-100 p-0.5 sm:p-1 rounded-xl border border-stone-200 shrink-0">
+        <div className="flex items-center bg-stone-100 p-1 rounded-xl border border-stone-200/80 shrink-0">
           <button
             onClick={() => setRole('artisan')}
-            className={`flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               role === 'artisan'
-                ? 'bg-white text-saffron-700 shadow-sm border border-stone-200/60'
+                ? 'bg-stone-900 text-white shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Artisan App</span>
+            <span className="hidden sm:inline">Artisan Studio</span>
             <span className="sm:hidden text-[11px] font-bold">Artisan</span>
-            <span className="hidden lg:inline text-[10px] text-stone-400">(कारीगर)</span>
+            <span className="hidden lg:inline text-[10px] opacity-75 font-normal">(कारीगर)</span>
           </button>
           <button
             onClick={() => setRole('buyer')}
-            className={`flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               role === 'buyer'
-                ? 'bg-navy-900 text-white shadow-sm'
+                ? 'bg-stone-900 text-white shadow-xs'
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             <ShoppingBag className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">B2B & MoSJE Portal</span>
+            <span className="hidden sm:inline">Buyer Marketplace</span>
             <span className="sm:hidden text-[11px] font-bold">Buyer</span>
-            <span className="hidden lg:inline text-[10px] opacity-75">(खरीदार)</span>
+            <span className="hidden lg:inline text-[10px] opacity-75 font-normal">(खरीदार)</span>
           </button>
         </div>
 
         {/* Controls: Language, Digital Card, Tutorial, Mobile View & User Auth */}
-        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
           {/* Digital Smart ID Card Quick Button (Artisans) */}
           <button
             onClick={onOpenCardModal}
             title="View Official MoSJE Artisan Smart ID Card"
-            className="hidden md:flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold transition-all shadow-2xs"
+            className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium transition-all shadow-xs"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
-            <span className="hidden lg:inline">Smart ID Card</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-stone-600" />
+            <span className="hidden lg:inline">Smart ID</span>
           </button>
 
           {/* Regional Language Selector */}

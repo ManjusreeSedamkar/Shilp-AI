@@ -44,6 +44,11 @@ export interface PricingBreakdown {
   fairMinimumPrice: number;
   marketBenchmarkMin: number;
   marketBenchmarkMax: number;
+  recommendedPrice?: number;
+  fairPriceRange?: { min: number; max: number };
+  modelType?: 'xgboost_regressor' | 'heuristic_ml';
+  xgboostConfidence?: number;
+  featureContributions?: { feature: string; impact: string; weight: number }[];
   wholesaleTiers: {
     tier: string;
     minUnits: number;
@@ -67,6 +72,8 @@ export interface ProductListing {
   rawMaterialCost: number;
   originalImage: string;
   enhancedImage: string;
+  originalImageUrl?: string;
+  enhancedImageUrl?: string;
   hasBackgroundRemoved: boolean;
   hasLightingEnhanced: boolean;
   descriptionEn: string;
@@ -78,6 +85,8 @@ export interface ProductListing {
   giCertified: boolean;
   createdAt: string;
   featured?: boolean;
+  productSize?: 'Small' | 'Medium' | 'Large' | 'Extra-Large';
+  qualityTier?: 'Standard' | 'Premium Heritage' | 'Masterpiece';
 }
 
 export interface CopilotMessage {

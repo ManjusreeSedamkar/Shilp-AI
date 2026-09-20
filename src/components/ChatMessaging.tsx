@@ -56,18 +56,18 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col h-[calc(100dvh-180px)] min-h-[380px] max-h-[720px] w-full max-w-full overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-navy-900 via-stone-900 to-saffron-700 p-4 text-white flex items-center justify-between shadow-sm">
+      <div className="bg-stone-900 p-4 text-white flex items-center justify-between border-b border-stone-800">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center">
-            <MessageSquare className="w-5 h-5 text-saffron-300" />
+          <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+            <MessageSquare className="w-4 h-4 text-amber-300" />
           </div>
           <div>
             <h3 className="font-bold text-sm text-white">{t('chat.title')}</h3>
-            <p className="text-[11px] text-stone-300">{t('chat.conversations')}</p>
+            <p className="text-[11px] text-stone-400">{t('chat.conversations')}</p>
           </div>
         </div>
-        <span className="text-[11px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+        <span className="text-[11px] bg-white/10 text-stone-200 px-2.5 py-0.5 rounded-full border border-white/15 flex items-center gap-1.5 font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
           {conversations.length} {t('chat.conversations')}
         </span>
       </div>
@@ -91,19 +91,19 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                   key={conv.id}
                   onClick={() => setActiveConversationId(conv.id)}
                   className={`p-3 text-left border-b border-stone-200 transition-colors ${
-                    activeConversationId === conv.id ? 'bg-saffron-50 border-l-4 border-l-saffron-600' : 'hover:bg-stone-100'
+                    activeConversationId === conv.id ? 'bg-white border-l-3 border-l-stone-900 shadow-2xs' : 'hover:bg-stone-100'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-stone-900 truncate">{otherName}</span>
                     {conv.unreadCount > 0 && (
-                      <span className="bg-saffron-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                      <span className="bg-stone-900 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
                         {conv.unreadCount}
                       </span>
                     )}
                   </div>
                   {conv.productTitle && (
-                    <span className="text-[10px] text-saffron-700 font-medium truncate block mt-0.5">
+                    <span className="text-[10px] text-stone-600 font-medium truncate block mt-0.5">
                       📦 {conv.productTitle}
                     </span>
                   )}
@@ -154,10 +154,10 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                 const isMine = msg.senderId === currentUserId;
                 return (
                   <div key={msg.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[85%] rounded-2xl p-2.5 text-xs shadow-sm ${
+                    <div className={`max-w-[85%] rounded-2xl p-3 text-xs shadow-2xs ${
                       isMine
-                        ? 'bg-gradient-to-r from-saffron-600 to-amber-600 text-white rounded-br-none'
-                        : 'bg-white text-stone-800 border border-stone-200 rounded-bl-none'
+                        ? 'bg-stone-900 text-white rounded-br-xs'
+                        : 'bg-white text-stone-800 border border-stone-200/90 rounded-bl-xs'
                     }`}>
                       <div className="flex items-center justify-between mb-0.5 text-[9px] opacity-70">
                         <span className="font-bold">{msg.senderName}</span>
@@ -168,7 +168,7 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                       {/* Customization Request Card */}
                       {msg.customizationRequest && (
                         <div className="mt-2 p-2.5 bg-stone-50 rounded-xl border border-stone-200 text-stone-900 space-y-1">
-                          <span className="text-[10px] font-bold text-saffron-700 uppercase flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-stone-800 uppercase flex items-center gap-1">
                             <FileText className="w-3 h-3" />
                             {t('chat.customizationRequest')}
                           </span>
@@ -204,8 +204,8 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
 
             {/* Customization Form */}
             {showCustomizationForm && (
-              <div className="p-3 bg-saffron-50/40 border-t border-saffron-200 space-y-2">
-                <span className="text-[10px] font-bold text-saffron-800 uppercase flex items-center gap-1">
+              <div className="p-3.5 bg-[#FAF8F5] border-t border-stone-200 space-y-2">
+                <span className="text-[10px] font-bold text-stone-800 uppercase flex items-center gap-1">
                   <FileText className="w-3 h-3" />
                   {t('chat.customizationRequest')}
                 </span>
@@ -215,35 +215,35 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                     value={customization.color || ''}
                     onChange={(e) => setCustomization({ ...customization, color: e.target.value })}
                     placeholder={t('chat.color')}
-                    className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-saffron-500"
+                    className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-stone-400 focus:outline-none"
                   />
                   <input
                     type="text"
                     value={customization.size || ''}
                     onChange={(e) => setCustomization({ ...customization, size: e.target.value })}
                     placeholder={t('chat.size')}
-                    className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-saffron-500"
+                    className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-stone-400 focus:outline-none"
                   />
                   <input
                     type="text"
                     value={customization.material || ''}
                     onChange={(e) => setCustomization({ ...customization, material: e.target.value })}
                     placeholder={t('chat.material')}
-                    className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-saffron-500"
+                    className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-stone-400 focus:outline-none"
                   />
                   <input
                     type="text"
                     value={customization.design || ''}
                     onChange={(e) => setCustomization({ ...customization, design: e.target.value })}
                     placeholder={t('chat.design')}
-                    className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-saffron-500"
+                    className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-stone-400 focus:outline-none"
                   />
                   <input
                     type="number"
                     value={customization.quantity || ''}
                     onChange={(e) => setCustomization({ ...customization, quantity: Number(e.target.value) })}
                     placeholder={t('chat.quantity')}
-                    className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-saffron-500"
+                    className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-stone-400 focus:outline-none"
                   />
                 </div>
                 <textarea
@@ -251,7 +251,7 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                   value={customization.otherRequirements || ''}
                   onChange={(e) => setCustomization({ ...customization, otherRequirements: e.target.value })}
                   placeholder={t('chat.other')}
-                  className="w-full px-2 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-saffron-500 resize-none"
+                  className="w-full px-2.5 py-1.5 bg-white border border-stone-200 rounded-lg text-[11px] text-stone-800 focus:ring-2 focus:ring-stone-400 focus:outline-none resize-none"
                 />
                 <div className="flex justify-end gap-2">
                   <button
@@ -262,9 +262,9 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                   </button>
                   <button
                     onClick={handleSendCustomization}
-                    className="px-4 py-1.5 rounded-lg bg-saffron-600 hover:bg-saffron-700 text-white text-[11px] font-bold flex items-center gap-1"
+                    className="px-4 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs transition-colors"
                   >
-                    <CheckCircle2 className="w-3 h-3" />
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                     {t('chat.sendCustomization')}
                   </button>
                 </div>
@@ -278,8 +278,8 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                   onClick={() => setShowCustomizationForm(!showCustomizationForm)}
                   className={`p-2 rounded-xl transition-all ${
                     showCustomizationForm
-                      ? 'bg-saffron-600 text-white'
-                      : 'bg-stone-100 hover:bg-saffron-50 text-saffron-700'
+                      ? 'bg-stone-900 text-white'
+                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
                   }`}
                   title={t('chat.customizationRequest')}
                 >
@@ -291,12 +291,12 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                   onChange={(e) => setMessageText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                   placeholder={t('chat.typeMessage')}
-                  className="flex-1 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-saffron-500"
+                  className="flex-1 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-400"
                 />
                 <button
                   onClick={handleSend}
                   disabled={!messageText.trim()}
-                  className="p-2 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-white transition-colors"
+                  className="p-2 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-white transition-colors shadow-xs"
                 >
                   <Send className="w-4 h-4" />
                 </button>

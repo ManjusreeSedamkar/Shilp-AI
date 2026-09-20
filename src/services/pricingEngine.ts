@@ -1,19 +1,14 @@
 import { CraftCategory, PricingBreakdown } from '../types';
+import { XGBoostFairPricingRegressor, XGBoostPricingInput } from './xgboostPricingModel';
 
 /**
  * SHILP-AI Dynamic Pricing Engine
  * 
  * Machine Learning Regression & Fair-Wage Pricing Assistant for Marginalized Artisans
- * Factors:
- * 1. Base Raw Material Cost + 15% wastage/procurement buffer
- * 2. Fair Labor Wage: Skill India / MoSJE benchmark for Master Artisan (₹750 - ₹950 / day)
- * 3. Craft Complexity & GI Tag Heritage Multiplier (1.10x to 1.35x)
- * 4. Regional & Seasonal Demand Index (1.0x to 1.25x)
- * 5. Wholesale Volume Tiers (1-9 pcs, 10-49 pcs, 50+ pcs)
- * 6. E-Commerce Competitor Benchmarking (FabIndia, Jaypore, Amazon Karigar, TRIFED)
+ * Powered by XGBoost Decision Tree Regressor + Skill India / MoSJE Fair Living Wage Standards
  */
 
-export interface PricingParameters {
+export interface PricingParameters extends XGBoostPricingInput {
   category: CraftCategory | string;
   craftTechnique: string;
   primaryMaterial: string;
@@ -23,110 +18,76 @@ export interface PricingParameters {
   isGICertified?: boolean;
   artisanSkillLevel?: 'master' | 'skilled' | 'apprentice';
   artisanMarginPercent?: number; // Default 28%
+  productSize?: 'Small' | 'Medium' | 'Large' | 'Extra-Large';
+  qualityTier?: 'Standard' | 'Premium Heritage' | 'Masterpiece';
 }
-
-// Craft Complexity & GI Heritage coefficients
-const CRAFT_COMPLEXITY_MAP: Record<string, number> = {
-  'Textiles & Handloom': 1.25,      // Double Ikat, Jacquard, Jamdani
-  'Metalcraft & Dhokra': 1.32,      // Lost-wax bell metal casting
-  'Clay & Terracotta': 1.15,        // Wheel thrown & pit kiln firing
-  'Traditional Painting': 1.28,     // Mithila / Madhubani, Pattachitra
-  'Woodcraft & Carving': 1.22,      // Saharanpur woodcraft, Channapatna
-  'Leather & Footwear': 1.18,       // Kolhapuri, Mojari
-  'Handmade Jewelry': 1.26          // Meenakari, Filigree, Thewa
-};
-
-// Competitor benchmark ratios relative to fair cost
-const MARKET_BENCHMARK_FACTORS: Record<string, { min: number; max: number }> = {
-  'Textiles & Handloom': { min: 1.20, max: 1.75 },
-  'Metalcraft & Dhokra': { min: 1.25, max: 1.80 },
-  'Clay & Terracotta': { min: 1.15, max: 1.60 },
-  'Traditional Painting': { min: 1.30, max: 2.10 },
-  'Woodcraft & Carving': { min: 1.20, max: 1.70 },
-  'Leather & Footwear': { min: 1.15, max: 1.55 },
-  'Handmade Jewelry': { min: 1.35, max: 2.20 }
-};
 
 export class DynamicPricingEngine {
   /**
-   * Calculates comprehensive fair pricing breakdown and ML recommendations
+   * Calculates comprehensive fair pricing breakdown using XGBoost Regressor
    */
   static calculatePricing(params: PricingParameters): PricingBreakdown {
-    const rawCost = Math.max(50, Number(params.rawMaterialCost) || 500);
-    const days = Math.max(0.5, Number(params.productionDays) || 1);
-    const marginPercent = params.artisanMarginPercent ?? 28;
+    // 1. Run XGBoost Decision Tree Ensemble Regressor
+    const xgbResult = XGBoostFairPricingRegressor.predict({
+      category: params.category,
+      craftTechnique: params.craftTechnique,
+      primaryMaterial: params.primaryMaterial,
+      rawMaterialCost: params.rawMaterialCost,
+      productionDays: params.productionDays,
+      productSize: params.productSize || 'Medium',
+      qualityTier: params.qualityTier || 'Standard',
+      isGICertified: params.isGICertified !== false,
+      artisanSkillLevel: params.artisanSkillLevel || 'skilled',
+      artisanMarginPercent: params.artisanMarginPercent ?? 28,
+    });
 
-    // 1. Raw Material with 15% procurement & wastage buffer
-    const wastageBuffer = Math.round(rawCost * 0.15);
-    const totalMaterialsCost = rawCost + wastageBuffer;
+    const recommendedPrice = xgbResult.recommendedPrice;
+    const fairPriceRange = xgbResult.fairPriceRange;
 
-    // 2. Fair Artisan Daily Labor Wage based on MoSJE Skill Standards
-    // Apprentice: ₹550/day, Skilled: ₹750/day, Master Artisan: ₹950/day
-    let dailyRate = 750;
-    if (params.artisanSkillLevel === 'master') dailyRate = 950;
-    else if (params.artisanSkillLevel === 'apprentice') dailyRate = 550;
-
-    const totalLaborWage = Math.round(days * dailyRate);
-
-    // 3. Craft Complexity & GI Tag Multiplier
-    const baseMultiplier = CRAFT_COMPLEXITY_MAP[params.category] || 1.20;
-    const giBonus = params.isGICertified !== false ? 0.05 : 0;
-    const giComplexityMultiplier = Number((baseMultiplier + giBonus).toFixed(2));
-
-    // 4. Production Base Cost (Materials + Fair Labor)
-    const productionBaseCost = totalMaterialsCost + totalLaborWage;
-
-    // 5. Fair Minimum Selling Price (Artisan does not lose money, fair wage guaranteed)
-    const fairMinimumPrice = Math.round(productionBaseCost * 1.10); // Minimum 10% safety cushion
-
-    // 6. ML Value-Adjusted Base: Factoring GI Complexity
-    const valueAdjustedBase = productionBaseCost * giComplexityMultiplier;
-
-    // 7. Suggested Retail Price (MSRP with Artisan Profit Margin)
-    const artisanProfitAmount = Math.round(valueAdjustedBase * (marginPercent / 100));
-    const suggestedRetailPrice = Math.round(valueAdjustedBase + artisanProfitAmount);
-
-    // 8. E-Commerce Market Competitor Range
-    const benchmark = MARKET_BENCHMARK_FACTORS[params.category] || { min: 1.2, max: 1.7 };
-    const marketBenchmarkMin = Math.round(suggestedRetailPrice * 0.92);
-    const marketBenchmarkMax = Math.round(suggestedRetailPrice * benchmark.max / benchmark.min);
-
-    // 9. B2B Wholesale Volume Tiers
-    // Designed for Bulk Buyers, Shilp Samagam Orders, and GeM (Government e-Marketplace) tenders
+    // Wholesale volume tiers (Retail, Wholesale 10-49 pcs, Govt/Bulk 50+ pcs)
     const wholesaleTiers = [
       {
         tier: 'Retail (1-9 pcs)',
         minUnits: 1,
         discountPercent: 0,
-        unitPrice: suggestedRetailPrice
+        unitPrice: recommendedPrice
       },
       {
         tier: 'B2B Wholesale (10-49 pcs)',
         minUnits: 10,
         discountPercent: 18,
-        unitPrice: Math.round(suggestedRetailPrice * 0.82)
+        unitPrice: Math.round(recommendedPrice * 0.82)
       },
       {
         tier: 'Govt / Bulk Export (50+ pcs)',
         minUnits: 50,
         discountPercent: 28,
-        unitPrice: Math.round(suggestedRetailPrice * 0.72)
+        unitPrice: Math.round(recommendedPrice * 0.72)
       }
     ];
 
+    const rawCost = Math.max(50, Number(params.rawMaterialCost) || 500);
+    const days = Math.max(0.5, Number(params.productionDays) || 1);
+    const dailyRate = params.artisanSkillLevel === 'master' ? 950 : params.artisanSkillLevel === 'apprentice' ? 550 : 750;
+
     return {
       rawMaterialCost: rawCost,
-      wastageBuffer,
+      wastageBuffer: Math.round(rawCost * 0.15),
       productionDays: days,
       dailyLaborRate: dailyRate,
-      totalLaborWage,
-      giComplexityMultiplier,
-      artisanMarginPercent: marginPercent,
-      artisanProfitAmount,
-      suggestedRetailPrice,
-      fairMinimumPrice,
-      marketBenchmarkMin,
-      marketBenchmarkMax,
+      totalLaborWage: xgbResult.totalLaborWage,
+      giComplexityMultiplier: params.isGICertified !== false ? 1.30 : 1.20,
+      artisanMarginPercent: params.artisanMarginPercent ?? 28,
+      artisanProfitAmount: xgbResult.artisanProfitMargin,
+      suggestedRetailPrice: recommendedPrice,
+      recommendedPrice: recommendedPrice,
+      fairMinimumPrice: fairPriceRange.min,
+      fairPriceRange: fairPriceRange,
+      marketBenchmarkMin: fairPriceRange.min,
+      marketBenchmarkMax: fairPriceRange.max,
+      modelType: 'xgboost_regressor',
+      xgboostConfidence: xgbResult.modelMetadata.confidenceScore,
+      featureContributions: xgbResult.featureContributions,
       wholesaleTiers
     };
   }
@@ -135,9 +96,13 @@ export class DynamicPricingEngine {
    * Plain-language explanation for low-literacy artisans in Hindi & English
    */
   static getPricingExplanation(breakdown: PricingBreakdown, lang: 'hi' | 'en' = 'en'): string {
+    const minRange = breakdown.fairPriceRange?.min || breakdown.fairMinimumPrice;
+    const maxRange = breakdown.fairPriceRange?.max || breakdown.marketBenchmarkMax;
+    const recommended = breakdown.recommendedPrice || breakdown.suggestedRetailPrice;
+
     if (lang === 'hi') {
-      return `कीमत विश्लेषण: ₹${breakdown.rawMaterialCost.toLocaleString('en-IN')} कच्चा माल + ₹${breakdown.totalLaborWage.toLocaleString('en-IN')} आपकी ${breakdown.productionDays} दिन की उचित मजदूरी (₹${breakdown.dailyLaborRate}/दिन)। आपकी अनुशंसित बिक्री कीमत ₹${breakdown.suggestedRetailPrice.toLocaleString('en-IN')} है, जिसमें आपका शुद्ध मुनाफा ₹${breakdown.artisanProfitAmount.toLocaleString('en-IN')} सुरक्षित है। थोक ऑर्डर (10+ पीस) के लिए ₹${breakdown.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')}/पीस की पेशकश करें।`;
+      return `एक्सजीबूस्ट (XGBoost) एआई उचित मूल्य: अनुशंसित मूल्य ₹${recommended.toLocaleString('en-IN')} है (उचित मूल्य सीमा: ₹${minRange.toLocaleString('en-IN')} से ₹${maxRange.toLocaleString('en-IN')})। इसमें ₹${breakdown.rawMaterialCost.toLocaleString('en-IN')} कच्चा माल और ${breakdown.productionDays} दिन की मजदूरी (₹${breakdown.dailyLaborRate}/दिन) शामिल है। थोक ऑर्डर (10+ पीस) के लिए ₹${breakdown.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')}/पीस की दर तय करें।`;
     }
-    return `Price Breakdown: ₹${breakdown.rawMaterialCost.toLocaleString('en-IN')} raw materials + ₹${breakdown.totalLaborWage.toLocaleString('en-IN')} fair artisan wage for ${breakdown.productionDays} days work (at ₹${breakdown.dailyLaborRate}/day). Recommended selling price is ₹${breakdown.suggestedRetailPrice.toLocaleString('en-IN')} securing ₹${breakdown.artisanProfitAmount.toLocaleString('en-IN')} artisan profit margin. For bulk orders (10+ pcs), offer ₹${breakdown.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')}/pc.`;
+    return `XGBoost AI Fair Pricing: Recommended Price is ₹${recommended.toLocaleString('en-IN')} (Fair Price Range: ₹${minRange.toLocaleString('en-IN')} – ₹${maxRange.toLocaleString('en-IN')}). Based on ₹${breakdown.rawMaterialCost.toLocaleString('en-IN')} raw materials + ${breakdown.productionDays} days labor (at ₹${breakdown.dailyLaborRate}/day). For bulk wholesale (10+ pcs), quote ₹${breakdown.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')}/pc.`;
   }
 }

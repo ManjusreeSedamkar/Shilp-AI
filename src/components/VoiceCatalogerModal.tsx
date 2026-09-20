@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, Square, Sparkles, Check, Globe, RefreshCw, ArrowRight, Tag, BookOpen, Image as ImageIcon, Camera, Upload, CheckCircle2, Copy, FileText, X } from 'lucide-react';
+import { Mic, MicOff, Volume2, Square, Sparkles, Check, Globe, RefreshCw, ArrowRight, Tag, BookOpen, Image as ImageIcon, Camera, Upload, CheckCircle2, Copy, FileText, X, Scissors, SunMedium, Palette, Crop } from 'lucide-react';
 import { VoiceCatalogerEngine, ExtractedProductAttributes } from '../services/voiceCataloger';
 import { DynamicPricingEngine } from '../services/pricingEngine';
 import { CRAFT_PRESETS } from '../data/craftPresets';
@@ -7,6 +7,7 @@ import { Language, ProductListing } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
 import { getSpeechLangCode, translate } from '../services/translations';
 import { AIImageStudio, DEFAULT_IMAGE_OPTIONS } from '../services/imageStudio';
+import { uploadImageToStorage, saveProductToFirestore } from '../services/firebase';
 
 interface VoiceCatalogerModalProps {
   language?: Language;
@@ -35,6 +36,8 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
   const [currentPhoto, setCurrentPhoto] = useState<string>(selectedPhotoUrl || CRAFT_PRESETS[0].enhancedImage);
   const [originalPhoto, setOriginalPhoto] = useState<string>(originalPhotoUrl || CRAFT_PRESETS[0].rawImage);
   const [isEnhancingUpload, setIsEnhancingUpload] = useState<boolean>(false);
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
+  const [publishingStep, setPublishingStep] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const t = (key: string) => translate(language, key);
@@ -156,56 +159,105 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
     }
   };
 
-  const handleCreateListing = () => {
+  const handleCreateListing = async () => {
     if (!extractedData) return;
+    setIsPublishing(true);
+    setPublishingStep(isHindi ? 'एआई फोटो संवर्धन जांच रहे हैं...' : 'Verifying AI image enhancement...');
 
-    const pricing = DynamicPricingEngine.calculatePricing({
-      category: extractedData.category,
-      craftTechnique: extractedData.craftTechnique,
-      primaryMaterial: extractedData.primaryMaterial,
-      rawMaterialCost: extractedData.rawMaterialCost,
-      productionDays: extractedData.productionDays,
-      isGICertified: true
-    });
+    try {
+      const productId = `prod-${Date.now()}`;
+      
+      // Step 1: AI Enhancement (background removal, lighting correction, 1:1 canvas)
+      let enhancedUrl = currentPhoto;
+      let rawUrl = originalPhoto || currentPhoto;
 
-    const listing: ProductListing = {
-      id: `prod-${Date.now()}`,
-      artisanId: CURRENT_ARTISAN.id,
-      artisanName: CURRENT_ARTISAN.name,
-      state: CURRENT_ARTISAN.state,
-      titleEn: extractedData.titleEn,
-      titleHi: extractedData.titleHi,
-      category: extractedData.category,
-      craftTechnique: extractedData.craftTechnique,
-      primaryMaterial: extractedData.primaryMaterial,
-      color: extractedData.color,
-      productionDays: extractedData.productionDays,
-      rawMaterialCost: extractedData.rawMaterialCost,
-      // Store original and AI enhanced images
-      originalImage: originalPhoto || currentPhoto,
-      enhancedImage: currentPhoto,
-      hasBackgroundRemoved: true,
-      hasLightingEnhanced: true,
-      descriptionEn: extractedData.descriptionEn,
-      descriptionHi: extractedData.descriptionHi,
-      seoKeywords: extractedData.seoKeywords,
-      pricing: pricing,
-      targetBuyers: extractedData.targetBuyers,
-      stockQuantity: 15,
-      giCertified: true,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
+      if (!enhancedUrl || enhancedUrl === rawUrl) {
+        setPublishingStep(isHindi ? 'एआई पृष्ठभूमि हटाना व लाइटिंग सुधार रहे हैं...' : 'Applying AI background removal & studio lighting...');
+        try {
+          const res = await AIImageStudio.processImage(rawUrl, DEFAULT_IMAGE_OPTIONS);
+          enhancedUrl = res.enhancedDataUrl;
+          setCurrentPhoto(enhancedUrl);
+        } catch (e) {
+          console.warn('AI enhancement fallback:', e);
+        }
+      }
 
-    onListingCreated?.(listing);
+      // Step 2: Upload to Firebase Storage
+      setPublishingStep(isHindi ? 'फायरबेस स्टोरेज में मूल फोटो अपलोड हो रही है...' : 'Uploading original image to Firebase Storage...');
+      const originalStorageUrl = await uploadImageToStorage(
+        rawUrl,
+        `products/original/${productId}.jpg`
+      );
+
+      setPublishingStep(isHindi ? 'फायरबेस स्टोरेज में एआई फोटो अपलोड हो रही है...' : 'Uploading enhanced image to Firebase Storage...');
+      const enhancedStorageUrl = await uploadImageToStorage(
+        enhancedUrl,
+        `products/enhanced/${productId}.jpg`
+      );
+
+      // Step 3: XGBoost Fair Pricing Calculation
+      setPublishingStep(isHindi ? 'XGBoost मॉडल द्वारा उचित मूल्य तय किया जा रहा है...' : 'Calculating fair pricing via XGBoost Regressor...');
+      const pricing = DynamicPricingEngine.calculatePricing({
+        category: extractedData.category,
+        craftTechnique: extractedData.craftTechnique,
+        primaryMaterial: extractedData.primaryMaterial,
+        rawMaterialCost: extractedData.rawMaterialCost,
+        productionDays: extractedData.productionDays,
+        isGICertified: true
+      });
+
+      const listing: ProductListing = {
+        id: productId,
+        artisanId: CURRENT_ARTISAN.id,
+        artisanName: CURRENT_ARTISAN.name,
+        state: CURRENT_ARTISAN.state,
+        titleEn: extractedData.titleEn,
+        titleHi: extractedData.titleHi,
+        category: extractedData.category,
+        craftTechnique: extractedData.craftTechnique,
+        primaryMaterial: extractedData.primaryMaterial,
+        color: extractedData.color,
+        productionDays: extractedData.productionDays,
+        rawMaterialCost: extractedData.rawMaterialCost,
+        // Store both original and enhanced image URLs
+        originalImage: originalStorageUrl,
+        originalImageUrl: originalStorageUrl,
+        enhancedImage: enhancedStorageUrl,
+        enhancedImageUrl: enhancedStorageUrl,
+        hasBackgroundRemoved: true,
+        hasLightingEnhanced: true,
+        descriptionEn: extractedData.descriptionEn,
+        descriptionHi: extractedData.descriptionHi,
+        seoKeywords: extractedData.seoKeywords,
+        pricing: pricing,
+        targetBuyers: extractedData.targetBuyers,
+        stockQuantity: 15,
+        giCertified: true,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+
+      // Step 4: Save to Firestore
+      setPublishingStep(isHindi ? 'क्लाउड फायरस्टोर में कैटलॉग सहेजा जा रहा है...' : 'Saving listing to Cloud Firestore...');
+      await saveProductToFirestore(listing);
+
+      // Step 5: Update Local App & State
+      onListingCreated?.(listing);
+    } catch (err) {
+      console.error('Failed to create listing:', err);
+      alert(isHindi ? 'कैटलॉग प्रकाशित करने में समस्या आई। पुनः प्रयास करें।' : 'Error publishing product. Please try again.');
+    } finally {
+      setIsPublishing(false);
+      setPublishingStep('');
+    }
   };
 
   return (
     <div className="space-y-5">
       {/* Banner */}
-      <div className="bg-gradient-to-r from-navy-900 via-stone-900 to-craft-indigo rounded-2xl p-5 text-white shadow-lg">
+      <div className="bg-stone-900 rounded-2xl p-5 text-white border border-stone-800 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur text-saffron-300">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur text-amber-300">
               <Sparkles className="w-3.5 h-3.5" />
               {isHindi ? 'बहुभाषी वॉयस एनएलपी इंजन' : 'Multilingual Voice & NLP Auto-Cataloger'}
             </span>
@@ -226,63 +278,141 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
         </div>
       </div>
 
-      {/* Product Photo Confirmation Card (AI Enhanced Studio Photo) */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center space-x-3 w-full sm:w-auto">
-          <div className="relative shrink-0">
-            <img
-              src={currentPhoto}
-              alt="Craft"
-              className="w-16 h-16 rounded-xl object-contain bg-stone-50 border-2 border-saffron-500 shadow-sm"
-            />
-            <div className="absolute -bottom-1 -right-1 bg-emerald-600 text-white rounded-full p-0.5 shadow">
-              <Sparkles className="w-3 h-3 text-white" />
+      {/* Product Photo Confirmation Card: AI Enhanced Studio Photo vs Original Raw Photo with 5 Feature Badges */}
+      <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-stone-200 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-xl bg-emerald-100 text-emerald-800">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+            </span>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-xs sm:text-sm font-bold text-stone-900">
+                  {isHindi ? 'एआई स्टूडियो: पहले और बाद की तुलना (Before & After)' : 'AI Image Studio: Before & After Comparison'}
+                </h3>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                  <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
+                  {isHindi ? 'स्टूडियो ग्रेड' : 'Studio-Grade'}
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-500 leading-tight">
+                {isHindi 
+                  ? 'स्वच्छ पृष्ठभूमि और स्टूडियो लाइटिंग वाली फोटो कैटलॉग और खरीदार पोर्टल पर दिखाई देगी।'
+                  : 'Studio-enhanced photo will be published to the catalog while preserving authentic craft textures.'}
+              </p>
             </div>
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-stone-900">
-                {isHindi ? 'एआई संवर्धित उत्पाद फोटो' : 'AI Enhanced Product Photo'}
-              </span>
-              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
-                {isHindi ? 'एआई स्टूडियो क्लीन' : 'AI Studio Ready'}
-              </span>
-            </div>
-            <p className="text-[11px] text-stone-500 leading-tight mt-0.5">
-              {isHindi 
-                ? 'स्वच्छ पृष्ठभूमि और स्टूडियो लाइटिंग वाली फोटो कैटलॉग और खरीदार पोर्टल पर दिखाई देगी।'
-                : 'Studio-enhanced photo ready to be shown at published products on the marketplace.'}
-            </p>
+
+          {/* Change / Upload Photo Button */}
+          <div className="flex items-center space-x-2 shrink-0">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handlePhotoUpload}
+              accept="image/*"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isEnhancingUpload}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-colors disabled:opacity-50 shadow-2xs"
+            >
+              {isEnhancingUpload ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 text-stone-500 animate-spin" />
+                  <span>{isHindi ? 'संवर्धन हो रहा है...' : 'Enhancing...'}</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5 text-stone-500" />
+                  <span>{isHindi ? 'फोटो बदलें' : 'Change Photo'}</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Change / Upload Photo Button */}
-        <div className="flex items-center space-x-2 shrink-0">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handlePhotoUpload}
-            accept="image/*"
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isEnhancingUpload}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-colors disabled:opacity-50"
-          >
-            {isEnhancingUpload ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 text-stone-500 animate-spin" />
-                <span>{isHindi ? 'संवर्धन हो रहा है...' : 'Enhancing...'}</span>
-              </>
-            ) : (
-              <>
-                <Upload className="w-3.5 h-3.5 text-stone-500" />
-                <span>{isHindi ? 'फोटो बदलें' : 'Change Photo'}</span>
-              </>
-            )}
-          </button>
+        {/* Dual Images Showcase Card */}
+        <div className="rounded-2xl overflow-hidden border border-stone-200 bg-[#FAF7F2] shadow-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 border-b border-stone-200">
+            {/* Before (Original) */}
+            <div className="relative aspect-[4/3] sm:aspect-[3/4] max-h-64 sm:max-h-72 bg-stone-100 overflow-hidden sm:border-r border-stone-200 flex items-center justify-center">
+              <img
+                src={originalPhoto || currentPhoto}
+                alt="Before (Original Raw Craft)"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-2.5 left-2.5 bg-[#2D3338]/90 backdrop-blur text-white text-[10px] sm:text-[11px] font-medium px-2.5 py-0.5 rounded-full shadow-sm">
+                {isHindi ? 'पहले (मूल फोटो)' : 'Before (Original)'}
+              </div>
+            </div>
+
+            {/* After (Enhanced) */}
+            <div className="relative aspect-[4/3] sm:aspect-[3/4] max-h-64 sm:max-h-72 bg-[#FAF7F2] overflow-hidden flex items-center justify-center">
+              <img
+                src={currentPhoto}
+                alt="After (Enhanced Studio Photo)"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-2.5 left-2.5 bg-[#2D5A43]/90 backdrop-blur text-white text-[10px] sm:text-[11px] font-medium px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                <span>{isHindi ? 'बाद में (एआई संवर्धित)' : 'After (Enhanced)'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 5 Feature Badges Row matching User Reference */}
+          <div className="bg-[#FAF7F2] px-2 sm:px-4 py-3 grid grid-cols-5 gap-1 sm:gap-2 items-center justify-between text-center">
+            {/* 1. Background Removal */}
+            <div className="flex flex-col items-center justify-center space-y-1">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                <Scissors className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-700" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
+                {isHindi ? <>बैकग्राउंड<br />हटाना</> : <>Background<br />Removal</>}
+              </span>
+            </div>
+
+            {/* 2. Better Lighting */}
+            <div className="flex flex-col items-center justify-center space-y-1">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                <SunMedium className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-700" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
+                {isHindi ? <>बेहतर<br />लाइटिंग</> : <>Better<br />Lighting</>}
+              </span>
+            </div>
+
+            {/* 3. Natural Color Correction */}
+            <div className="flex flex-col items-center justify-center space-y-1">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                <Palette className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-700" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
+                {isHindi ? <>प्राकृतिक रंग<br />सुधार</> : <>Natural Color<br />Correction</>}
+              </span>
+            </div>
+
+            {/* 4. Proper Positioning & Cropping */}
+            <div className="flex flex-col items-center justify-center space-y-1">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                <Crop className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-700" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
+                {isHindi ? <>उचित स्थिति<br />व क्रॉपिंग</> : <>Proper Positioning<br />& Cropping</>}
+              </span>
+            </div>
+
+            {/* 5. Enhanced Quality */}
+            <div className="flex flex-col items-center justify-center space-y-1">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-stone-200/80 flex items-center justify-center text-stone-700 shadow-2xs">
+                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600" />
+              </div>
+              <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
+                {isHindi ? <>संवर्धित<br />गुणवत्ता</> : <>Enhanced<br />Quality</>}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -579,13 +709,34 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
           </div>
 
           {/* Publish / Add to Catalog Button */}
-          <div className="pt-2 flex justify-end">
+          <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            {isPublishing ? (
+              <div className="flex items-center gap-2 text-xs text-stone-700 bg-amber-50/80 px-3.5 py-2 rounded-xl border border-amber-200/80 w-full sm:w-auto animate-pulse">
+                <RefreshCw className="w-3.5 h-3.5 text-amber-700 animate-spin shrink-0" />
+                <span className="font-semibold text-[11px] truncate">{publishingStep}</span>
+              </div>
+            ) : (
+              <div className="text-[11px] text-stone-500 hidden sm:block">
+                <span>{isHindi ? 'मूल व एआई संवर्धित दोनों फोटो फायरबेस पर सुरक्षित होंगी।' : 'Original & AI enhanced images will be saved to Firebase Storage.'}</span>
+              </div>
+            )}
+
             <button
               onClick={handleCreateListing}
-              className="flex items-center space-x-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs shadow-lg shadow-emerald-700/25 transition-all"
+              disabled={isPublishing}
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs shadow-sm transition-all"
             >
-              <span>{isHindi ? 'कैटलॉग में प्रकाशित करें' : 'Publish to MoSJE Smart Catalog'}</span>
-              <ArrowRight className="w-4 h-4" />
+              {isPublishing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>{isHindi ? 'प्रकाशित हो रहा है...' : 'Saving to Firestore...'}</span>
+                </>
+              ) : (
+                <>
+                  <span>{isHindi ? 'कैटलॉग में प्रकाशित करें' : 'Publish to MoSJE Smart Catalog'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </div>

@@ -133,7 +133,9 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
       {/* ============================================================
           MoSJE Artisan Beneficiary Banner
       ============================================================ */}
-      <div className="bg-gradient-to-r from-saffron-700 via-stone-900 to-navy-950 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white shadow-xl relative overflow-hidden w-full max-w-full">
+      <div className="bg-gradient-to-br from-[#1C1815] via-[#2A231D] to-[#181412] rounded-3xl p-5 sm:p-7 text-white border border-amber-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.18)] relative overflow-hidden w-full max-w-full">
+        {/* Top subtle golden shimmer line */}
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-saffron-400 to-amber-600"></div>
 
         <div className="absolute -right-8 -bottom-8 opacity-10 text-9xl select-none pointer-events-none">
           🏺
@@ -147,11 +149,11 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
               <img
                 src={CURRENT_ARTISAN.avatarUrl}
                 alt={CURRENT_ARTISAN.name}
-                className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl object-cover border-2 border-saffron-400 shadow-md"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-2 ring-amber-400/80 ring-offset-2 ring-offset-[#1C1815] shadow-lg"
               />
 
               <span
-                className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full text-[10px]"
+                className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full text-[10px] shadow-sm border border-emerald-300"
                 title={t('dashboard.mosjeVerified')}
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
@@ -327,28 +329,28 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
       ============================================================ */}
       <div
         onClick={onOpenTutorials}
-        className="cursor-pointer group relative overflow-hidden bg-gradient-to-r from-amber-500 via-saffron-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl text-white shadow-md hover:shadow-xl transition-all transform hover:-translate-y-0.5 border border-amber-400/40 w-full max-w-full"
+        className="cursor-pointer group relative overflow-hidden bg-[#231E1B] hover:bg-[#2A2420] border border-stone-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl text-white shadow-sm transition-all transform hover:-translate-y-0.5 w-full max-w-full"
         role="button"
         tabIndex={0}
         aria-label="Tutorial"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
           <div className="flex items-center space-x-3 sm:space-x-3.5">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-white shadow-inner group-hover:scale-110 transition-transform shrink-0">
-              <Video className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/10 flex items-center justify-center text-white shadow-inner group-hover:scale-105 transition-transform shrink-0">
+              <Video className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="font-black text-sm sm:text-base text-white tracking-wide truncate">
                   {language === 'hi' ? 'वीडियो ट्यूटोरियल (Tutorial)' : 'Tutorial'}
                 </h4>
-                <span className="bg-white/25 text-white text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs flex items-center gap-1">
+                <span className="bg-white/10 text-stone-200 text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/15 flex items-center gap-1">
                   <span>2 {language === 'hi' ? 'वीडियो' : 'Videos'}:</span>
-                  <span className="text-amber-200 font-extrabold">English & हिन्दी</span>
+                  <span className="text-amber-200 font-bold">English & हिन्दी</span>
                 </span>
-                <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping shrink-0"></span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0"></span>
               </div>
-              <p className="text-[11px] sm:text-xs text-white/90 mt-0.5 font-medium leading-tight">
+              <p className="text-[11px] sm:text-xs text-stone-300 mt-0.5 font-normal leading-tight">
                 {language === 'hi'
                   ? 'क्लिक करें और वीडियो देखें: AI स्टूडियो, बोलकर कैटलॉग बनाना व निष्पक्ष कारीगर मूल्य'
                   : 'Click to watch step-by-step video tutorials on AI Studio, Voice Cataloging & Fair Pricing'}
@@ -356,8 +358,8 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-white text-saffron-800 text-xs font-black shadow-sm group-hover:bg-amber-50 transition-colors shrink-0 self-start sm:self-auto">
-            <Play className="w-3.5 h-3.5 fill-saffron-700 text-saffron-700" />
+          <div className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/15 shadow-2xs group-hover:bg-white group-hover:text-stone-900 transition-all shrink-0 self-start sm:self-auto">
+            <Play className="w-3.5 h-3.5 fill-current text-current" />
             <span>{language === 'hi' ? 'ट्यूटोरियल देखें' : 'Watch Tutorials'}</span>
           </div>
         </div>
@@ -372,23 +374,23 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
           {t('dashboard.quickActions')}
         </h3>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 w-full max-w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3.5 w-full max-w-full">
 
           {/* Photo AI */}
           <button
             onClick={onOpenStudio}
-            className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-saffron-50 border-2 border-stone-200 hover:border-saffron-500 text-left transition-all shadow-sm hover:shadow-md group flex flex-col justify-between w-full"
+            className="p-3.5 sm:p-4 rounded-2xl bg-white hover:bg-[#FAF8F5] border border-stone-200 hover:border-stone-400 text-left transition-all shadow-2xs hover:shadow-xs hover:-translate-y-0.5 group flex flex-col justify-between w-full"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-saffron-100 text-saffron-700 flex items-center justify-center mb-2.5 sm:mb-3 group-hover:scale-110 transition-transform">
-              <Camera className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-stone-100 text-stone-800 group-hover:bg-stone-900 group-hover:text-white flex items-center justify-center mb-2.5 sm:mb-3 transition-colors shadow-2xs">
+              <Camera className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
             </div>
 
             <div>
-              <span className="text-[9px] sm:text-[10px] font-bold text-saffron-700 uppercase block truncate">
+              <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-wider block truncate">
                 {t('dashboard.photoAI')}
               </span>
 
-              <h4 className="font-black text-stone-900 text-xs sm:text-sm truncate">
+              <h4 className="font-bold text-stone-900 text-xs sm:text-sm truncate mt-0.5">
                 {t('dashboard.imageStudio')}
               </h4>
 
@@ -401,18 +403,18 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
           {/* Voice NLP */}
           <button
             onClick={onOpenVoice}
-            className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-blue-50 border-2 border-stone-200 hover:border-blue-500 text-left transition-all shadow-sm hover:shadow-md group flex flex-col justify-between w-full"
+            className="p-3.5 sm:p-4 rounded-2xl bg-white hover:bg-[#FAF8F5] border border-stone-200 hover:border-stone-400 text-left transition-all shadow-2xs hover:shadow-xs hover:-translate-y-0.5 group flex flex-col justify-between w-full"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center mb-2.5 sm:mb-3 group-hover:scale-110 transition-transform">
-              <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-stone-100 text-stone-800 group-hover:bg-stone-900 group-hover:text-white flex items-center justify-center mb-2.5 sm:mb-3 transition-colors shadow-2xs">
+              <Mic className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
             </div>
 
             <div>
-              <span className="text-[9px] sm:text-[10px] font-bold text-blue-700 uppercase block truncate">
+              <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-wider block truncate">
                 {t('dashboard.voiceNLP')}
               </span>
 
-              <h4 className="font-black text-stone-900 text-xs sm:text-sm truncate">
+              <h4 className="font-bold text-stone-900 text-xs sm:text-sm truncate mt-0.5">
                 {t('dashboard.voiceCatalog')}
               </h4>
 
@@ -425,22 +427,22 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
           {/* Copilot */}
           <button
             onClick={onOpenCopilot}
-            className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-saffron-50 to-amber-100 border-2 border-saffron-400 text-left transition-all shadow-sm hover:shadow-md group flex flex-col justify-between w-full"
+            className="p-3.5 sm:p-4 rounded-2xl bg-white hover:bg-[#FAF8F5] border border-stone-200 hover:border-stone-400 text-left transition-all shadow-2xs hover:shadow-xs hover:-translate-y-0.5 group flex flex-col justify-between w-full"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-saffron-600 text-white flex items-center justify-center mb-2.5 sm:mb-3 group-hover:scale-110 transition-transform shadow-md">
-              <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-stone-100 text-stone-800 group-hover:bg-stone-900 group-hover:text-white flex items-center justify-center mb-2.5 sm:mb-3 transition-colors shadow-2xs">
+              <Bot className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
             </div>
 
             <div>
-              <span className="text-[9px] sm:text-[10px] font-bold text-saffron-800 uppercase block truncate">
+              <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-wider block truncate">
                 {t('dashboard.copilotLabel')}
               </span>
 
-              <h4 className="font-black text-stone-900 text-xs sm:text-sm truncate">
+              <h4 className="font-bold text-stone-900 text-xs sm:text-sm truncate mt-0.5">
                 {t('dashboard.copilot')}
               </h4>
 
-              <p className="text-[10px] sm:text-[11px] text-saffron-900/80 mt-0.5 leading-tight font-medium line-clamp-2">
+              <p className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5 leading-tight line-clamp-2">
                 {t('dashboard.copilotDesc')}
               </p>
             </div>
@@ -449,18 +451,18 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
           {/* Fair Pricing */}
           <button
             onClick={onOpenPricing}
-            className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white hover:bg-emerald-50 border-2 border-stone-200 hover:border-emerald-500 text-left transition-all shadow-sm hover:shadow-md group flex flex-col justify-between w-full"
+            className="p-3.5 sm:p-4 rounded-2xl bg-white hover:bg-[#FAF8F5] border border-stone-200 hover:border-stone-400 text-left transition-all shadow-2xs hover:shadow-xs hover:-translate-y-0.5 group flex flex-col justify-between w-full"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-2.5 sm:mb-3 group-hover:scale-110 transition-transform">
-              <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-stone-100 text-stone-800 group-hover:bg-stone-900 group-hover:text-white flex items-center justify-center mb-2.5 sm:mb-3 transition-colors shadow-2xs">
+              <IndianRupee className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
             </div>
 
             <div>
-              <span className="text-[9px] sm:text-[10px] font-bold text-emerald-700 uppercase block truncate">
+              <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-wider block truncate">
                 {t('dashboard.fairPricing')}
               </span>
 
-              <h4 className="font-black text-stone-900 text-xs sm:text-sm truncate">
+              <h4 className="font-bold text-stone-900 text-xs sm:text-sm truncate mt-0.5">
                 {t('dashboard.pricing')}
               </h4>
 
@@ -473,22 +475,22 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
           {/* Tutorial Tile */}
           <button
             onClick={onOpenTutorials}
-            className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 hover:border-amber-500 text-left transition-all shadow-sm hover:shadow-md group flex flex-col justify-between w-full"
+            className="p-3.5 sm:p-4 rounded-2xl bg-white hover:bg-[#FAF8F5] border border-stone-200 hover:border-stone-400 text-left transition-all shadow-2xs hover:shadow-xs hover:-translate-y-0.5 group flex flex-col justify-between w-full"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center mb-2.5 sm:mb-3 group-hover:scale-110 transition-transform shadow-md">
-              <Video className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-stone-100 text-stone-800 group-hover:bg-stone-900 group-hover:text-white flex items-center justify-center mb-2.5 sm:mb-3 transition-colors shadow-2xs">
+              <Video className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
             </div>
 
             <div>
-              <span className="text-[9px] sm:text-[10px] font-bold text-amber-800 uppercase block truncate">
+              <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-wider block truncate">
                 {language === 'hi' ? 'वीडियो गाइड' : 'Video Guides'}
               </span>
 
-              <h4 className="font-black text-stone-900 text-xs sm:text-sm truncate">
+              <h4 className="font-bold text-stone-900 text-xs sm:text-sm truncate mt-0.5">
                 {language === 'hi' ? 'ट्यूटोरियल' : 'Tutorial'}
               </h4>
 
-              <p className="text-[10px] sm:text-[11px] text-amber-900/80 mt-0.5 leading-tight font-medium line-clamp-2">
+              <p className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5 leading-tight line-clamp-2">
                 {language === 'hi' ? '2 वीडियो: हिन्दी व अंग्रेजी' : 'English & Hindi Videos'}
               </p>
             </div>
@@ -588,72 +590,72 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
         )}
 
         {/* Analytics Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
 
           {/* Revenue */}
-          <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200/70">
+          <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:border-stone-300 transition-all">
 
-            <span className="text-[10px] font-bold text-stone-500 uppercase">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">
               {t('dashboard.totalRevenue')}
             </span>
 
-            <p className="text-lg font-black text-stone-900 mt-0.5">
+            <p className="text-xl font-black text-stone-900 mt-1">
               ₹{CURRENT_ARTISAN.totalEarnings.toLocaleString('en-IN')}
             </p>
 
-            <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5 mt-0.5">
-              <ArrowUpRight className="w-3 h-3" />
+            <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-0.5 mt-1">
+              <ArrowUpRight className="w-3 h-3 text-emerald-600" />
               {t('dashboard.physicalFairComparison')}
             </span>
 
           </div>
 
           {/* Active Listings */}
-          <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200/70">
+          <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:border-stone-300 transition-all">
 
-            <span className="text-[10px] font-bold text-stone-500 uppercase">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">
               {t('dashboard.activeListings')}
             </span>
 
-            <p className="text-lg font-black text-stone-900 mt-0.5">
+            <p className="text-xl font-black text-stone-900 mt-1">
               {products.length} {t('dashboard.items')}
             </p>
 
-            <span className="text-[10px] text-blue-600 font-medium">
+            <span className="text-[10px] text-stone-600 font-semibold">
               {t('dashboard.allGICertified')}
             </span>
 
           </div>
 
           {/* Bulk Inquiries */}
-          <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200/70">
+          <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:border-stone-300 transition-all">
 
-            <span className="text-[10px] font-bold text-stone-500 uppercase">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">
               {t('dashboard.bulkInquiries')}
             </span>
 
-            <p className="text-lg font-black text-saffron-700 mt-0.5">
+            <p className="text-xl font-black text-stone-900 mt-1">
               2 {t('dashboard.pendingRFQs')}
             </p>
 
-            <span className="text-[10px] text-saffron-600 font-bold">
+            <span className="text-[10px] text-amber-700 font-semibold">
               {t('dashboard.gemTrifedBuyers')}
             </span>
 
           </div>
 
           {/* Rating */}
-          <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200/70">
+          <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:border-stone-300 transition-all">
 
-            <span className="text-[10px] font-bold text-stone-500 uppercase">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">
               {t('dashboard.artisanRating')}
             </span>
 
-            <p className="text-lg font-black text-stone-900 mt-0.5">
+            <p className="text-xl font-black text-stone-900 mt-1">
               ★ {CURRENT_ARTISAN.rating} / 5.0
             </p>
 
-            <span className="text-[10px] text-emerald-600 font-medium">
+            <span className="text-[10px] text-emerald-700 font-semibold">
               {CURRENT_ARTISAN.totalSalesCount} {t('dashboard.verifiedOrders')}
             </span>
 
@@ -662,17 +664,17 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
         </div>
 
         {/* AI Market Insight */}
-        <div className="p-3.5 bg-gradient-to-r from-amber-50 to-saffron-50/50 rounded-2xl border border-amber-200 text-xs flex items-start space-x-3">
+        <div className="p-4 bg-[#FAF8F5] rounded-2xl border border-stone-200 text-xs flex items-start space-x-3">
 
-          <span className="text-xl">💡</span>
+          <span className="text-2xl">💡</span>
 
           <div>
 
-            <span className="font-bold text-amber-900">
+            <span className="font-bold text-stone-900">
               {t('dashboard.marketTrendInsight')}
             </span>
 
-            <p className="text-stone-700 mt-0.5 leading-relaxed">
+            <p className="text-stone-600 mt-0.5 leading-relaxed">
               {t('dashboard.marketInsightText')}
             </p>
 
@@ -696,7 +698,7 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
               {t('dashboard.myCatalog')}
             </h3>
 
-            <span className="text-xs bg-stone-100 text-stone-700 px-2 py-0.5 rounded-full font-bold">
+            <span className="text-xs bg-stone-100 text-stone-700 px-2.5 py-0.5 rounded-full font-bold">
               {products.length}
             </span>
 
@@ -704,9 +706,9 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
 
           <button
             onClick={onOpenCopilot}
-            className="text-xs font-bold text-saffron-700 hover:text-saffron-800 flex items-center gap-1"
+            className="text-xs font-semibold text-white bg-stone-900 hover:bg-stone-800 flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl transition-all shadow-xs"
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
 
             <span>
               {t('dashboard.addProduct')}
@@ -715,37 +717,43 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
 
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
 
           {products.map((product) => (
 
             <div
               key={product.id}
               onClick={() => onSelectProduct(product)}
-              className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col"
+              className="bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
             >
 
               {/* Product Image */}
-              <div className="relative aspect-square bg-stone-100 overflow-hidden">
+              <div className="relative aspect-square bg-[#FAF7F2] overflow-hidden flex items-center justify-center">
 
                 <img
-                  src={product.enhancedImage || product.originalImage}
+                  src={product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage}
                   alt={product.titleEn}
-                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
 
                 {/* AI Enhanced / Studio Photo Badge */}
-                <span className="absolute top-2.5 right-2.5 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1">
+                <span className="absolute top-3 right-3 bg-emerald-700/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 border border-emerald-500/40">
                   <Sparkles className="w-2.5 h-2.5 text-amber-300" />
-                  {product.enhancedImage ? (language === 'hi' ? 'एआई संवर्धित' : 'AI Enhanced') : t('dashboard.originalPhoto')}
+                  {product.enhancedImageUrl || product.enhancedImage ? (language === 'hi' ? 'एआई संवर्धित' : 'AI Enhanced') : t('dashboard.originalPhoto')}
                 </span>
 
                 {/* GI Badge */}
                 {product.giCertified && (
-                  <span className="absolute top-2.5 left-2.5 bg-navy-900/90 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur">
+                  <span className="absolute top-3 left-3 bg-[#1C1815]/90 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs shadow-xs border border-amber-400/30 flex items-center gap-1">
+                    <Award className="w-3 h-3 text-amber-300" />
                     {t('dashboard.giTagged')}
                   </span>
                 )}
+
+                {/* Bottom Peek Pill */}
+                <div className="absolute bottom-2.5 inset-x-3 bg-black/65 backdrop-blur-xs text-white text-[9px] font-medium py-1 px-2.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                  <span>{language === 'hi' ? 'विवरण व पहले/बाद तुलना देखने हेतु टैप करें' : 'Tap to view details & Before/After comparison'}</span>
+                </div>
 
               </div>
 

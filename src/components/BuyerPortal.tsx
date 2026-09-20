@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Award, ShieldCheck, MessageSquare, Building2, CheckCircle2, Send, X } from 'lucide-react';
+import { Search, Award, ShieldCheck, MessageSquare, Building2, CheckCircle2, Send, X, Sparkles } from 'lucide-react';
 import { ProductListing, Language } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
 
@@ -104,11 +104,14 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
   return (
     <div className="space-y-6">
       {/* Government & B2B Buyer Linkage Banner */}
-      <div className="bg-gradient-to-r from-navy-950 via-stone-900 to-stone-800 rounded-3xl p-6 text-white shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-br from-[#1C1815] via-[#2A231D] to-[#181412] rounded-3xl p-6 sm:p-7 text-white border border-amber-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.18)] relative overflow-hidden">
+        {/* Top subtle golden shimmer line */}
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-saffron-400 to-amber-600"></div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
-              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-xs">
                 <Building2 className="w-3.5 h-3.5" />
                 GeM & TRIFED Integrated
               </span>
@@ -116,7 +119,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                 MoSJE Verified Artisan Registry
               </span>
             </div>
-            <h1 className="text-xl sm:text-3xl font-black tracking-tight">
+            <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white">
               B2B Artisan Sourcing & Bulk Procurement
             </h1>
             <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
@@ -124,8 +127,8 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur border border-white/15 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
-            <span className="text-xs text-stone-300 uppercase font-bold tracking-wider">Fair Wage Impact</span>
+          <div className="bg-white/10 backdrop-blur border border-white/15 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-lg">
+            <span className="text-xs text-amber-200 uppercase font-bold tracking-wider">Fair Wage Impact</span>
             <span className="text-2xl font-black text-amber-400 mt-0.5">100% Direct</span>
             <span className="text-[10px] text-emerald-300 font-medium">DBT to Artisan Bank Accounts</span>
           </div>
@@ -143,7 +146,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by craft, GI tag, material, artisan name..."
-              className="w-full pl-9 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-saffron-500"
+              className="w-full pl-9 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400"
             />
           </div>
 
@@ -151,7 +154,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
           <select
             value={selectedState}
             onChange={(e) => setSelectedState(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-saffron-500 max-w-xs truncate"
+            className="w-full sm:w-auto px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-400 max-w-xs truncate"
           >
             {states.map((s) => (
               <option key={s.value} value={s.value}>
@@ -166,7 +169,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
               type="checkbox"
               checked={onlyGICertified}
               onChange={(e) => setOnlyGICertified(e.target.checked)}
-              className="rounded text-saffron-600 focus:ring-saffron-500"
+              className="rounded text-stone-900 accent-stone-900 focus:ring-stone-400"
             />
             <span className="flex items-center gap-1">
               <Award className="w-3.5 h-3.5 text-amber-600" />
@@ -208,30 +211,39 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
           <div
             key={product.id}
             onClick={() => onSelectProduct(product)}
-            className="bg-white rounded-3xl border border-stone-200 overflow-hidden shadow-xs hover:shadow-xl transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
           >
             <div>
               {/* Product Visual */}
-              <div className="relative aspect-[4/3] bg-stone-100 overflow-hidden">
+              <div className="relative aspect-[4/3] bg-[#FAF7F2] overflow-hidden flex items-center justify-center">
                 <img
-                  src={product.enhancedImage || product.originalImage}
+                  src={product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage}
                   alt={product.titleEn}
-                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
 
                 <div className="absolute top-3 left-3 flex flex-col gap-1">
                   {product.giCertified && (
-                    <span className="bg-emerald-700/90 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-md backdrop-blur flex items-center gap-1 shadow-sm">
+                    <span className="bg-[#1C1815]/90 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs shadow-xs border border-amber-400/30 flex items-center gap-1">
                       <Award className="w-3 h-3 text-amber-300" />
                       GI Certified
                     </span>
                   )}
-                  <span className="bg-stone-900/80 text-saffron-300 text-[9px] font-mono px-2 py-0.5 rounded-md backdrop-blur">
+                  <span className="bg-stone-900/85 text-saffron-300 text-[9px] font-mono px-2 py-0.5 rounded-md backdrop-blur">
                     {product.state}
                   </span>
                 </div>
 
-                <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur text-stone-900 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm">
+                <div className="absolute top-3 right-3">
+                  {(product.enhancedImageUrl || product.enhancedImage) && (
+                    <span className="bg-emerald-700/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 border border-emerald-500/40">
+                      <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+                      AI Studio
+                    </span>
+                  )}
+                </div>
+
+                <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur text-stone-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-stone-200/60">
                   {product.stockQuantity} in stock
                 </div>
               </div>
@@ -242,7 +254,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                   <span className="text-[10px] font-bold text-saffron-700 uppercase tracking-wider">
                     {product.category}
                   </span>
-                  <h3 className="font-bold text-sm text-stone-900 line-clamp-1 group-hover:text-saffron-700 transition-colors">
+                  <h3 className="font-bold text-sm text-stone-900 line-clamp-1 group-hover:text-saffron-700 transition-colors mt-0.5">
                     {product.titleEn}
                   </h3>
                   <p className="text-xs text-stone-500 line-clamp-2 mt-1 leading-relaxed">
@@ -255,7 +267,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                   <img
                     src={CURRENT_ARTISAN.avatarUrl}
                     alt={product.artisanName}
-                    className="w-5 h-5 rounded-full object-cover border border-saffron-500"
+                    className="w-5 h-5 rounded-full object-cover ring-1 ring-saffron-500"
                   />
                   <span className="text-xs font-semibold text-stone-700 truncate">
                     {product.artisanName}
@@ -264,22 +276,22 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                 </div>
 
                 {/* Pricing & Wholesale Tiers Pill */}
-                <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200/80 space-y-1.5">
+                <div className="bg-gradient-to-b from-[#FAF8F5] to-[#F5EFEB] p-3.5 rounded-2xl border border-amber-100/90 space-y-1.5 shadow-2xs">
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs text-stone-500">Retail MSRP:</span>
                     <span className="text-sm font-black text-stone-900">
                       ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
                     </span>
                   </div>
-                  <div className="flex items-baseline justify-between text-xs pt-1 border-t border-stone-200">
+                  <div className="flex items-baseline justify-between text-xs pt-1 border-t border-amber-200/60">
                     <span className="font-semibold text-emerald-700">Bulk (10+ pcs):</span>
                     <span className="font-bold text-emerald-700">
                       ₹{product.pricing.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')} / pc
                     </span>
                   </div>
                   <div className="flex items-baseline justify-between text-xs">
-                    <span className="font-semibold text-navy-900">Govt Bulk (50+ pcs):</span>
-                    <span className="font-bold text-navy-900">
+                    <span className="font-semibold text-stone-800">Govt Bulk (50+ pcs):</span>
+                    <span className="font-bold text-stone-900">
                       ₹{product.pricing.wholesaleTiers[2].unitPrice.toLocaleString('en-IN')} / pc
                     </span>
                   </div>
@@ -291,7 +303,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
             <div className="p-4 pt-0 flex items-center justify-between gap-2">
               <button
                 onClick={(e) => handleChatWithArtisan(product, e)}
-                className="p-2.5 rounded-xl border border-stone-200 hover:bg-emerald-50 text-stone-700 transition-colors"
+                className="p-2.5 rounded-xl border border-stone-200 hover:bg-emerald-50 text-stone-700 transition-colors shadow-2xs"
                 title="Chat with Artisan"
               >
                 <MessageSquare className="w-4 h-4 text-emerald-600" />
@@ -299,9 +311,9 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
 
               <button
                 onClick={(e) => handleOpenRFQ(product, e)}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-navy-900 hover:bg-black text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
               >
-                <Building2 className="w-3.5 h-3.5 text-saffron-400" />
+                <Building2 className="w-3.5 h-3.5 text-amber-300" />
                 <span>Request B2B Quote</span>
               </button>
             </div>
@@ -422,7 +434,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md flex items-center gap-1.5"
+                    className="px-6 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>Submit Official RFQ</span>
