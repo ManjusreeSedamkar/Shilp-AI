@@ -23,60 +23,60 @@ India is home to over 7 million traditional artisans producing exquisite handicr
 
 ---
 
-## ✨ Key Features & Capabilities
+## 🖼️ Before & After Photographic Enhancement (100% Authentic Product)
 
-### 1. 📸 AI Computer Vision Studio & Photographic Enhancement
-Turns raw, dimly lit workshop photos into studio-grade e-commerce listings while preserving the **exact authentic craft**:
-* **100% Product Authenticity**: Preserves the original craft without redrawing, recoloring, or AI hallucinations. Patterns, weaves, embroidery, and textures remain completely identical to the real product.
-* **Complete Background Clutter Removal**: Uses multi-tiered neural and topological segmentation to eliminate messy room backgrounds (beds, clothes, walls, floors, tools) without creating white patches or internal holes.
-* **Studio-Grade Backdrop**: Replaces clutter with clean, elegant studio backdrops (*Pure White, Warm Ivory Studio, Soft Gray, or Transparent PNG*).
-* **Photographic Light & Tone Correction**:
-  * **Dynamic Range Auto-Levels**: Evaluates 2nd to 98th percentile foreground luminance, lifting dingy shadows into radiant clarity.
-  * **Highlight-Protected Brightness Lift**: Default `+15%` brightening that safeguards metallic zari and glossy finishes from blowout.
-  * **S-Curve Dynamic Contrast**: Default `+22%` contrast enhancement for crisp folds and rich depth.
-  * **Natural Dye Vibrance / Saturation**: Default `+22%` saturation boost enriching natural pigments (indigo, madder, turmeric, zari) without artificial color casts.
-  * **Texture Sharpening (Unsharp Mask)**: Enhances weave detail and chisel marks cleanly.
+The core principle of Shilp-AI's Computer Vision studio is **Photo Editing Only — Zero Regeneration**:
+
+> **"The product remains 100% identical to the real physical craft — same saree, exact colors, patterns, embroidery, texture, folds, shape, size, and position. We never regenerate, redraw, recolor, or distort the artisan's genuine work."**
+
+| 📷 Before (Original Workshop Photo) | ✨ After (Professional Studio Edit) |
+| :---: | :---: |
+| <img src="public/crafts/saree_raw_photo.png" width="320" alt="Original Workshop Photo" /> | <img src="public/crafts/saree_enhanced_studio.png" width="320" alt="Professional Studio Edit" /> |
+| *Dim room, cluttered bed, dark wardrobe, murky shadows* | *100% identical saree, clean studio backdrop, lifted exposure & zari radiance* |
+
+### The 5 E-Commerce Quality Standards Met:
+1. ✂️ **Background Removal (बैकग्राउंड हटाना)**: The entire cluttered room (walls, bed, clothes, floor, shadows) is removed cleanly without punching holes through the saree or leaving white patches.
+2. ☀️ **Better Lighting (बेहतर लाइटिंग)**: Auto-levels dynamic range stretch brings out hidden folds and gold zari luster without blowing out highlights.
+3. 🎨 **Natural Color Correction (प्राकृतिक रंग सुधार)**: Authentic silk dye (magenta-purple) and metallic gold zari luster are preserved naturally without artificial tinting or color shifts.
+4. 📐 **Proper Positioning & Cropping (उचित स्थिति व क्रॉपिंग)**: Centered and straightened on standard square e-commerce framing with soft ground depth.
+5. ✨ **Enhanced Quality (संवर्धित गुणवत्ता)**: Unsharp mask edge sharpening highlights intricate weave threads and embroidery with reduced sensor noise.
+
+---
+
+## ✨ Key Features & Modules
+
+### 1. 📸 AI Computer Vision Studio & Live Sliders
+* **Topological BFS & Neural Segmentation**: Combines in-browser WebAssembly neural segmentation (`@imgly/background-removal`) with a fallback Saliency BFS contour engine and morphological hole-closing to eliminate background clutter without internal white patches.
 * **Interactive Fine-Tuning Sliders**:
-  * Live sliders for **Brightness** (`-30%` to `+50%`), **Contrast** (`-20%` to `+50%`), and **Saturation** (`-20%` to `+50%`).
+  * ☀️ **Brightness** (`-30%` to `+50%`): Lift shadows with highlight protection.
+  * 🌓 **Contrast** (`-20%` to `+50%`): S-curve contrast for deep folds and crisp details.
+  * 🎨 **Saturation / Vibrance** (`-20%` to `+50%`): Enrich natural vegetable and mineral dyes.
   * **✨ Reset to AI Optimal**: 1-click restore to AI-recommended photographic settings.
-  * **Lightning-Fast (15ms) Latency**: In-memory cutout segmentation caching allows real-time slider updates without re-processing masks.
-* **Interactive Dual Before/After Showcase**:
-  * Dual-card layout matching e-commerce verification standards with the **5 Quality Badges**:
-    1. ✂️ *Background Removal (बैकग्राउंड हटाना)*
-    2. ☀️ *Better Lighting (बेहतर लाइटिंग)*
-    3. 🎨 *Natural Color Correction (प्राकृतिक रंग सुधार)*
-    4. 📐 *Proper Positioning & Cropping (उचित स्थिति व क्रॉपिंग)*
-    5. ✨ *Enhanced Quality (संवर्धित गुणवत्ता)*
-  * Interactive draggable split slider for side-by-side inspection.
+* **15ms Instant Response**: In-memory cutout segmentation caching enables instant real-time slider feedback without re-segmenting.
+* **Interactive Comparison Views**: Toggle between **Showcase View** (with the 5 Badges) and **Split Slider View** (interactive draggable divider).
 
 ---
 
 ### 2. 🎙️ Multilingual Voice-First Cataloging
-Artisans do not have to type long product forms:
-* Simply tap the microphone and speak naturally in **Hindi** or **English**:
+* **Zero Form Typing**: Artisans simply speak into their microphone in **Hindi** or **English**:
   > *"यह बनारसी रेशम की साड़ी है। 5 दिन लगे और ₹2,500 कच्चा माल लगा।"*  
   > *(Or: "This is a handwoven Banarasi silk saree. It took me 5 days to make with 2500 rupees in raw materials.")*
-* **Automatic NLP Attribute Extraction**:
-  * Automatically identifies the craft category, materials used, production days, and raw material costs.
-  * Checks and applies authentic **Geographical Indication (GI Tag)** heritage identifiers.
-* **Bilingual Storytelling**:
-  * Generates an evocative cultural narrative in Hindi honoring the artisan's tradition.
-  * Generates an SEO-optimized English product listing with meta search keywords for global buyers.
-* **Voice Feedback**: The AI Copilot speaks back to the artisan with audio confirmation via Web SpeechSynthesis.
+* **Automatic NLP Attribute Extraction**: Identifies craft category, materials used, production days, raw cost, and verified **Geographical Indication (GI Tag)** heritage identifiers.
+* **Bilingual Storytelling**: Generates evocative cultural storytelling in Hindi and SEO-optimized listings in English.
+* **Spoken Audio Feedback**: The AI Copilot speaks back with voice confirmation via Web SpeechSynthesis.
 
 ---
 
 ### 3. ⚖️ Fair Value Pricing Engine (Guaranteed Living Wage)
-Protects artisans from selling below cost or being exploited:
 * **Living Daily Wage Standard**: Integrates verified daily wage baselines (₹750 – ₹950/day based on skill and state guidelines).
 * **Transparent Cost Breakdown**:
-  * **Fair Retail Price** = (Raw Material Cost × 1.15) + (Labor Days × Daily Wage) + Heritage Margin
-* **GI Craft Heritage Multiplier**: Adds a 1.15x to 1.35x premium for rare, certified heritage crafts.
+  $$\text{Fair Retail Price} = (\text{Raw Material Cost} \times 1.15) + (\text{Labor Days} \times \text{Daily Wage}) + \text{Heritage Artisan Margin}$$
+* **GI Craft Heritage Multiplier**: Adds a 1.15x to 1.35x premium for certified authentic heritage crafts.
 * **Wholesale Volume Tiers**:
   * Retail (1–9 units): Base Fair Price
   * Wholesale Bulk (10–49 units): 18% discount
   * Institutional / Export (50+ units): 28% discount
-* **Interactive Sliders**: Artisans can adjust raw material costs and craft duration in real-time to see their transparent wage and profit breakdown.
+* **Interactive Sliders**: Artisans can adjust material costs and craft days to see their transparent labor earnings and margin breakdown.
 
 ---
 
@@ -243,7 +243,7 @@ Shilp-AI includes full Capacitor Android configuration for installation on mobil
 | Check | Command | Status |
 | :--- | :--- | :--- |
 | **TypeScript Compilation** | `tsc --noEmit` | **`Passed (0 errors)`** |
-| **Production Build** | `npm run build` | **`✓ built in ~11s`** |
+| **Production Build** | `npm run build` | **`✓ built in ~5.5s`** |
 | **Dev Server HTTP Health**| `GET http://localhost:5173/` | **`200 OK`** |
 
 ---
