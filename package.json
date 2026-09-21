@@ -13,6 +13,7 @@
     "@capacitor/cli": "^8.5.1",
     "@capacitor/core": "^8.5.1",
     "@imgly/background-removal": "^1.7.0",
+    "onnxruntime-web": "^1.21.0",
     "clsx": "^2.1.1",
     "firebase": "^12.19.0",
     "lucide-react": "^0.468.0",

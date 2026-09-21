@@ -49,12 +49,22 @@ export interface ProcessedImageResult {
 let imglyRemoveBackgroundPromise: Promise<any> | null = null;
 function getImglyRemoveBackground(): Promise<any> {
   if (!imglyRemoveBackgroundPromise) {
-    imglyRemoveBackgroundPromise = import('@imgly/background-removal')
-      .then((mod) => mod.removeBackground || mod.default)
-      .catch((err) => {
+    // Load ONNX runtime and configure threading before loading the background removal model
+    imglyRemoveBackgroundPromise = (async () => {
+      try {
+        const ort = await import('onnxruntime-web');
+        // If the page is not cross‑origin isolated, restrict WebAssembly to a single thread
+        if (!self.crossOriginIsolated) {
+          // @ts-ignore – ort.env may not have exact typings here
+          ort.env.wasm.numThreads = 1;
+        }
+        const mod = await import('@imgly/background-removal');
+        return mod.removeBackground || mod.default;
+      } catch (err) {
         console.warn('AI neural background model load skipped, using advanced saliency segmentation:', err);
         return null;
-      });
+      }
+    })();
   }
   return imglyRemoveBackgroundPromise;
 }
@@ -152,7 +162,7 @@ export class AIImageStudio {
             });
             // 7.5 second timeout safeguard
             const timeoutPromise = new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('AI neural timeout')), 7500)
+              setTimeout(() => reject(new Error('AI neural timeout')), 60000)
             );
             const blob = await Promise.race([neuralBlobPromise, timeoutPromise]);
             if (blob && blob.size > 1000) {
@@ -173,11 +183,9 @@ export class AIImageStudio {
           const cutoutData = tempCtx.getImageData(0, 0, srcW, srcH);
           bbox = this.calculateNonTransparentBoundingBox(cutoutData);
         } else {
-          // Tier 2: Advanced Saliency BFS Contour Segmentation
-          // (Guarantees zero white patches inside the product and clean total background clearance)
-          const workingData = tempCtx.getImageData(0, 0, srcW, srcH);
-          bbox = this.applyTotalBackgroundRemoval(workingData);
-          tempCtx.putImageData(workingData, 0, 0);
+          // Tier 2 fallback: keep original image without background removal
+          // Use the whole image as foreground; compute bbox covering the complete image
+          bbox = { minX: 0, minY: 0, maxX: srcW, maxY: srcH };
         }
 
         // Cache the segmented cutout for instantaneous slider adjustments
