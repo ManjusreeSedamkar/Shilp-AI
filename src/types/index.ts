@@ -31,6 +31,72 @@ export interface ArtisanProfile {
   bankLinked: boolean;
 }
 
+// ============================================================
+// AI Demand Prediction & Dynamic Market Pricing Types
+// ============================================================
+
+export type DemandLevel = 'Very Low' | 'Low' | 'Moderate' | 'High' | 'Very High';
+export type ConfidenceLevel = 'Low' | 'Medium' | 'High';
+export type FactorImpact = 'Positive' | 'Negative' | 'Neutral' | 'Unavailable';
+export type SeasonalStatus = 'Positive' | 'Negative' | 'Neutral' | 'Data unavailable';
+
+export interface DemandFactor {
+  factor: string;
+  impact: FactorImpact;
+  description: string;
+}
+
+export interface SeasonalImpact {
+  status: SeasonalStatus;
+  description: string;
+}
+
+export interface DataAvailability {
+  historicalSales: boolean;
+  buyerInterest: boolean;
+  recentOrders: boolean;
+  seasonalData: boolean;
+  inventoryData: boolean;
+}
+
+export interface AIDemandMarketPricingResult {
+  demandScore: number;
+  demandLevel: DemandLevel;
+  basePrice: number;
+  recommendedPrice: number;
+  minimumPrice: number;
+  maximumPrice: number;
+  demandAdjustmentPercent: number;
+  confidenceScore: number;
+  confidenceLevel: ConfidenceLevel;
+  factors: DemandFactor[];
+  seasonalImpact: SeasonalImpact;
+  explanation: string;
+  dataAvailability: DataAvailability;
+}
+
+export interface MarketDataInputs {
+  productCategory?: string;
+  craftTechnique?: string;
+  rawMaterialCost: number;
+  laborCost: number;
+  productionDays?: number;
+  stockQuantity?: number;
+  historicalSalesCount?: number;
+  recentOrderCount?: number;
+  productViewsCount?: number;
+  wishlistCount?: number;
+  rfqCount?: number;
+  chatEnquiryCount?: number;
+  seasonalContext?: {
+    isFestiveSeason?: boolean;
+    isWeddingSeason?: boolean;
+    isRegionalEvent?: boolean;
+    isTourismSeason?: boolean;
+    eventDescription?: string;
+  };
+}
+
 export interface PricingBreakdown {
   rawMaterialCost: number;
   wastageBuffer: number; // 15%
@@ -55,6 +121,7 @@ export interface PricingBreakdown {
     discountPercent: number;
     unitPrice: number;
   }[];
+  aiMarketPricing?: AIDemandMarketPricingResult;
 }
 
 export interface ProductListing {
@@ -156,11 +223,33 @@ export interface Conversation {
   unreadCount: number;
 }
 
+export interface PlacedOrder {
+  id: string;
+  productId: string;
+  productTitle: string;
+  productImage: string;
+  artisanId: string;
+  artisanName: string;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  buyerId?: string;
+  buyerName: string;
+  buyerPhone: string;
+  shippingAddress: string;
+  paymentMethod: string;
+  orderDate: string;
+  status: 'confirmed' | 'dispatched' | 'delivered' | 'cancelled' | 'pending' | 'failed';
+  items?: { productId: string; quantity: number; unitPrice: number }[];
+}
+
 export interface ProductReview {
   id: string;
   productId: string;
+  artisanId?: string;
   buyerId: string;
   buyerName: string;
+  orderId?: string;
   rating: number; // 1-5
   comment: string;
   createdAt: string;

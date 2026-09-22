@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, ShoppingBag, ShieldCheck, Truck, CheckCircle2, CreditCard, ArrowRight, IndianRupee, Sparkles, Building2, User, Phone, MapPin } from 'lucide-react';
-import { ProductListing, Language } from '../types';
+import { X, ShoppingBag, ShieldCheck, Truck, CheckCircle2, CreditCard, ArrowRight, IndianRupee, Sparkles, Building2, User, Phone, MapPin, Star } from 'lucide-react';
+import { ProductListing, Language, PlacedOrder } from '../types';
 import { translate } from '../services/translations';
 
 interface CheckoutModalProps {
@@ -9,24 +9,7 @@ interface CheckoutModalProps {
   product: ProductListing;
   language?: Language;
   onOrderSuccess: (order: PlacedOrder) => void;
-}
-
-export interface PlacedOrder {
-  id: string;
-  productId: string;
-  productTitle: string;
-  productImage: string;
-  artisanId: string;
-  artisanName: string;
-  quantity: number;
-  unitPrice: number;
-  totalAmount: number;
-  buyerName: string;
-  buyerPhone: string;
-  shippingAddress: string;
-  paymentMethod: string;
-  orderDate: string;
-  status: 'confirmed' | 'dispatched' | 'delivered';
+  onLeaveReview?: (order: PlacedOrder) => void;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -35,6 +18,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   product,
   language = 'en',
   onOrderSuccess,
+  onLeaveReview,
 }) => {
   const [quantity, setQuantity] = useState<number>(1);
   const [orderType, setOrderType] = useState<'retail' | 'bulk'>('retail');
@@ -76,6 +60,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         quantity,
         unitPrice,
         totalAmount: finalTotal,
+        buyerId: 'buyer-201',
         buyerName,
         buyerPhone,
         shippingAddress: buyerAddress,
@@ -177,10 +162,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             <div className="pt-2 flex items-center justify-center gap-3">
               <button
-                onClick={onClose}
-                className="px-6 py-2.5 rounded-xl bg-saffron-600 hover:bg-saffron-700 text-white text-xs font-bold shadow-md shadow-saffron-600/25 transition-all"
+                onClick={() => {
+                  onClose();
+                  if (placedOrder && onLeaveReview) {
+                    onLeaveReview(placedOrder);
+                  }
+                }}
+                className="px-6 py-2.5 rounded-xl bg-saffron-600 hover:bg-saffron-700 text-white text-xs font-bold shadow-md shadow-saffron-600/25 transition-all flex items-center justify-center gap-2"
               >
-                Back to Marketplace & Leave Review
+                <Star className="w-4 h-4 fill-amber-300 text-amber-300" />
+                <span>Back to Marketplace & Leave Review</span>
               </button>
             </div>
           </div>

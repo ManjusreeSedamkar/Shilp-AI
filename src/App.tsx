@@ -13,14 +13,14 @@ import { ChatMessaging } from './components/ChatMessaging';
 import { ReviewsSection } from './components/ReviewsSection';
 import { ArtisanCardModal } from './components/ArtisanCardModal';
 import { AuthModal, AuthUser } from './components/AuthModal';
-import { CheckoutModal, PlacedOrder } from './components/CheckoutModal';
+import { CheckoutModal } from './components/CheckoutModal';
 import { TutorialPage } from './components/TutorialPage';
 import { INITIAL_PRODUCTS, CURRENT_ARTISAN } from './data/craftPresets';
-import { ProductListing, UserRole, Language, Conversation, ChatMessage, CustomizationRequest, ProductReview } from './types';
+import { ProductListing, UserRole, Language, Conversation, ChatMessage, CustomizationRequest, ProductReview, PlacedOrder } from './types';
 import { Home, Camera, Mic, Bot, IndianRupee, Sparkles, CheckCircle2, ShoppingBag, MessageSquare, Star, ShieldCheck, Video } from 'lucide-react';
 import { translate } from './services/translations';
 import { LanguageAutoTranslator } from './components/LanguageAutoTranslator';
-import { fetchProductsFromFirestore, saveProductToFirestore } from './services/firebase';
+import { fetchProductsFromFirestore, saveProductToFirestore, deleteProductFromFirestore, saveReviewToFirestore, fetchReviewsFromFirestore } from './services/firebase';
 
 // Sample initial conversations
 const INITIAL_CONVERSATIONS: Conversation[] = [
@@ -70,7 +70,8 @@ const INITIAL_CONVERSATIONS: Conversation[] = [
 const INITIAL_REVIEWS: ProductReview[] = [
   {
     id: 'rev-1',
-    productId: INITIAL_PRODUCTS[0]?.id || 'prod-1',
+    productId: INITIAL_PRODUCTS[0]?.id || 'prod-001',
+    artisanId: 'art-101',
     buyerId: 'buyer-201',
     buyerName: 'Vikram Mehta',
     rating: 5,
@@ -80,13 +81,47 @@ const INITIAL_REVIEWS: ProductReview[] = [
   },
   {
     id: 'rev-2',
-    productId: INITIAL_PRODUCTS[0]?.id || 'prod-1',
+    productId: INITIAL_PRODUCTS[0]?.id || 'prod-001',
+    artisanId: 'art-101',
     buyerId: 'buyer-202',
     buyerName: 'Ananya Deshmukh',
     rating: 5,
     comment: 'The colors and texture are stunning. Fast delivery with MoSJE verification seal. Highly recommended!',
     createdAt: '28 Aug 2026',
     verifiedPurchase: true
+  },
+  {
+    id: 'rev-3',
+    productId: INITIAL_PRODUCTS[0]?.id || 'prod-001',
+    artisanId: 'art-101',
+    buyerId: 'buyer-200',
+    buyerName: 'Rameshwaram Koli',
+    rating: 5,
+    comment: 'Masterful craftsmanship and incredible weaving quality. Truly preserved heritage technique!',
+    createdAt: '20 Aug 2026',
+    verifiedPurchase: true
+  }
+];
+
+// Sample initial orders
+const INITIAL_ORDERS: PlacedOrder[] = [
+  {
+    id: 'ORD-882191',
+    productId: INITIAL_PRODUCTS[0]?.id || 'prod-001',
+    productTitle: INITIAL_PRODUCTS[0]?.titleEn || 'Heritage Banarasi Katan Silk Saree',
+    productImage: INITIAL_PRODUCTS[0]?.enhancedImage || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800',
+    artisanId: 'art-101',
+    artisanName: 'Rameshwaram Koli',
+    quantity: 1,
+    unitPrice: 14840,
+    totalAmount: 14840,
+    buyerId: 'buyer-201',
+    buyerName: 'Vikram Mehta',
+    buyerPhone: '+91 98201 12345',
+    shippingAddress: 'FabIndia HQ, New Delhi',
+    paymentMethod: 'Direct DBT',
+    orderDate: '15 Aug 2026',
+    status: 'delivered',
   }
 ];
 
@@ -103,6 +138,16 @@ export function App() {
       return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
     } catch {
       return INITIAL_PRODUCTS;
+    }
+  });
+
+  // Persistent Orders State
+  const [orders, setOrders] = useState<PlacedOrder[]>(() => {
+    try {
+      const saved = localStorage.getItem('shilp_ai_orders');
+      return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    } catch {
+      return INITIAL_ORDERS;
     }
   });
 
@@ -145,7 +190,7 @@ export function App() {
     }
   });
 
-  // Modals
+  // Modals & View Selection State
   const [selectedProduct, setSelectedProduct] = useState<ProductListing | null>(null);
   const [productToCheckout, setProductToCheckout] = useState<ProductListing | null>(null);
   const [stagedPhotoUrl, setStagedPhotoUrl] = useState<string | null>(null);
@@ -154,6 +199,12 @@ export function App() {
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const [showCardModal, setShowCardModal] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [autoOpenReview, setAutoOpenReview] = useState<boolean>(false);
+
+  // Reviews Loading & Error State
+  const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(true);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [selectedReviewProductId, setSelectedReviewProductId] = useState<string>(INITIAL_PRODUCTS[0]?.id || 'prod-001');
 
   const t = (key: string) => translate(language, key);
 
@@ -165,6 +216,15 @@ export function App() {
       console.warn('Failed to persist products:', err);
     }
   }, [products]);
+
+  // Save orders to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('shilp_ai_orders', JSON.stringify(orders));
+    } catch (err) {
+      console.warn('Failed to persist orders:', err);
+    }
+  }, [orders]);
 
   // Save conversations to localStorage
   useEffect(() => {
@@ -205,7 +265,7 @@ export function App() {
     }
   }, []);
 
-  // Synchronize product listings from Cloud Firestore
+  // Synchronize product listings and reviews from Cloud Firestore
   useEffect(() => {
     fetchProductsFromFirestore()
       .then((remoteProducts) => {
@@ -214,7 +274,24 @@ export function App() {
         }
       })
       .catch((err) => console.warn('Firestore initial sync notice:', err));
-  }, []);
+
+    setIsLoadingReviews(true);
+    setReviewsError(null);
+
+    fetchReviewsFromFirestore()
+      .then((remoteReviews) => {
+        if (remoteReviews && remoteReviews.length > 0) {
+          setReviews(remoteReviews);
+        }
+      })
+      .catch((err) => {
+        console.warn('Firestore reviews sync notice:', err);
+        setReviewsError(language === 'hi' ? 'समीक्षाएं लोड करने में त्रुटि' : 'Unable to load reviews from Cloud Firestore');
+      })
+      .finally(() => {
+        setIsLoadingReviews(false);
+      });
+  }, [language]);
 
   const handleOnboardingClose = () => {
     setShowOnboarding(false);
@@ -234,6 +311,27 @@ export function App() {
     saveProductToFirestore(newProduct).catch((err) =>
       console.warn('Background firestore sync notice:', err)
     );
+  };
+
+  // Product Deletion Callback with Ownership Verification
+  const handleDeleteProduct = async (productId: string) => {
+    const activeUserId = currentUser?.id || CURRENT_ARTISAN.id;
+    const targetProduct = products.find((p) => p.id === productId);
+
+    if (targetProduct && targetProduct.artisanId && targetProduct.artisanId !== activeUserId) {
+      throw new Error(
+        language === 'hi'
+          ? 'अनधिकृत: आप केवल अपने खाते के उत्पादों को ही हटा सकते हैं।'
+          : 'Unauthorized: You can only delete products that belong to your account.'
+      );
+    }
+
+    await deleteProductFromFirestore(productId, activeUserId);
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    if (selectedProduct?.id === productId) {
+      setSelectedProduct(null);
+    }
+    showToast(language === 'hi' ? 'उत्पाद सफलतापूर्वक हटा दिया गया।' : 'Product deleted successfully.');
   };
 
   // Staging Photo from Studio to Smart Catalog
@@ -329,8 +427,13 @@ export function App() {
   };
 
   // Reviews System
-  const handleAddReview = (review: ProductReview) => {
-    setReviews((prev) => [review, ...prev]);
+  const handleAddReview = async (review: ProductReview) => {
+    setReviews((prev) => [review, ...prev.filter((r) => r.id !== review.id)]);
+    try {
+      await saveReviewToFirestore(review);
+    } catch (err) {
+      console.warn('Review save to Firestore warning:', err);
+    }
     showToast(t('success.reviewSubmitted'));
   };
 
@@ -340,7 +443,38 @@ export function App() {
 
   // Purchase / Checkout Flow
   const handleOrderSuccess = (order: PlacedOrder) => {
-    showToast(`Order #${order.id} placed! Artisan notified via SMS.`);
+    const deliveredOrder: PlacedOrder = {
+      ...order,
+      status: 'delivered', // Mark as delivered so buyer becomes eligible to rate & review!
+    };
+    setOrders((prev) => [deliveredOrder, ...prev.filter((o) => o.id !== order.id)]);
+    showToast(`Order #${order.id} placed & delivered! You can now rate & review under My Orders.`);
+  };
+
+  const handleLeaveReviewFromCheckout = (order: PlacedOrder) => {
+    const prod = products.find((p) => p.id === order.productId) || ({
+      id: order.productId,
+      titleEn: order.productTitle,
+      titleHi: order.productTitle,
+      descriptionEn: 'Purchased artisan item.',
+      descriptionHi: 'खरीदा गया शिल्प सामान।',
+      category: 'craft',
+      artisanName: order.artisanName || 'Master Artisan',
+      artisanId: order.artisanId || 'art-101',
+      artisanLocation: 'India',
+      pricing: { suggestedRetailPrice: order.unitPrice || order.totalAmount, wholesaleMinPrice: (order.unitPrice || order.totalAmount) * 0.8 },
+      qualityScore: 95,
+      exportReady: true,
+      originalImageUrl: order.productImage || 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&q=80&w=600',
+      enhancedImageUrl: order.productImage || 'https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?auto=format&fit=crop&q=80&w=600',
+      tags: ['craft'],
+      stories: [],
+    } as unknown as ProductListing);
+
+    setRole('buyer');
+    setSelectedProduct(prod);
+    setAutoOpenReview(true);
+    setProductToCheckout(null);
   };
 
   return (
@@ -411,6 +545,7 @@ export function App() {
           product={productToCheckout}
           language={language}
           onOrderSuccess={handleOrderSuccess}
+          onLeaveReview={handleLeaveReviewFromCheckout}
         />
       )}
 
@@ -422,9 +557,14 @@ export function App() {
               /* Buyer / Government Portal View */
               <BuyerPortal
                 products={products}
+                orders={orders}
+                reviews={reviews}
                 onSelectProduct={(prod) => setSelectedProduct(prod)}
                 onStartConversation={handleStartConversation}
+                onAddReview={handleAddReview}
                 language={language}
+                currentBuyerId={currentUser?.id || 'buyer-201'}
+                currentBuyerName={currentUser?.name || 'Vikram Mehta'}
               />
             ) : (
               /* Artisan App View with Navigation */
@@ -550,6 +690,8 @@ export function App() {
                       onOpenPricing={() => setArtisanTab('pricing')}
                       onOpenTutorials={() => setArtisanTab('tutorials')}
                       onSelectProduct={(prod) => setSelectedProduct(prod)}
+                      onDeleteProduct={handleDeleteProduct}
+                      currentUserId={currentUser?.id || CURRENT_ARTISAN.id}
                       language={language}
                     />
                   )}
@@ -604,17 +746,57 @@ export function App() {
 
                   {artisanTab === 'reviews' && (
                     <div className="space-y-4">
-                      {products.map((product) => (
-                        <ReviewsSection
-                          key={product.id}
-                          productId={product.id}
-                          productTitle={product.titleEn}
-                          reviews={getProductReviews(product.id)}
-                          language={language}
-                          currentBuyerName={currentUser?.name || 'Vikram Mehta'}
-                          onAddReview={handleAddReview}
-                        />
-                      ))}
+                      {(() => {
+                        const currentArtisanId = currentUser?.id || CURRENT_ARTISAN.id;
+                        const currentArtisanName = currentUser?.name || CURRENT_ARTISAN.name;
+                        const artisanProducts = products.filter(
+                          (p) => p.artisanId === currentArtisanId || p.artisanName === currentArtisanName
+                        );
+                        const displayProducts = artisanProducts.length > 0 ? artisanProducts : products;
+                        const targetProduct = displayProducts.find((p) => p.id === selectedReviewProductId) || displayProducts[0];
+
+                        if (!targetProduct) return null;
+
+                        return (
+                          <>
+                            <div className="bg-white p-4 rounded-2xl border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                              <div>
+                                <h3 className="font-bold text-stone-900 text-sm">
+                                  {language === 'hi' ? 'उत्पाद समीक्षाएं देखें' : 'Select Product Reviews'}
+                                </h3>
+                                <p className="text-xs text-stone-500">
+                                  {language === 'hi' ? 'उत्पाद के अनुसार ग्राहक प्रतिक्रिया देखें' : 'View customer feedback by craft product'}
+                                </p>
+                              </div>
+                              <select
+                                value={targetProduct.id}
+                                onChange={(e) => setSelectedReviewProductId(e.target.value)}
+                                className="px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-400"
+                              >
+                                {displayProducts.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.titleEn}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <ReviewsSection
+                              key={targetProduct.id}
+                              productId={targetProduct.id}
+                              productTitle={targetProduct.titleEn}
+                              artisanId={targetProduct.artisanId}
+                              reviews={getProductReviews(targetProduct.id)}
+                              language={language}
+                              currentBuyerName={currentUser?.name || 'Vikram Mehta'}
+                              currentBuyerId={currentUser?.id || 'buyer-201'}
+                              onAddReview={handleAddReview}
+                              isLoading={isLoadingReviews}
+                              error={reviewsError}
+                            />
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -628,13 +810,18 @@ export function App() {
       {selectedProduct && (
         <ProductDetailModal
           product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
+          onClose={() => {
+            setSelectedProduct(null);
+            setAutoOpenReview(false);
+          }}
           onRequestQuote={() => {
             setSelectedProduct(null);
+            setAutoOpenReview(false);
             setRole('buyer');
           }}
           onBuyNow={(prod) => {
             setSelectedProduct(null);
+            setAutoOpenReview(false);
             setProductToCheckout(prod);
           }}
           onStartConversation={handleStartConversation}
@@ -642,6 +829,9 @@ export function App() {
           reviews={reviews}
           onAddReview={handleAddReview}
           currentBuyerName={currentUser?.name || 'Vikram Mehta'}
+          isLoadingReviews={isLoadingReviews}
+          reviewsError={reviewsError}
+          autoOpenReview={autoOpenReview}
         />
       )}
 

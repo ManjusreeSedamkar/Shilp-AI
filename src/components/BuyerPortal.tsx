@@ -1,27 +1,40 @@
 import React, { useState } from 'react';
-import { Search, Award, ShieldCheck, MessageSquare, Building2, CheckCircle2, Send, X, Sparkles } from 'lucide-react';
-import { ProductListing, Language } from '../types';
+import { Search, Award, ShieldCheck, MessageSquare, Building2, CheckCircle2, Send, X, Sparkles, ShoppingBag, Star, Package, Clock, Check } from 'lucide-react';
+import { ProductListing, Language, PlacedOrder, ProductReview } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
+import { ReviewsSection } from './ReviewsSection';
 
 interface BuyerPortalProps {
   products: ProductListing[];
+  orders?: PlacedOrder[];
+  reviews?: ProductReview[];
   onSelectProduct: (product: ProductListing) => void;
   onStartConversation?: (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => void;
+  onAddReview?: (review: ProductReview) => void;
   language?: Language;
+  currentBuyerId?: string;
+  currentBuyerName?: string;
 }
 
 export const BuyerPortal: React.FC<BuyerPortalProps> = ({
   products,
+  orders = [],
+  reviews = [],
   onSelectProduct,
   onStartConversation,
-  language = 'en'
+  onAddReview,
+  language = 'en',
+  currentBuyerId = 'buyer-201',
+  currentBuyerName = 'Vikram Mehta',
 }) => {
+  const [activePortalTab, setActivePortalTab] = useState<'catalog' | 'orders'>('catalog');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedState, setSelectedState] = useState<string>('all');
   const [onlyGICertified, setOnlyGICertified] = useState(false);
   const [activeRFQProduct, setActiveRFQProduct] = useState<ProductListing | null>(null);
   const [rfqSubmitted, setRfqSubmitted] = useState(false);
+  const [activeReviewModalOrder, setActiveReviewModalOrder] = useState<PlacedOrder | null>(null);
 
   // RFQ Form State
   const [rfqForm, setRfqForm] = useState({
@@ -101,8 +114,141 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
     }, 2500);
   };
 
+  const buyerOrders = orders.filter(
+    (o) => o.buyerId === currentBuyerId || (currentBuyerId === 'buyer-201' && (o.buyerName === 'Vikram Mehta' || !o.buyerId))
+  );
+
   return (
     <div className="space-y-6">
+      {/* Buyer Tab Bar: Marketplace Catalog vs My Orders */}
+      <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+        <div className="flex items-center space-x-2 bg-stone-200/70 p-1 rounded-2xl">
+          <button
+            onClick={() => setActivePortalTab('catalog')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activePortalTab === 'catalog' ? 'bg-stone-900 text-white shadow-sm' : 'text-stone-700 hover:text-stone-900'
+            }`}
+          >
+            <Building2 className="w-4 h-4 text-amber-400" />
+            <span>Marketplace Catalog</span>
+          </button>
+          <button
+            onClick={() => setActivePortalTab('orders')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activePortalTab === 'orders' ? 'bg-stone-900 text-white shadow-sm' : 'text-stone-700 hover:text-stone-900'
+            }`}
+          >
+            <Package className="w-4 h-4 text-amber-400" />
+            <span>My Orders ({buyerOrders.length})</span>
+          </button>
+        </div>
+
+        <span className="text-xs text-stone-500 font-medium hidden sm:inline">
+          Logged in as: <strong className="text-stone-900">{currentBuyerName}</strong>
+        </span>
+      </div>
+
+      {activePortalTab === 'orders' ? (
+        /* My Orders View */
+        <div className="space-y-4 animate-fadeIn">
+          <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-xs space-y-2">
+            <h2 className="text-lg font-black text-stone-900 flex items-center gap-2">
+              <Package className="w-5 h-5 text-saffron-600" />
+              <span>Buyer Order History</span>
+            </h2>
+            <p className="text-xs text-stone-500">
+              Track your past craft orders. Once an order is delivered, click <strong className="text-stone-800">Rate & Review</strong> to share your verified craft experience.
+            </p>
+          </div>
+
+          {buyerOrders.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-3xl border border-stone-200 space-y-2">
+              <ShoppingBag className="w-10 h-10 text-stone-300 mx-auto" />
+              <h3 className="font-bold text-stone-800 text-sm">No orders found</h3>
+              <p className="text-xs text-stone-500">
+                Browse our marketplace catalog to place your first craft order directly from master artisans.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {buyerOrders.map((order) => {
+                const existingReview = reviews.find(
+                  (r) => r.productId === order.productId && (r.buyerId === currentBuyerId || r.buyerName === currentBuyerName)
+                );
+                const isDelivered = order.status === 'delivered' || (order.status as string) === 'completed';
+                const matchingProduct = products.find((p) => p.id === order.productId);
+
+                return (
+                  <div
+                    key={order.id}
+                    className="p-4 sm:p-5 bg-white rounded-3xl border border-stone-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-start space-x-3.5">
+                      <img
+                        src={order.productImage || matchingProduct?.enhancedImage || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=800'}
+                        alt={order.productTitle}
+                        className="w-16 h-16 rounded-2xl object-cover border border-stone-200 shadow-2xs flex-shrink-0"
+                      />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-bold bg-stone-100 text-stone-700 px-2 py-0.5 rounded-md border border-stone-200">
+                            {order.id}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                              isDelivered
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : 'bg-amber-50 text-amber-800 border-amber-300'
+                            }`}
+                          >
+                            {isDelivered ? '✓ Delivered' : order.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-sm text-stone-900">{order.productTitle}</h4>
+                        <p className="text-xs text-stone-500">
+                          Artisan: <strong>{order.artisanName}</strong> • Qty: {order.quantity} • Date: {order.orderDate}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center sm:flex-col items-end justify-between gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-stone-100">
+                      <div className="text-right">
+                        <span className="text-[10px] text-stone-400 block font-medium">Total Paid</span>
+                        <span className="text-base font-black text-stone-900 font-mono">
+                          ₹{order.totalAmount.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+
+                      {isDelivered ? (
+                        existingReview ? (
+                          <div className="px-3.5 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                            <Check className="w-4 h-4 text-emerald-600" />
+                            <span>✓ Reviewed ({existingReview.rating}★)</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setActiveReviewModalOrder(order)}
+                            className="px-4 py-2 bg-gradient-to-r from-saffron-600 to-amber-600 hover:from-saffron-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-saffron-600/20 transition-all"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                            <span>Rate & Review</span>
+                          </button>
+                        )
+                      ) : (
+                        <span className="text-[11px] text-stone-500 bg-stone-100 px-3 py-1 rounded-xl border border-stone-200">
+                          Review available upon delivery
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Marketplace Catalog View */
+        <>
       {/* Government & B2B Buyer Linkage Banner */}
       <div className="bg-gradient-to-br from-[#1C1815] via-[#2A231D] to-[#181412] rounded-3xl p-6 sm:p-7 text-white border border-amber-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.18)] relative overflow-hidden">
         {/* Top subtle golden shimmer line */}
@@ -442,6 +588,55 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+      </>
+      )}
+
+      {/* Rate & Review Order Modal */}
+      {activeReviewModalOrder && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[92dvh] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-stone-200 relative animate-scaleIn my-auto">
+            <button
+              onClick={() => setActiveReviewModalOrder(null)}
+              className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="mb-4 pb-3 border-b border-stone-100">
+              <span className="text-[10px] font-bold text-saffron-700 uppercase tracking-wider block">
+                Verified Order Review • Order #{activeReviewModalOrder.id}
+              </span>
+              <h3 className="font-bold text-lg text-stone-900 leading-tight">
+                {activeReviewModalOrder.productTitle}
+              </h3>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Artisan: <strong>{activeReviewModalOrder.artisanName}</strong> • Delivered on {activeReviewModalOrder.orderDate}
+              </p>
+            </div>
+
+            <ReviewsSection
+              productId={activeReviewModalOrder.productId}
+              productTitle={activeReviewModalOrder.productTitle}
+              artisanId={activeReviewModalOrder.artisanId}
+              reviews={reviews}
+              language={language}
+              currentBuyerName={currentBuyerName}
+              currentBuyerId={currentBuyerId}
+              onAddReview={async (rev) => {
+                const enrichedReview: ProductReview = {
+                  ...rev,
+                  orderId: activeReviewModalOrder.id,
+                  artisanId: activeReviewModalOrder.artisanId,
+                };
+                if (onAddReview) {
+                  await onAddReview(enrichedReview);
+                }
+                setActiveReviewModalOrder(null);
+              }}
+            />
           </div>
         </div>
       )}

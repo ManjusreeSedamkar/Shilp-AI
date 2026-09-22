@@ -15,6 +15,9 @@ interface ProductDetailModalProps {
   reviews?: ProductReview[];
   onAddReview?: (review: ProductReview) => void;
   currentBuyerName?: string;
+  isLoadingReviews?: boolean;
+  reviewsError?: string | null;
+  autoOpenReview?: boolean;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -26,14 +29,23 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   language = 'en',
   reviews = [],
   onAddReview,
-  currentBuyerName = 'Vikram Mehta'
+  currentBuyerName = 'Vikram Mehta',
+  isLoadingReviews = false,
+  reviewsError = null,
+  autoOpenReview = false,
 }) => {
   const [activeLang, setActiveLang] = useState<'hi' | 'en'>(language === 'hi' ? 'hi' : 'en');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [spokenTranscript, setSpokenTranscript] = useState<string | null>(null);
   const [isCopiedTranscript, setIsCopiedTranscript] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'reviews'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'reviews'>(autoOpenReview ? 'reviews' : 'overview');
   const [imageTab, setImageTab] = useState<'enhanced' | 'original' | 'before_after'>('enhanced');
+
+  React.useEffect(() => {
+    if (autoOpenReview) {
+      setActiveTab('reviews');
+    }
+  }, [autoOpenReview]);
 
   if (!product) return null;
 
@@ -68,6 +80,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   };
 
   const productReviews = reviews.filter((r) => r.productId === product.id);
+  const totalReviews = productReviews.length;
+  const avgRating = totalReviews > 0
+    ? (productReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1)
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
@@ -257,9 +273,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             {/* Title & Price Header */}
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-stone-100 pb-4">
               <div className="space-y-1">
-                <span className="text-xs font-bold text-saffron-700 uppercase tracking-wider">
-                  {product.category} • {product.state}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-saffron-700 uppercase tracking-wider">
+                    {product.category} • {product.state}
+                  </span>
+                  {avgRating && (
+                    <span className="text-[11px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                      ⭐ {avgRating} / 5 ({totalReviews})
+                    </span>
+                  )}
+                </div>
                 <h2 className="text-lg sm:text-xl font-black text-stone-900 leading-tight">
                   {isHindi ? product.titleHi : product.titleEn}
                 </h2>
@@ -491,10 +515,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <ReviewsSection
               productId={product.id}
               productTitle={product.titleEn}
+              artisanId={product.artisanId}
               reviews={reviews}
               language={language}
               currentBuyerName={currentBuyerName}
               onAddReview={onAddReview || (() => {})}
+              isLoading={isLoadingReviews}
+              error={reviewsError}
+              autoShowForm={autoOpenReview}
             />
           </div>
         )}
