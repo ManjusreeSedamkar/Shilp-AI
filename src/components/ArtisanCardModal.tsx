@@ -38,7 +38,7 @@ export const ArtisanCardModal: React.FC<ArtisanCardModalProps> = ({
           <div className="flex items-center space-x-2">
             <ShieldCheck className="w-5 h-5 text-saffron-400" />
             <h3 className="font-bold text-sm">
-              {language === 'hi' ? 'कारीगर डिजिटल पहचान पत्र (MoSJE)' : 'Artisan Digital Smart ID Card'}
+              {translate(language, 'auto.artisan_digital_smar.1')}
             </h3>
           </div>
           <button
@@ -204,12 +204,10 @@ export const ArtisanCardModal: React.FC<ArtisanCardModalProps> = ({
             <span className="text-base">💡</span>
             <div>
               <span className="font-bold text-stone-900 block">
-                {language === 'hi' ? 'यह डिजिटल कार्ड कैसे काम करता है?' : 'How is this Digital Card Generated & Verified?'}
+                {translate(language, 'auto.how_is_this_digital_.2')}
               </span>
               <p className="text-[11px] text-stone-500 mt-0.5 leading-relaxed">
-                {language === 'hi'
-                  ? 'यह स्मार्ट पहचान पत्र MoSJE के राष्ट्रीय कारीगर डेटाबेस से स्वतः उत्पन्न होता है। इसके डायनामिक क्यूआर कोड को स्कैन करके खरीदार, प्रदर्शनी अधिकारी और बैंक कारीगर की प्रामाणिकता और डीबीटी खाते की जांच कर सकते हैं।'
-                  : 'This smart card is generated with a unique National Beneficiary ID linked to Direct Benefit Transfer (DBT). The dynamic QR code allows wholesale buyers, GeM officials, and exhibition managers to verify artisan legitimacy instantly.'}
+                {translate(language, 'auto.this_smart_card_is_g.3')}
               </p>
             </div>
           </div>
@@ -221,14 +219,14 @@ export const ArtisanCardModal: React.FC<ArtisanCardModalProps> = ({
               className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-colors"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>{language === 'hi' ? 'प्रिंट करें' : 'Print Card'}</span>
+              <span>{translate(language, 'auto.print_card.4')}</span>
             </button>
             <button
               onClick={handleDownload}
               className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-saffron-600 hover:bg-saffron-700 text-white text-xs font-bold shadow-sm transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>{language === 'hi' ? 'डाउनलोड करें' : 'Download ID'}</span>
+              <span>{translate(language, 'auto.download_id.5')}</span>
             </button>
           </div>
         </div>

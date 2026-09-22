@@ -5,6 +5,7 @@ import { ArtisanCopilotService } from '../services/copilotService';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
 import { askGemini, hasGeminiApiKey } from '../services/geminiService';
 import { getSpeechLangCode, translate } from '../services/translations';
+import { getProductTitle } from '../services/displayTranslation';
 import { CRAFT_PRESETS } from '../data/craftPresets';
 import { ApiSettingsModal } from './ApiSettingsModal';
 
@@ -18,7 +19,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
   onPublishListing
 }) => {
   const [messages, setMessages] = useState<CopilotMessage[]>([
-    ArtisanCopilotService.getInitialGreeting(language === 'hi' ? 'hi' : 'en')
+    ArtisanCopilotService.getInitialGreeting(language)
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -31,9 +32,21 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
   const recognitionRef = useRef<any>(null);
 
   const t = (key: string) => translate(language, key);
-  const isHindi = language === 'hi';
+  // isHindi removed — use language directly
   const hasGemini = hasGeminiApiKey();
 
+  // Sync speech recognition language and initial greeting on language change
+  useEffect(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.lang = getSpeechLangCode(language);
+    }
+    setMessages((prev) => {
+      if (prev.length <= 1) {
+        return [ArtisanCopilotService.getInitialGreeting(language)];
+      }
+      return prev;
+    });
+  }, [language]);
   // Scroll to bottom on message
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -126,7 +139,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
         const localResult = ArtisanCopilotService.processArtisanInput(
           text,
           newHistory,
-          isHindi ? 'hi' : 'en'
+          language
         );
         replyText = localResult.reply.text;
         replyAudioText = localResult.reply.audioText || localResult.reply.text;
@@ -151,9 +164,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
       const fallbackMsg: CopilotMessage = {
         id: `copilot-${Date.now()}`,
         sender: 'copilot',
-        text: language === 'hi' 
-          ? 'माफ़ कीजिए, उत्तर तैयार करने में समस्या आई। कृपया पुनः प्रयास करें।'
-          : 'I encountered an issue generating a response. Please try again.',
+        text: translate(language, 'auto.i_encountered_an_iss.6'),
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages((prev) => [...prev, fallbackMsg]);
@@ -175,7 +186,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
         // Fallback simulated input for demo
         setTimeout(() => {
           setIsRecording(false);
-          const sample = isHindi ? CRAFT_PRESETS[0].sampleVoiceHindi : CRAFT_PRESETS[0].sampleVoiceEnglish;
+          const sample = language === 'hi' ? CRAFT_PRESETS[0].sampleVoiceHindi : CRAFT_PRESETS[0].sampleVoiceEnglish;
           handleSendMessage(sample);
         }, 1500);
       }
@@ -284,7 +295,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                 <div className="flex items-center justify-between mb-1.5 text-[10px] opacity-80 border-b border-stone-100/50 pb-1">
                   <span className="font-bold flex items-center gap-1">
                     {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3 text-stone-700" />}
-                    {isUser ? (isHindi ? 'आप (कारीगर)' : 'You (Artisan)') : 'SHILP Copilot AI'}
+                    {isUser ? (translate(language, 'auto.you_artisan.7')) : 'SHILP Copilot AI'}
                   </span>
 
                   {/* Play / Stop Voice Button for Every AI Response */}
@@ -301,13 +312,13 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                       {isCurrentlyPlaying ? (
                         <>
                           <Square className="w-2.5 h-2.5 fill-red-600 text-red-600" />
-                          <span>{isHindi ? 'रुकें (Stop)' : 'Stop'}</span>
+                          <span>{translate(language, 'auto.stop.8')}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span>
                         </>
                       ) : (
                         <>
                           <Volume2 className="w-2.5 h-2.5 text-stone-600" />
-                          <span>{isHindi ? 'सुनें (Listen)' : 'Listen'}</span>
+                          <span>{translate(language, 'auto.listen.9')}</span>
                         </>
                       )}
                     </button>
@@ -325,7 +336,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                     <div className="flex items-center justify-between text-[10px] font-bold border-b border-amber-200/80 pb-1">
                       <span className="flex items-center gap-1 text-amber-900">
                         <FileText className="w-3 h-3 text-amber-700" />
-                        {isHindi ? 'AI ऑडियो ट्रांसक्रिप्शन:' : 'AI Spoken Audio Transcription:'}
+                        {translate(language, 'auto.ai_spoken_audio_tran.10')}
                       </span>
                       <div className="flex items-center gap-1.5">
                         <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-semibold flex items-center gap-1 ${
@@ -334,7 +345,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                             : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         }`}>
                           <span className={`w-1 h-1 rounded-full ${isCurrentlyPlaying ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
-                          {isCurrentlyPlaying ? (isHindi ? 'बोल रहा है...' : 'Speaking...') : (isHindi ? 'रोका गया / पढ़ें' : 'Stopped / Read')}
+                          {isCurrentlyPlaying ? (translate(language, 'auto.speaking.11')) : (translate(language, 'auto.stopped_read.12'))}
                         </span>
                         <button
                           onClick={() => {
@@ -370,7 +381,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                     </p>
                     {copiedMessageId === msg.id && (
                       <div className="text-[9px] text-emerald-700 font-semibold text-right">
-                        {isHindi ? 'कॉपी कर लिया गया!' : 'Transcript copied to clipboard!'}
+                        {translate(language, 'auto.transcript_copied_to.13')}
                       </div>
                     )}
                   </div>
@@ -387,17 +398,17 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                       />
                       <div className="flex-1 min-w-0">
                         <span className="text-[10px] font-bold text-emerald-700 uppercase">
-                          {isHindi ? 'सूची तैयार है' : 'Listing Ready'}
+                          {translate(language, 'auto.listing_ready.14')}
                         </span>
                         <h4 className="font-bold text-xs truncate">
-                          {isHindi ? msg.actionCard.data.titleHi : msg.actionCard.data.titleEn}
+                          {getProductTitle(msg.actionCard.data, language)}
                         </h4>
                         <div className="flex items-center gap-2 text-[11px] font-mono mt-0.5">
                           <span className="font-bold text-stone-900">
                             ₹{msg.actionCard.data.pricing?.suggestedRetailPrice?.toLocaleString('en-IN')}
                           </span>
                           <span className="text-stone-500">
-                            ({msg.actionCard.data.productionDays} {isHindi ? 'दिन' : 'days'})
+                            ({msg.actionCard.data.productionDays} {translate(language, 'auto.days.15')})
                           </span>
                         </div>
                       </div>
@@ -412,7 +423,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                         onClick={() => onPublishListing?.(msg.actionCard!.data)}
                         className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-colors"
                       >
-                        <span>{isHindi ? 'मार्केटप्लेस में जोड़ें' : 'Publish Listing'}</span>
+                        <span>{translate(language, 'auto.publish_listing.16')}</span>
                         <ArrowRight className="w-3 h-3" />
                       </button>
                     </div>
@@ -443,35 +454,35 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
       {/* Quick Prompt Suggestions */}
       <div className="px-3 py-2 bg-stone-100/70 border-t border-stone-200 flex items-center space-x-2 overflow-x-auto no-scrollbar text-xs">
         <span className="text-[10px] font-bold text-stone-500 whitespace-nowrap">
-          {isHindi ? 'सुझाव:' : 'Quick Help:'}
+          {translate(language, 'auto.quick_help.17')}
         </span>
         <button
-          onClick={() => handleSendMessage(isHindi ? 'यह ऐप कैसे काम करता है और उत्पाद कैसे जोड़ें?' : 'How does this app work and what are the steps?')}
+          onClick={() => handleSendMessage(translate(language, 'auto.how_does_this_app_wo.18'))}
           className="whitespace-nowrap px-2.5 py-1 rounded-full bg-white hover:bg-stone-50 text-stone-700 hover:text-saffron-800 text-[11px] font-medium border border-stone-200 shadow-2xs transition-colors flex items-center gap-1"
         >
           <span>📱</span>
-          <span>{isHindi ? 'ऐप कैसे इस्तेमाल करें?' : 'How to use app?'}</span>
+          <span>{translate(language, 'auto.how_to_use_app.19')}</span>
         </button>
         <button
-          onClick={() => handleSendMessage(isHindi ? 'खरीदार 20 साड़ियों के लिए ₹4,000 की पेशकश कर रहा है, क्या मुझे स्वीकार करना चाहिए?' : 'Buyer offering ₹4,000 for 20 sarees, should I accept?')}
+          onClick={() => handleSendMessage(translate(language, 'auto.buyer_offering_4_000.20'))}
           className="whitespace-nowrap px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 text-stone-700 hover:text-emerald-800 text-[11px] font-medium border border-stone-200 shadow-2xs transition-colors flex items-center gap-1"
         >
           <span>💡</span>
-          <span>{isHindi ? 'थोक मोलभाव सलाह' : 'Wholesale negotiation'}</span>
+          <span>{translate(language, 'auto.wholesale_negotiatio.21')}</span>
         </button>
         <button
-          onClick={() => handleSendMessage(isHindi ? 'शिल्प समागम और दिल्ली हाट मेले में स्टॉल कैसे मिलेगा?' : 'How do I get a stall in Shilp Samagam exhibitions?')}
+          onClick={() => handleSendMessage(translate(language, 'auto.how_do_i_get_a_stall.22'))}
           className="whitespace-nowrap px-2.5 py-1 rounded-full bg-white hover:bg-amber-50 text-stone-700 hover:text-amber-800 text-[11px] font-medium border border-stone-200 shadow-2xs transition-colors flex items-center gap-1"
         >
           <span>🏛️</span>
-          <span>{isHindi ? 'शिल्प समागम स्टॉल' : 'Shilp Samagam stalls'}</span>
+          <span>{translate(language, 'auto.shilp_samagam_stalls.23')}</span>
         </button>
         <button
-          onClick={() => handleSendMessage(isHindi ? 'क्या हस्तशिल्प बेचने के लिए जीएसटी नंबर अनिवार्य है?' : 'Do I need GST registration to sell handicrafts online?')}
+          onClick={() => handleSendMessage(translate(language, 'auto.do_i_need_gst_regist.24'))}
           className="whitespace-nowrap px-2.5 py-1 rounded-full bg-white hover:bg-blue-50 text-stone-700 hover:text-blue-800 text-[11px] font-medium border border-stone-200 shadow-2xs transition-colors flex items-center gap-1"
         >
           <span>💳</span>
-          <span>{isHindi ? 'जीएसटी नियम' : 'GST rules'}</span>
+          <span>{translate(language, 'auto.gst_rules.25')}</span>
         </button>
       </div>
 
@@ -505,8 +516,8 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
             onChange={(e) => setInputValue(e.target.value)}
             placeholder={
               isRecording
-                ? (isHindi ? 'सुन रहा हूँ... बोलिए' : 'Listening... speak now')
-                : (isHindi ? 'शिल्प, कीमत या ऐप के बारे में पूछें...' : 'Ask Copilot anything about craft, pricing or app...')
+                ? (translate(language, 'auto.listening_speak_now.26'))
+                : (translate(language, 'auto.ask_copilot_anything.27'))
             }
             className="flex-1 px-4 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-stone-400 focus:bg-white transition-all"
           />

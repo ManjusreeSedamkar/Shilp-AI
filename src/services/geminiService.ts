@@ -1,10 +1,10 @@
 import { Language } from '../types';
-import { getSpeechLangCode } from './translations';
+import { getSpeechLangCode, LANGUAGE_METADATA } from './translations';
 
 /**
  * SHILP-AI Gemini API Service
  * 
- * Uses Google Gemini API for the Copilot chatbot.
+ * Uses Google Gemini API for the Copilot chatbot and hybrid runtime translation.
  * API key is read from environment variable VITE_GEMINI_API_KEY (secure, not in frontend code or GitHub).
  * Falls back to localStorage for user-provided key via the AI Engines settings modal.
  */
@@ -61,8 +61,9 @@ export async function askGemini(
   }
 
   const langName = getLanguageNameForPrompt(language);
-  const systemPrompt = systemContext || 
-    `You are SHILP-AI Copilot, a helpful assistant for Indian artisans and buyers on the MoSJE (Ministry of Social Justice and Empowerment) handicraft marketplace. ` +
+  const baseSystem = systemContext || `You are SHILP-AI Copilot, a helpful assistant for Indian artisans and buyers on the MoSJE (Ministry of Social Justice and Empowerment) handicraft marketplace. ` +
+    `You help with: app usage, Smart Catalog, publishing products, explaining features, translating content, pricing advice, government schemes (PM Vishwakarma, Shilp Samagam), GST rules, packaging, and business growth. `;
+  const systemPrompt = `${baseSystem}\n\nCRITICAL INSTRUCTION: You MUST write your entire response strictly and fluently in ${langName} (${language}) language. Use simple, supportive phrasing for artisans.`;
     `You help with: app usage, Smart Catalog, publishing products, explaining features, translating content, pricing advice, government schemes (PM Vishwakarma, Shilp Samagam), GST rules, packaging, and business growth. ` +
     `IMPORTANT: Always respond in ${langName} language. Keep responses clear, simple, and friendly for low-literacy users. Use emojis where helpful.`;
 
@@ -110,19 +111,14 @@ export async function askGemini(
 }
 
 /**
- * Get language name for prompt
+ * Get language name for prompt - supports all 21 languages
  */
-function getLanguageNameForPrompt(lang: Language): string {
-  const names: Record<Language, string> = {
-    en: 'English',
-    hi: 'Hindi (हिन्दी)',
-    te: 'Telugu (తెలుగు)',
-    ta: 'Tamil (தமிழ்)',
-    bn: 'Bengali (বাংলা)',
-    mr: 'Marathi (मराठी)',
-    gu: 'Gujarati (ગુજરાતી)',
-  };
-  return names[lang] || 'English';
+export function getLanguageNameForPrompt(lang: Language): string {
+  const meta = LANGUAGE_METADATA[lang];
+  if (meta) {
+    return `${meta.name} (${meta.nativeName})`;
+  }
+  return 'English';
 }
 
 /**
@@ -132,4 +128,55 @@ export async function translateWithGemini(text: string, targetLang: Language): P
   const langName = getLanguageNameForPrompt(targetLang);
   const prompt = `Translate the following text to ${langName}. Only return the translated text, nothing else:\n\n${text}`;
   return askGemini(prompt, targetLang);
+}
+
+/**
+ * Translate a batch of UI labels to target language using Gemini in a single request.
+ * Returns a JSON mapping of { originalEnglish: translatedText }.
+ */
+export async function translateBatchWithGemini(
+  texts: string[],
+  targetLang: Language
+): Promise<Record<string, string>> {
+  if (!texts.length || targetLang === 'en') {
+    const res: Record<string, string> = {};
+    for (const t of texts) res[t] = t;
+    return res;
+  }
+
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
+    return {};
+  }
+
+  const langName = getLanguageNameForPrompt(targetLang);
+  const prompt = `Translate the following user interface phrases from English into ${langName} for an Indian artisan craft e-commerce application.
+
+STRICT RULES:
+1. Return ONLY a single raw JSON object mapping each English string to its translation.
+2. The JSON keys MUST be the exact English input strings.
+3. Keep brand names unchanged: "SHILP-AI", "MoSJE", "FabIndia", "TRIFED", "GeM", "XGBoost".
+4. Do NOT output markdown code fences (\`\`\`json or \`\`\`), do NOT output explanation, notes or markdown.
+5. Return raw parseable JSON only.
+
+Input strings to translate:
+${JSON.stringify(texts)}`;
+
+  try {
+    const raw = await askGemini(
+      prompt,
+      targetLang,
+      `You are an expert multilingual translator specialized in Indian languages for government and artisan e-commerce platforms. You output ONLY valid raw JSON.`
+    );
+
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const parsed = JSON.parse(cleaned);
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as Record<string, string>;
+    }
+  } catch (err) {
+    console.warn(`Batch translation with Gemini failed for ${targetLang}:`, err);
+  }
+
+  return {};
 }

@@ -43,7 +43,7 @@ export class VoiceCatalogerEngine {
 
     // 2. Detect Production Days
     let productionDays = 3;
-    const daysMatch = transcript.match(/(\d+)\s*(?:days?|दिन|దినాలు|நாட்கள்|দিন|दिवस|દિવસ)/i);
+    const daysMatch = transcript.match(/(\d+)\s*(?:days?|दिन|दिस|దినాలు|రోజులు|நாட்கள்|দিন|दिवस|દિવસ|ದಿನಗಳು|ದಿನ|ദിവസങ്ങൾ|ദിവസം|ਦਿਨ|ଦିନ|দিন|دن|روز|दिनानि)/i);
     if (daysMatch && daysMatch[1]) {
       const parsed = parseInt(daysMatch[1], 10);
       if (!isNaN(parsed) && parsed > 0) productionDays = parsed;
@@ -57,28 +57,28 @@ export class VoiceCatalogerEngine {
     let titleEn = 'Handcrafted Artisan Heritage Product';
     let titleHi = 'हस्तनिर्मित कारीगर धरोहर उत्पाद';
 
-    if (text.includes('saree') || text.includes('साड़ी') || text.includes('pochampally') || text.includes('పోచంపల్లి') || text.includes('போச்சம்பள்ளி') || text.includes('পোচামপল্লী') || text.includes('पोचमपल्ली') || text.includes('પોચમ્પલ્લી') || text.includes('ikat') || text.includes('silk') || text.includes('रेशम') || text.includes('రేషమ్') || text.includes('பட்டு') || text.includes('রেশম') || text.includes('रेशीम') || text.includes('રેશમ') || text.includes('handloom') || text.includes('हथकरघा') || text.includes('చేనేత') || text.includes('கைத்தறி') || text.includes('হাতে বোনা') || text.includes('हातमाग') || text.includes('હાથવણાટ')) {
+    if (text.includes('saree') || text.includes('साड़ी') || text.includes('pochampally') || text.includes('పోచంపల్లి') || text.includes('போச்சம்பள்ளி') || text.includes('পোচামপল্লী') || text.includes('पोचमपल्ली') || text.includes('પોચમ્પલ્લી') || text.includes('ikat') || text.includes('silk') || text.includes('रेशम') || text.includes('రేషమ్') || text.includes('பட்டு') || text.includes('রেশম') || text.includes('रेशीम') || text.includes('રેશમ') || text.includes('handloom') || text.includes('हथकरघा') || text.includes('చేనేత') || text.includes('கைத்தறி') || text.includes('হাতে বোনা') || text.includes('हातमाग') || text.includes('હાથવણાટ') || text.includes('ಸೀರೆ') || text.includes('ರೇಷ್ಮೆ') || text.includes('ಕೈಮಗ್ಗ') || text.includes('സാരി') || text.includes('പട്ട്') || text.includes('കൈത്തറി') || text.includes('ਸਾੜੀ') || text.includes('ਖੱਡੀ') || text.includes('ଶାଢ଼ୀ') || text.includes('ହସ୍ତତନ୍ତ') || text.includes('ساڑھی') || text.includes('کھڈی')) {
       category = 'Textiles & Handloom';
       craftTechnique = 'Double Ikat Pit-Loom Weaving';
       primaryMaterial = '100% Pure Mulberry Silk & Zari Thread';
       color = 'Crimson Red & Mustard Gold';
       titleEn = 'Handwoven Pochampally Double Ikat Pure Silk Saree';
       titleHi = 'हस्तनिर्मित पोचमपल्ली डबल इकत शुद्ध रेशम साड़ी';
-    } else if (text.includes('dhokra') || text.includes('ढोकरा') || text.includes('brass') || text.includes('పిత్తల') || text.includes('பித்தளை') || text.includes('পিতল') || text.includes('पितळ') || text.includes('પિત્તળ') || text.includes('पीतल') || text.includes('metal') || text.includes('కాంస్య') || text.includes('வெண்கல') || text.includes('কাঁসা') || text.includes('कांस्य') || text.includes('કાંસ્ય') || text.includes('मूर्ति') || text.includes('మూర్తి') || text.includes('சிலை') || text.includes('মূর্তি') || text.includes('मूर्ती') || text.includes('મૂર્તિ') || text.includes('nandi') || text.includes('నంది') || text.includes('நந்தி') || text.includes('নন্দী') || text.includes('नंदी') || text.includes('નંદી')) {
+    } else if (text.includes('dhokra') || text.includes('ढोकरा') || text.includes('brass') || text.includes('పిత్తల') || text.includes('பித்தளை') || text.includes('পিতল') || text.includes('पितळ') || text.includes('પિત્તળ') || text.includes('पीतल') || text.includes('metal') || text.includes('కాంస్య') || text.includes('வெண்கல') || text.includes('কাঁসা') || text.includes('कांस्य') || text.includes('કાંસ્ય') || text.includes('मूर्ति') || text.includes('మూర్తి') || text.includes('சிலை') || text.includes('মূর্তি') || text.includes('मूर्ती') || text.includes('મૂર્તિ') || text.includes('nandi') || text.includes('నంది') || text.includes('நந்தி') || text.includes('নন্দী') || text.includes('नंदी') || text.includes('નંદી') || text.includes('ಹಿತ್ತಾಳೆ') || text.includes('ಲೋಹ') || text.includes('ಪိတ်ଳ') || text.includes('പിച്ചള') || text.includes('ലോഹം') || text.includes('ਪਿੱਤਲ') || text.includes('ଧାତୁ') || text.includes('ପିତ୍ତଳ') || text.includes('پیتل') || text.includes('دھات')) {
       category = 'Metalcraft & Dhokra';
       craftTechnique = 'Ancient Lost-Wax Casting (Cire Perdue)';
       primaryMaterial = 'Cast Bell-Metal & Brass Alloy';
       color = 'Antique Golden Patina';
       titleEn = 'Bastar Tribal Dhokra Lost-Wax Bell Metal Figurine';
       titleHi = 'बस्तर जनजातीय ढोकरा लॉस्ट-वैक्स कांस्य मूर्ति';
-    } else if (text.includes('terracotta') || text.includes('టెర్రకోటా') || text.includes('டெரகோட்டா') || text.includes('টেরাকোটা') || text.includes('टेराकोटा') || text.includes('ટેરાકોટા') || text.includes('clay') || text.includes('మట్టి') || text.includes('களிமண்') || text.includes('মাটি') || text.includes('माती') || text.includes('માટી') || text.includes('मिट्टी') || text.includes('pottery') || text.includes('కుమ్మరి') || text.includes('குயவர்') || text.includes('কুম্ভকার') || text.includes('कुंभार') || text.includes('કુંભાર') || text.includes('कुम्हार') || text.includes('vase') || text.includes('కలశం') || text.includes('கலசம்') || text.includes('কলস') || text.includes('कलश') || text.includes('કળશ')) {
+    } else if (text.includes('terracotta') || text.includes('టెర్రకోటా') || text.includes('டெரகோட்டா') || text.includes('টেরাকোটা') || text.includes('टेराकोटा') || text.includes('ટેરાકોટા') || text.includes('clay') || text.includes('మట్టి') || text.includes('களிமண்') || text.includes('মাটি') || text.includes('माती') || text.includes('માટી') || text.includes('मिट्टी') || text.includes('pottery') || text.includes('కుమ్మరి') || text.includes('குயவர்') || text.includes('কুম্ভকার') || text.includes('कुंभार') || text.includes('કુંભાર') || text.includes('कुम्हार') || text.includes('vase') || text.includes('కలశం') || text.includes('கலசம்') || text.includes('কলস') || text.includes('कलश') || text.includes('કળશ') || text.includes('ಜೇಡಿಮಣ್ಣು') || text.includes('ಮಣ್ಣು') || text.includes('കളിമണ്ണ്') || text.includes('ମାଟି') || text.includes('ਭਾਂਡੇ') || text.includes('برتن')) {
       category = 'Clay & Terracotta';
       craftTechnique = 'Wheel-Thrown & Hand-Etched Clay Firing';
       primaryMaterial = 'River Alluvial Clay & Natural Ochre';
       color = 'Rustic Terracotta Red';
       titleEn = 'Traditional Bankura Terracotta Handcrafted Urn';
       titleHi = 'पारंपरिक बांकुरा टेराकोटा नक्काशीदार कलश';
-    } else if (text.includes('madhubani') || text.includes('మధుబని') || text.includes('மதுபானி') || text.includes('মধুবনী') || text.includes('मधुबनी') || text.includes('મધુબની') || text.includes('mithila') || text.includes('మిథిలా') || text.includes('மிதிலா') || text.includes('মিথিলা') || text.includes('मिथिला') || text.includes('મિથિલા') || text.includes('painting') || text.includes('చిత్రం') || text.includes('ஓவியம்') || text.includes('চিত্র') || text.includes('चित्र') || text.includes('ચિત્ર') || text.includes('चित्रकला') || text.includes('చిత్రకళ') || text.includes('ஓவியக்கலை') || text.includes('চিত্রকলা') || text.includes('चित्रकला') || text.includes('ચિત્રકળા')) {
+    } else if (text.includes('madhubani') || text.includes('మధుబని') || text.includes('மதுபானி') || text.includes('মধুবনী') || text.includes('मधुबनी') || text.includes('મધુબની') || text.includes('mithila') || text.includes('మిథిలా') || text.includes('மிதிலா') || text.includes('মিথিলা') || text.includes('मिथिला') || text.includes('મિથિલા') || text.includes('painting') || text.includes('చిత్రం') || text.includes('ஓவியம்') || text.includes('চিত্র') || text.includes('चित्र') || text.includes('ચિત્ર') || text.includes('चित्रकला') || text.includes('చిత్రకళ') || text.includes('ஓவியக்கலை') || text.includes('চিত্রকলা') || text.includes('चित्रकला') || text.includes('ચિત્રકળા') || text.includes('ಚಿತ್ರ') || text.includes('ಚಿತ್ರಕಲೆ') || text.includes('ചിത്രം') || text.includes('ചിത്രകല') || text.includes('ਚਿੱਤਰਕਾਰੀ') || text.includes('ଚିତ୍ରକଳା') || text.includes('نقاشی')) {
       category = 'Traditional Painting';
       craftTechnique = 'Twig & Nib Hand-Painting with Botanical Dyes';
       primaryMaterial = 'Handmade Khadi Sheet & Natural Herbal Pigments';

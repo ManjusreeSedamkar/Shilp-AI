@@ -1,10 +1,211 @@
 import { Language, LanguageTranslations } from '../types';
+import { getStoredTranslation, queuePhrasesForTranslation } from './hybridTranslation';
 
 // Comprehensive translation dictionary for all supported languages
 // Languages: English (en), Hindi (hi), Telugu (te), Tamil (ta), Bengali (bn), Marathi (mr), Gujarati (gu)
 
 const translations: LanguageTranslations = {
   en: {
+    'auto.artisan_digital_smar.1': 'Artisan Digital Smart ID Card',
+    'auto.how_is_this_digital_.2': 'How is this Digital Card Generated & Verified?',
+    'auto.this_smart_card_is_g.3': 'This smart card is generated with a unique National Beneficiary ID linked to Direct Benefit Transfer (DBT). The dynamic QR code allows wholesale buyers, GeM officials, and exhibition managers to verify artisan legitimacy instantly.',
+    'auto.print_card.4': 'Print Card',
+    'auto.download_id.5': 'Download ID',
+    'auto.i_encountered_an_iss.6': 'I encountered an issue generating a response. Please try again.',
+    'auto.you_artisan.7': 'You (Artisan)',
+    'auto.stop.8': 'Stop',
+    'auto.listen.9': 'Listen',
+    'auto.ai_spoken_audio_tran.10': 'AI Spoken Audio Transcription:',
+    'auto.speaking.11': 'Speaking...',
+    'auto.stopped_read.12': 'Stopped / Read',
+    'auto.transcript_copied_to.13': 'Transcript copied to clipboard!',
+    'auto.listing_ready.14': 'Listing Ready',
+    'auto.days.15': 'days',
+    'auto.publish_listing.16': 'Publish Listing',
+    'auto.quick_help.17': 'Quick Help:',
+    'auto.how_does_this_app_wo.18': 'How does this app work and what are the steps?',
+    'auto.how_to_use_app.19': 'How to use app?',
+    'auto.buyer_offering_4_000.20': 'Buyer offering ₹4,000 for 20 sarees, should I accept?',
+    'auto.wholesale_negotiatio.21': 'Wholesale negotiation',
+    'auto.how_do_i_get_a_stall.22': 'How do I get a stall in Shilp Samagam exhibitions?',
+    'auto.shilp_samagam_stalls.23': 'Shilp Samagam stalls',
+    'auto.do_i_need_gst_regist.24': 'Do I need GST registration to sell handicrafts online?',
+    'auto.gst_rules.25': 'GST rules',
+    'auto.listening_speak_now.26': 'Listening... speak now',
+    'auto.ask_copilot_anything.27': 'Ask Copilot anything about craft, pricing or app...',
+    'auto.stop_speech.28': 'Stop Speech',
+    'auto.stop_speech.29': 'Stop Speech',
+    'auto.ai_speech_transcript.30': 'AI Speech Transcription:',
+    'auto.speaking.31': 'Speaking...',
+    'auto.stopped_ready.32': 'Stopped / Ready',
+    'auto.copied.33': 'Copied',
+    'auto.copy.34': 'Copy',
+    'auto.tutorial.35': 'Tutorial',
+    'auto.videos.36': 'Videos',
+    'auto.click_to_watch_step_.37': 'Click to watch step-by-step video tutorials on AI Studio, Voice Cataloging & Fair Pricing',
+    'auto.watch_tutorials.38': 'Watch Tutorials',
+    'auto.video_guides.39': 'Video Guides',
+    'auto.tutorial.40': 'Tutorial',
+    'auto.english_hindi_videos.41': 'English & Hindi Videos',
+    'auto.stop_speech.42': 'Stop Speech',
+    'auto.stop.43': 'Stop',
+    'auto.listen.44': 'Listen',
+    'auto.ai_speech_transcript.45': 'AI Speech Transcription:',
+    'auto.speaking.46': 'Speaking...',
+    'auto.stopped.47': 'Stopped',
+    'auto.copied.48': 'Copied',
+    'auto.copy.49': 'Copy',
+    'auto.ai_enhanced.50': 'AI Enhanced',
+    'auto.tap_to_view_details_.51': 'Tap to view details & Before/After comparison',
+    'auto.unable_to_access_liv.52': 'Unable to access live camera. Please check camera permissions or use the upload option.',
+    'auto.ai_computer_vision_s.53': 'AI Computer Vision Studio',
+    'auto.ai_image_enhancer_st.54': 'AI Image Enhancer & Studio',
+    'auto.turn_raw_workshop_ph.55': 'Turn raw workshop photos into studio-grade e-commerce listings with automatic background removal & lighting correction.',
+    'auto.test_with_sample_cra.56': 'Test With Sample Crafts:',
+    'auto.1_click_demo.57': '1-Click Demo',
+    'auto.upload_photo.58': 'Upload Photo',
+    'auto.take_photo.59': 'Take Photo',
+    'auto.before_after.60': 'Before / After',
+    'auto.slider.61': 'Slider',
+    'auto.before_original.62': 'Before (Original)',
+    'auto.after_enhanced.63': 'After (Enhanced)',
+    'auto.before_original.64': 'Before (Original)',
+    'auto.after_enhanced.65': 'After (Enhanced)',
+    'auto.ai_segmenting_correc.66': 'AI Segmenting & Correcting Lighting...',
+    'auto.drag_slider_to_compa.67': '← Drag slider to compare Raw Workshop Photo vs AI Studio Output →',
+    'auto.latency.68': 'Latency',
+    'auto.bg_removal.69': 'BG Removal',
+    'auto.lighting_boost.70': 'Lighting Boost',
+    'auto.format.71': 'Format',
+    'auto.studio_ai_photograph.72': 'Studio AI & Photographic Controls',
+    'auto.reset_to_ai_optimal_.73': 'Reset to AI optimal settings',
+    'auto.reset_to_ai_optimal.74': 'Reset to AI Optimal',
+    'auto.remove_bg.75': 'Remove BG',
+    'auto.studio_lighting.76': 'Studio Lighting',
+    'auto.ground_shadow.77': 'Ground Shadow',
+    'auto.photographic_fine_tu.78': 'Photographic Fine-Tuning',
+    'auto.live_realtime.79': 'Live Realtime',
+    'auto.brightness.80': 'Brightness',
+    'auto.contrast.81': 'Contrast',
+    'auto.saturation.82': 'Saturation',
+    'auto.backdrop_style.83': 'Backdrop Style:',
+    'auto.pure_white.84': 'Pure White',
+    'auto.ivory_studio.85': 'Ivory Studio',
+    'auto.soft_gray.86': 'Soft Gray',
+    'auto.transparent.87': 'Transparent',
+    'auto.download_photo.88': 'Download Photo',
+    'auto.ai_enhancing_photo.89': 'AI Enhancing Photo...',
+    'auto.use_in_smart_catalog.90': 'Use in Smart Catalog',
+    'auto.live_camera_viewfind.91': 'Live Camera Viewfinder',
+    'auto.upload_from_device.92': 'Upload from Device',
+    'auto.close.93': 'Close',
+    'auto.center_craft_in_fram.94': 'Center craft in frame',
+    'auto.order_confirmed.95': 'Order Confirmed!',
+    'auto.direct_artisan_purch.96': 'Direct Artisan Purchase & Checkout',
+    'auto.100_direct_to_artisa.97': '100% Direct to Artisan • Zero Middleman Commission',
+    'auto.xgboost_fair_pricing.98': 'XGBoost Fair Pricing Assistant',
+    'auto.predicts_fair_market.99': 'Predicts fair market valuation balancing artisan livelihood and buyer demand',
+    'auto.stop.100': 'Stop',
+    'auto.listen_to_explanatio.101': 'Listen to explanation',
+    'auto.stop.102': 'Stop',
+    'auto.listen.103': 'Listen',
+    'auto.ai_pricing_explanati.104': 'AI Pricing Explanation:',
+    'auto.recommended_price.105': 'Recommended Price',
+    'auto.fair_price_range.106': 'Fair Price Range',
+    'auto.living_wage_floor_to.107': 'Living wage floor to market ceiling',
+    'auto.labor_wage.108': 'Labor Wage:',
+    'auto.materials_buffer.109': 'Materials + Buffer:',
+    'auto.artisan_margin.110': 'Artisan Margin:',
+    'auto.adjust_product_featu.111': 'Adjust Product Features',
+    'auto.craft_size.112': 'Craft Size:',
+    'auto.quality_finish_tier.113': 'Quality & Finish Tier:',
+    'auto.raw_material_cost.114': 'Raw Material Cost:',
+    'auto.artisan_crafting_day.115': 'Artisan Crafting Days:',
+    'auto.days.116': 'days',
+    'auto.artisan_margin.117': 'Artisan Margin:',
+    'auto.xgboost_feature_cont.118': 'XGBoost Feature Contributions',
+    'auto.b2b_wholesale_bulk_t.119': 'B2B Wholesale & Bulk Tiers',
+    'auto.before_original.120': 'Before (Original)',
+    'auto.after_enhanced.121': 'After (Enhanced)',
+    'auto.catalog_display_imag.122': 'Catalog Display Image',
+    'auto.original_workshop_ph.123': 'Original Workshop Photo',
+    'auto.photo_display_mode.124': 'Photo Display Mode:',
+    'auto.ai_enhanced.125': 'AI Enhanced',
+    'auto.before_after.126': 'Before / After',
+    'auto.original.127': 'Original',
+    'auto.days_crafting_time.128': 'days crafting time',
+    'auto.stop_speech.129': 'Stop Speech',
+    'auto.listen_to_descriptio.130': 'Listen to description',
+    'auto.stop.131': 'Stop',
+    'auto.listen.132': 'Listen',
+    'auto.ai_speech_transcript.133': 'AI Speech Transcription:',
+    'auto.speaking.134': 'Speaking...',
+    'auto.stopped.135': 'Stopped',
+    'auto.copied.136': 'Copied',
+    'auto.copy.137': 'Copy',
+    'auto.back_to_dashboard.138': 'Back to Dashboard',
+    'auto.shilp_ai_video_tutor.139': 'SHILP-AI Video Tutorials',
+    'auto.step_by_step_visual_.140': 'Step-by-step visual guides for Artisans, Weavers & Craftspersons',
+    'auto.choose_video_file.141': 'Choose Video File',
+    'auto.video_url.142': 'Video URL',
+    'auto.paste_video_url_e_g_.143': 'Paste video URL (e.g. https://...)',
+    'auto.apply_url.144': 'Apply URL',
+    'auto.video_file_ready_for.145': 'Video File Ready for Placement',
+    'auto.choose_local_video.146': 'Choose Local Video',
+    'auto.your_browser_does_no.147': 'Your browser does not support the video tag.',
+    'auto.audio_tutorial_narra.148': 'Audio Tutorial Narration & Summary',
+    'auto.listen_to_the_full_s.149': 'Listen to the full spoken audio guide or read the live transcription',
+    'auto.stop_speech.150': 'Stop Speech',
+    'auto.listen_summary.151': 'Listen Summary',
+    'auto.ai_spoken_audio_tran.152': 'AI Spoken Audio Transcription:',
+    'auto.speaking.153': 'Speaking...',
+    'auto.stopped_ready_to_rea.154': 'Stopped / Ready to Read',
+    'auto.listen_carefully_or_.155': '💡 Listen carefully or read the exact transcript word-for-word.',
+    'auto.copied_to_clipboard.156': 'Copied to clipboard!',
+    'auto.video_chapters_topic.157': 'Video Chapters & Topics Covered',
+    'auto.quick_navigation_bre.158': 'Quick navigation breakdown of features explained in this tutorial',
+    'auto.chapters.159': 'Chapters',
+    'auto.ready_to_practice_af.160': 'Ready to Practice After Watching?',
+    'auto.put_your_learning_in.161': 'Put your learning into action by enhancing photos in AI Studio or dictating your first product listing.',
+    'auto.go_to_dashboard.162': 'Go to Dashboard',
+    'auto.verifying_ai_image_e.163': 'Verifying AI image enhancement...',
+    'auto.applying_ai_backgrou.164': 'Applying AI background removal & studio lighting...',
+    'auto.uploading_original_i.165': 'Uploading original image to Firebase Storage...',
+    'auto.uploading_enhanced_i.166': 'Uploading enhanced image to Firebase Storage...',
+    'auto.calculating_fair_pri.167': 'Calculating fair pricing via XGBoost Regressor...',
+    'auto.saving_listing_to_cl.168': 'Saving listing to Cloud Firestore...',
+    'auto.multilingual_voice_n.169': 'Multilingual Voice & NLP Auto-Cataloger',
+    'auto.speak_to_generate_sm.170': 'Speak to Generate Smart Catalog',
+    'auto.describe_your_craft_.171': 'Describe your craft in your mother tongue. AI extracts attributes, translates, and generates SEO-ready Hindi & English catalogs while keeping your original photo untouched.',
+    'auto.ai_image_studio_befo.172': 'AI Image Studio: Before & After Comparison',
+    'auto.studio_grade.173': 'Studio-Grade',
+    'auto.studio_enhanced_phot.174': 'Studio-enhanced photo will be published to the catalog while preserving authentic craft textures.',
+    'auto.enhancing.175': 'Enhancing...',
+    'auto.change_photo.176': 'Change Photo',
+    'auto.before_original.177': 'Before (Original)',
+    'auto.after_enhanced.178': 'After (Enhanced)',
+    'auto.spoken_language.179': 'Spoken Language:',
+    'auto.listening_speak_now.180': '🔴 Listening... Speak now!',
+    'auto.tap_microphone_to_sp.181': 'Tap Microphone to Speak',
+    'auto.or_try_sample_artisa.182': 'Or Try Sample Artisan Voice Note:',
+    'auto.spoken_voice_transcr.183': 'Spoken Voice Transcription:',
+    'auto.ai_extracted_smart_a.184': 'AI Extracted Smart Attributes',
+    'auto.zero_manual_typing_r.185': 'Zero manual typing required for artisan',
+    'auto.category.186': 'Category',
+    'auto.craft_technique.187': 'Craft Technique',
+    'auto.crafting_time.188': 'Crafting Time',
+    'auto.days.189': 'Days',
+    'auto.raw_material_cost.190': 'Raw Material Cost',
+    'auto.ai_speech_audio_tran.191': 'AI Speech Audio Transcription:',
+    'auto.ai_speaking.192': 'AI Speaking...',
+    'auto.stopped_ready_to_rea.193': 'Stopped / Ready to Read',
+    'auto.copy_transcript.194': 'Copy transcript',
+    'auto.listen_carefully_or_.195': '💡 Listen carefully or read the exact speech transcript above.',
+    'auto.transcript_copied.196': 'Transcript copied!',
+    'auto.generated_search_key.197': 'Generated Search Keywords:',
+    'auto.original_ai_enhanced.198': 'Original & AI enhanced images will be saved to Firebase Storage.',
+    'auto.saving_to_firestore.199': 'Saving to Firestore...',
+    'auto.publish_to_mosje_sma.200': 'Publish to MoSJE Smart Catalog',
     // Navigation
     'nav.home': 'Home',
     'nav.studio': 'AI Studio',
@@ -18,6 +219,31 @@ const translations: LanguageTranslations = {
     'nav.aiEngines': 'AI Engines',
     'nav.english': 'English',
     'nav.hindi': 'हिन्दी',
+
+    'nav.tutorials': 'Tutorials',
+
+    // Studio feature labels
+    'studio.featureBgRemoval': 'Background Removal',
+    'studio.featureLighting': 'Better Lighting',
+    'studio.featureColor': 'Natural Color Correction',
+    'studio.featurePosition': 'Proper Positioning & Cropping',
+    'studio.featureQuality': 'Enhanced Quality',
+    'studio.aiEnhanced': 'AI Enhanced',
+    'studio.stopSpeech': 'Stop Speech',
+    'studio.listenAnalytics': 'Listen Analytics',
+
+    // Error / publish
+    'error.publishFailed': 'Error publishing product. Please try again.',
+    'copilot.errorResponse': 'I encountered an issue. Please try again.',
+
+    // Dashboard extras
+    'dashboard.stopSpeech': 'Stop Speech',
+    'dashboard.speechTranscript': 'AI Speech Transcription:',
+    'dashboard.aiEnhanced': 'AI Enhanced',
+    'dashboard.tapForDetails': 'Tap to view details & Before/After comparison',
+    'dashboard.videoGuides': 'Video Guides',
+    'dashboard.tutorialVideos': 'Tutorial Videos',
+    'dashboard.watchTutorials': 'Watch Tutorials',
 
     // Common
     'common.home': 'Home',
@@ -288,6 +514,7 @@ const translations: LanguageTranslations = {
     'success.customizationSent': 'Customization request sent successfully!',
   },
   hi: {
+
     'nav.home': 'होम',
     'nav.studio': 'फोटो स्टूडियो',
     'nav.voice': 'बोलकर कैटलॉग',
@@ -1901,26 +2128,74 @@ const translations: LanguageTranslations = {
     'success.reviewSubmitted': 'સમીક્ષા સફળતાપૂર્્વક સબમિટ થઈ!',
     'success.customizationSent': 'કસ્ટમાઇઝેશન વિનંતી સફળતાપૂર્વક મોકલાઈ!',
   },
+  kn: {},
+  ml: {},
+  pa: {},
+  or: {},
+  as: {},
+  ur: {},
+  sa: {},
+  mai: {},
+  kok: {},
+  ne: {},
+  sd: {},
+  doi: {},
+  brx: {},
+  sat: {},
 };
 
-// Translation helper function
+export interface LanguageMetadata {
+  code: Language;
+  name: string;
+  nativeName: string;
+  direction: 'ltr' | 'rtl';
+}
+
+export const LANGUAGE_METADATA: Record<Language, LanguageMetadata> = {
+  en: { code: 'en', name: 'English', nativeName: 'English', direction: 'ltr' },
+  hi: { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', direction: 'ltr' },
+  te: { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', direction: 'ltr' },
+  ta: { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', direction: 'ltr' },
+  bn: { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', direction: 'ltr' },
+  mr: { code: 'mr', name: 'Marathi', nativeName: 'मराठी', direction: 'ltr' },
+  gu: { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી', direction: 'ltr' },
+  kn: { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ', direction: 'ltr' },
+  ml: { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം', direction: 'ltr' },
+  pa: { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ', direction: 'ltr' },
+  or: { code: 'or', name: 'Odia', nativeName: 'ଓଡ଼ିଆ', direction: 'ltr' },
+  as: { code: 'as', name: 'Assamese', nativeName: 'অসমীয়া', direction: 'ltr' },
+  ur: { code: 'ur', name: 'Urdu', nativeName: 'اردو', direction: 'rtl' },
+  sa: { code: 'sa', name: 'Sanskrit', nativeName: 'संस्कृतम्', direction: 'ltr' },
+  mai: { code: 'mai', name: 'Maithili', nativeName: 'मैथिली', direction: 'ltr' },
+  kok: { code: 'kok', name: 'Konkani', nativeName: 'कोंकणी', direction: 'ltr' },
+  ne: { code: 'ne', name: 'Nepali', nativeName: 'नेपाली', direction: 'ltr' },
+  sd: { code: 'sd', name: 'Sindhi', nativeName: 'سنڌي', direction: 'ltr' },
+  doi: { code: 'doi', name: 'Dogri', nativeName: 'डोगरी', direction: 'ltr' },
+  brx: { code: 'brx', name: 'Bodo', nativeName: 'बड़ो', direction: 'ltr' },
+  sat: { code: 'sat', name: 'Santali', nativeName: 'ᱥᱟᱱᱛᱟᱲᱤ', direction: 'ltr' },
+};
+
+// Translation helper function (Static priority -> Hybrid Runtime cache -> English fallback)
 export function translate(lang: Language, key: string): string {
   const dict = translations[lang] || translations.en;
-  return dict[key] || translations.en[key] || key;
+  if (dict && dict[key]) {
+    return dict[key];
+  }
+
+  // Check hybrid runtime translation cache if static translation is missing
+  const englishText = translations.en?.[key];
+  if (englishText && lang !== 'en') {
+    const runtime = getStoredTranslation(lang, englishText);
+    if (runtime) return runtime;
+    queuePhrasesForTranslation([englishText], lang);
+  }
+
+  return englishText || key;
 }
 
 // Get language name in its own language
 export function getLanguageName(lang: Language): string {
-  const names: Record<Language, string> = {
-    en: 'English',
-    hi: 'हिन्दी',
-    te: 'తెలుగు',
-    ta: 'தமிழ்',
-    bn: 'বাংলা',
-    mr: 'मराठी',
-    gu: 'ગુજરાતી',
-  };
-  return names[lang];
+  return LANGUAGE_METADATA[lang]?.nativeName || 'English';
 }
 
 // Get speech synthesis language code
@@ -1933,8 +2208,22 @@ export function getSpeechLangCode(lang: Language): string {
     bn: 'bn-IN',
     mr: 'mr-IN',
     gu: 'gu-IN',
+    kn: 'kn-IN',
+    ml: 'ml-IN',
+    pa: 'pa-IN',
+    or: 'or-IN',
+    as: 'as-IN',
+    ur: 'ur-IN',
+    sa: 'sa-IN',
+    mai: 'hi-IN', // fallback for Maithili
+    kok: 'kok-IN',
+    ne: 'ne-NP',
+    sd: 'sd-IN',
+    doi: 'hi-IN', // fallback for Dogri
+    brx: 'hi-IN', // fallback for Bodo
+    sat: 'hi-IN', // fallback for Santali
   };
-  return codes[lang];
+  return codes[lang] || 'en-IN';
 }
 
 // Get Web Speech Recognition language code
@@ -1942,28 +2231,47 @@ export function getRecognitionLangCode(lang: Language): string {
   return getSpeechLangCode(lang);
 }
 
+// Script matchers covering all 21 supported Indian languages
+const SCRIPT_MATCHERS: Record<Language, RegExp> = {
+  en: /^[A-Za-z0-9\s.,!?'"()\-:;₹]+$/,
+  hi: /[\u0900-\u097F]/, // Devanagari
+  te: /[\u0C00-\u0C7F]/, // Telugu
+  ta: /[\u0B80-\u0BFF]/, // Tamil
+  bn: /[\u0980-\u09FF]/, // Bengali
+  mr: /[\u0900-\u097F]/, // Marathi (Devanagari)
+  gu: /[\u0A80-\u0AFF]/, // Gujarati
+  kn: /[\u0C80-\u0CFF]/, // Kannada
+  ml: /[\u0D00-\u0D7F]/, // Malayalam
+  pa: /[\u0A00-\u0A7F]/, // Punjabi (Gurmukhi)
+  or: /[\u0B00-\u0B7F]/, // Odia
+  as: /[\u0980-\u09FF]/, // Assamese (Bengali-Assamese script)
+  ur: /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/, // Urdu (Arabic-Persian)
+  sa: /[\u0900-\u097F]/, // Sanskrit (Devanagari)
+  mai: /[\u0900-\u097F\u11480-\u114DF]/, // Maithili (Devanagari/Tirhuta)
+  kok: /[\u0900-\u097F\u0C80-\u0CFF]/, // Konkani (Devanagari/Kannada)
+  ne: /[\u0900-\u097F]/, // Nepali (Devanagari)
+  sd: /[\u0600-\u06FF\u0900-\u097F]/, // Sindhi (Arabic/Devanagari)
+  doi: /[\u0900-\u097F]/, // Dogri (Devanagari)
+  brx: /[\u0900-\u097F]/, // Bodo (Devanagari)
+  sat: /[\u1C50-\u1C7F\u0980-\u09FF\u0900-\u097F]/, // Santali (Ol Chiki/Bengali/Devanagari)
+};
+
 // Translate AI-generated descriptions to selected language
 export function translateAIText(text: string, lang: Language): string {
-  // For now, if the text is already in the target language script, return as-is
-  // Otherwise provide a simple mapping for common phrases
-  if (lang === 'en') return text;
+  if (lang === 'en' || !text) return text;
   
-  // Simple heuristic: if text contains Devanagari and lang is hi, return as-is
-  const hasDevanagari = /[\u0900-\u097F]/.test(text);
-  const hasTelugu = /[\u0C00-\u0C7F]/.test(text);
-  const hasTamil = /[\u0B80-\u0BFF]/.test(text);
-  const hasBengali = /[\u0980-\u09FF]/.test(text);
-  const hasMarathi = /[\u0900-\u097F]/.test(text); // Same as Hindi script
-  const hasGujarati = /[\u0A80-\u0AFF]/.test(text);
+  // If the text is already in the target language script, return as-is
+  const matcher = SCRIPT_MATCHERS[lang];
+  if (matcher && matcher.test(text)) {
+    return text;
+  }
   
-  if (lang === 'hi' && hasDevanagari) return text;
-  if (lang === 'te' && hasTelugu) return text;
-  if (lang === 'ta' && hasTamil) return text;
-  if (lang === 'bn' && hasBengali) return text;
-  if (lang === 'mr' && hasMarathi) return text;
-  if (lang === 'gu' && hasGujarati) return text;
-  
-  // Fallback: return original text (AI will handle translation via Gemini when available)
+  // Check hybrid runtime translation cache
+  const cached = getStoredTranslation(lang, text);
+  if (cached) return cached;
+  queuePhrasesForTranslation([text], lang);
+
+  // Fallback: return original text (English canonical fallback)
   return text;
 }
 

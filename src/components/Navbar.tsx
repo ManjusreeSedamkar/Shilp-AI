@@ -124,6 +124,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               <option value="bn">বাংলা</option>
               <option value="mr">मराठी</option>
               <option value="gu">ગુજરાતી</option>
+              <option value="kn">ಕನ್ನಡ</option>
+              <option value="ml">മലയാളം</option>
+              <option value="pa">ਪੰਜਾਬੀ</option>
+              <option value="or">ଓଡ଼ିଆ</option>
+              <option value="as">অসমীয়া</option>
+              <option value="ur">اردو</option>
+              <option value="sa">संस्कृतम्</option>
+              <option value="mai">मैथिली</option>
+              <option value="kok">कोंकणी</option>
+              <option value="ne">नेपाली</option>
+              <option value="sd">سنڌي</option>
+              <option value="doi">डोगरी</option>
+              <option value="brx">बड़ो</option>
+              <option value="sat">ᱥᱟᱱᱛᱟᱲᱤ</option>
             </select>
           </div>
 

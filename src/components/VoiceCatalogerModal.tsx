@@ -5,7 +5,8 @@ import { DynamicPricingEngine } from '../services/pricingEngine';
 import { CRAFT_PRESETS } from '../data/craftPresets';
 import { Language, ProductListing } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
-import { getSpeechLangCode, translate } from '../services/translations';
+import { getSpeechLangCode, translate, LANGUAGE_METADATA } from '../services/translations';
+import { getCategoryTranslation, getCraftTechniqueTranslation } from '../services/displayTranslation';
 import { AIImageStudio, DEFAULT_IMAGE_OPTIONS } from '../services/imageStudio';
 import { uploadImageToStorage, saveProductToFirestore } from '../services/firebase';
 
@@ -41,7 +42,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const t = (key: string) => translate(language, key);
-  const isHindi = language === 'hi';
+  // isHindi removed — use t() translations
 
   // Sync selected photo prop
   useEffect(() => {
@@ -162,7 +163,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
   const handleCreateListing = async () => {
     if (!extractedData) return;
     setIsPublishing(true);
-    setPublishingStep(isHindi ? 'एआई फोटो संवर्धन जांच रहे हैं...' : 'Verifying AI image enhancement...');
+    setPublishingStep(translate(language, 'auto.verifying_ai_image_e.163'));
 
     try {
       const productId = `prod-${Date.now()}`;
@@ -172,7 +173,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
       let rawUrl = originalPhoto || currentPhoto;
 
       if (!enhancedUrl || enhancedUrl === rawUrl) {
-        setPublishingStep(isHindi ? 'एआई पृष्ठभूमि हटाना व लाइटिंग सुधार रहे हैं...' : 'Applying AI background removal & studio lighting...');
+        setPublishingStep(translate(language, 'auto.applying_ai_backgrou.164'));
         try {
           const res = await AIImageStudio.processImage(rawUrl, DEFAULT_IMAGE_OPTIONS);
           enhancedUrl = res.enhancedDataUrl;
@@ -183,20 +184,20 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
       }
 
       // Step 2: Upload to Firebase Storage
-      setPublishingStep(isHindi ? 'फायरबेस स्टोरेज में मूल फोटो अपलोड हो रही है...' : 'Uploading original image to Firebase Storage...');
+      setPublishingStep(translate(language, 'auto.uploading_original_i.165'));
       const originalStorageUrl = await uploadImageToStorage(
         rawUrl,
         `products/original/${productId}.jpg`
       );
 
-      setPublishingStep(isHindi ? 'फायरबेस स्टोरेज में एआई फोटो अपलोड हो रही है...' : 'Uploading enhanced image to Firebase Storage...');
+      setPublishingStep(translate(language, 'auto.uploading_enhanced_i.166'));
       const enhancedStorageUrl = await uploadImageToStorage(
         enhancedUrl,
         `products/enhanced/${productId}.jpg`
       );
 
       // Step 3: XGBoost Fair Pricing Calculation
-      setPublishingStep(isHindi ? 'XGBoost मॉडल द्वारा उचित मूल्य तय किया जा रहा है...' : 'Calculating fair pricing via XGBoost Regressor...');
+      setPublishingStep(translate(language, 'auto.calculating_fair_pri.167'));
       const pricing = DynamicPricingEngine.calculatePricing({
         category: extractedData.category,
         craftTechnique: extractedData.craftTechnique,
@@ -237,14 +238,14 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
       };
 
       // Step 4: Save to Firestore
-      setPublishingStep(isHindi ? 'क्लाउड फायरस्टोर में कैटलॉग सहेजा जा रहा है...' : 'Saving listing to Cloud Firestore...');
+      setPublishingStep(translate(language, 'auto.saving_listing_to_cl.168'));
       await saveProductToFirestore(listing);
 
       // Step 5: Update Local App & State
       onListingCreated?.(listing);
     } catch (err) {
       console.error('Failed to create listing:', err);
-      alert(isHindi ? 'कैटलॉग प्रकाशित करने में समस्या आई। पुनः प्रयास करें।' : 'Error publishing product. Please try again.');
+      alert(t('error.publishFailed'));
     } finally {
       setIsPublishing(false);
       setPublishingStep('');
@@ -259,15 +260,13 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
           <div className="space-y-1">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur text-amber-300">
               <Sparkles className="w-3.5 h-3.5" />
-              {isHindi ? 'बहुभाषी वॉयस एनएलपी इंजन' : 'Multilingual Voice & NLP Auto-Cataloger'}
+              {translate(language, 'auto.multilingual_voice_n.169')}
             </span>
             <h2 className="text-xl sm:text-2xl font-black">
-              {isHindi ? 'बोलकर कैटलॉग बनाएं (Voice to Catalog)' : 'Speak to Generate Smart Catalog'}
+              {translate(language, 'auto.speak_to_generate_sm.170')}
             </h2>
             <p className="text-xs sm:text-sm text-stone-300 max-w-xl">
-              {isHindi
-                ? 'अपनी क्षेत्रीय भाषा में बोलें। एआई उत्पाद का नाम, सामग्री, दिन व लागत पहचानकर अंग्रेजी व हिंदी विवरण तैयार करेगा।'
-                : 'Describe your craft in your mother tongue. AI extracts attributes, translates, and generates SEO-ready Hindi & English catalogs while keeping your original photo untouched.'}
+              {translate(language, 'auto.describe_your_craft_.171')}
             </p>
           </div>
           <div className="hidden sm:block">
@@ -288,17 +287,15 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="text-xs sm:text-sm font-bold text-stone-900">
-                  {isHindi ? 'एआई स्टूडियो: पहले और बाद की तुलना (Before & After)' : 'AI Image Studio: Before & After Comparison'}
+                  {translate(language, 'auto.ai_image_studio_befo.172')}
                 </h3>
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5">
                   <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
-                  {isHindi ? 'स्टूडियो ग्रेड' : 'Studio-Grade'}
+                  {translate(language, 'auto.studio_grade.173')}
                 </span>
               </div>
               <p className="text-[11px] text-stone-500 leading-tight">
-                {isHindi 
-                  ? 'स्वच्छ पृष्ठभूमि और स्टूडियो लाइटिंग वाली फोटो कैटलॉग और खरीदार पोर्टल पर दिखाई देगी।'
-                  : 'Studio-enhanced photo will be published to the catalog while preserving authentic craft textures.'}
+                {translate(language, 'auto.studio_enhanced_phot.174')}
               </p>
             </div>
           </div>
@@ -320,12 +317,12 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
               {isEnhancingUpload ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 text-stone-500 animate-spin" />
-                  <span>{isHindi ? 'संवर्धन हो रहा है...' : 'Enhancing...'}</span>
+                  <span>{translate(language, 'auto.enhancing.175')}</span>
                 </>
               ) : (
                 <>
                   <Upload className="w-3.5 h-3.5 text-stone-500" />
-                  <span>{isHindi ? 'फोटो बदलें' : 'Change Photo'}</span>
+                  <span>{translate(language, 'auto.change_photo.176')}</span>
                 </>
               )}
             </button>
@@ -343,7 +340,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
                 className="w-full h-full object-cover"
               />
               <div className="absolute top-2.5 left-2.5 bg-[#2D3338]/90 backdrop-blur text-white text-[10px] sm:text-[11px] font-medium px-2.5 py-0.5 rounded-full shadow-sm">
-                {isHindi ? 'पहले (मूल फोटो)' : 'Before (Original)'}
+                {translate(language, 'auto.before_original.177')}
               </div>
             </div>
 
@@ -356,7 +353,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
               />
               <div className="absolute top-2.5 left-2.5 bg-[#2D5A43]/90 backdrop-blur text-white text-[10px] sm:text-[11px] font-medium px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-300" />
-                <span>{isHindi ? 'बाद में (एआई संवर्धित)' : 'After (Enhanced)'}</span>
+                <span>{translate(language, 'auto.after_enhanced.178')}</span>
               </div>
             </div>
           </div>
@@ -369,7 +366,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
                 <Scissors className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-700" />
               </div>
               <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
-                {isHindi ? <>बैकग्राउंड<br />हटाना</> : <>Background<br />Removal</>}
+                {t('studio.featureBgRemoval')}
               </span>
             </div>
 
@@ -379,7 +376,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
                 <SunMedium className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-700" />
               </div>
               <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
-                {isHindi ? <>बेहतर<br />लाइटिंग</> : <>Better<br />Lighting</>}
+                {t('studio.featureLighting')}
               </span>
             </div>
 
@@ -389,7 +386,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
                 <Palette className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-700" />
               </div>
               <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
-                {isHindi ? <>प्राकृतिक रंग<br />सुधार</> : <>Natural Color<br />Correction</>}
+                {t('studio.featureColor')}
               </span>
             </div>
 
@@ -399,7 +396,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
                 <Crop className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-stone-700" />
               </div>
               <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
-                {isHindi ? <>उचित स्थिति<br />व क्रॉपिंग</> : <>Proper Positioning<br />& Cropping</>}
+                {t('studio.featurePosition')}
               </span>
             </div>
 
@@ -409,7 +406,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
                 <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600" />
               </div>
               <span className="text-[9px] sm:text-[10px] font-medium text-stone-700 leading-tight">
-                {isHindi ? <>संवर्धित<br />गुणवत्ता</> : <>Enhanced<br />Quality</>}
+                {t('studio.featureQuality')}
               </span>
             </div>
           </div>
@@ -422,29 +419,25 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
         <div className="flex items-center justify-center space-x-2 flex-wrap gap-1">
           <span className="text-xs text-stone-500 font-medium flex items-center gap-1">
             <Globe className="w-3.5 h-3.5" />
-            {isHindi ? 'बोलने की भाषा:' : 'Spoken Language:'}
+            {translate(language, 'auto.spoken_language.179')}
           </span>
-          {[
-            { code: 'hi-IN', label: 'हिन्दी (Hindi)' },
-            { code: 'en-IN', label: 'English' },
-            { code: 'te-IN', label: 'తెలుగు (Telugu)' },
-            { code: 'ta-IN', label: 'தமிழ் (Tamil)' },
-            { code: 'bn-IN', label: 'বাংলা (Bengali)' },
-            { code: 'mr-IN', label: 'मराठी (Marathi)' },
-            { code: 'gu-IN', label: 'ગુજરાતી (Gujarati)' },
-          ].map((lang) => (
-            <button
-              key={lang.code}
-              onClick={() => setSelectedLangCode(lang.code)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                selectedLangCode === lang.code
-                  ? 'bg-saffron-600 text-white shadow-sm'
-                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-              }`}
-            >
-              {lang.label}
-            </button>
-          ))}
+          {Object.entries(LANGUAGE_METADATA).map(([langKey, meta]) => {
+            const bcpCode = getSpeechLangCode(langKey as Language);
+            return (
+              <button
+                key={langKey}
+                onClick={() => setSelectedLangCode(bcpCode)}
+                className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition-all ${
+                  selectedLangCode === bcpCode
+                    ? 'bg-saffron-600 text-white shadow-sm'
+                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                }`}
+                title={`${meta.name} (${bcpCode})`}
+              >
+                {meta.nativeName}
+              </button>
+            );
+          })}
         </div>
 
         {/* Big Pulsing Mic Button */}
@@ -461,15 +454,15 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
           </button>
           <span className="mt-3 text-xs font-bold text-stone-700">
             {isRecording
-              ? (isHindi ? '🔴 सुन रहा हूँ... बोलिए' : '🔴 Listening... Speak now!')
-              : (isHindi ? 'माइक दबाएं और अपने शिल्प के बारे में बोलें' : 'Tap Microphone to Speak')}
+              ? (translate(language, 'auto.listening_speak_now.180'))
+              : (translate(language, 'auto.tap_microphone_to_sp.181'))}
           </span>
         </div>
 
         {/* Quick Sample Voice Prompts */}
         <div className="space-y-1.5 pt-2 border-t border-stone-100 text-left">
           <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider">
-            {isHindi ? 'या त्वरित नमूना आवाज चुनें (Quick Voice Samples):' : 'Or Try Sample Artisan Voice Note:'}
+            {translate(language, 'auto.or_try_sample_artisa.182')}
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
@@ -504,7 +497,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
         {transcript && (
           <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 text-left space-y-1">
             <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
-              {isHindi ? 'सुनी गई वाणी (Transcribed Speech):' : 'Spoken Voice Transcription:'}
+              {translate(language, 'auto.spoken_voice_transcr.183')}
             </span>
             <p className="text-xs text-stone-800 italic">"{transcript}"</p>
           </div>
@@ -521,10 +514,10 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
               </span>
               <div>
                 <h3 className="font-bold text-stone-900 text-base">
-                  {isHindi ? 'एआई द्वारा पहचाने गए शिल्प विवरण' : 'AI Extracted Smart Attributes'}
+                  {translate(language, 'auto.ai_extracted_smart_a.184')}
                 </h3>
                 <p className="text-xs text-stone-500">
-                  {isHindi ? 'वाणी से स्वतः निष्कर्षित उत्पाद डेटा' : 'Zero manual typing required for artisan'}
+                  {translate(language, 'auto.zero_manual_typing_r.185')}
                 </p>
               </div>
             </div>
@@ -536,19 +529,19 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
           {/* Key Attributes Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
             <div className="bg-stone-50 p-2.5 rounded-xl">
-              <span className="text-stone-500 text-[10px]">{isHindi ? 'श्रेणी (Category)' : 'Category'}</span>
-              <p className="font-bold text-stone-900">{extractedData.category}</p>
+              <span className="text-stone-500 text-[10px]">{translate(language, 'auto.category.186')}</span>
+              <p className="font-bold text-stone-900">{getCategoryTranslation(extractedData.category, language)}</p>
             </div>
             <div className="bg-stone-50 p-2.5 rounded-xl">
-              <span className="text-stone-500 text-[10px]">{isHindi ? 'तकनीक (Technique)' : 'Craft Technique'}</span>
-              <p className="font-bold text-stone-900">{extractedData.craftTechnique}</p>
+              <span className="text-stone-500 text-[10px]">{translate(language, 'auto.craft_technique.187')}</span>
+              <p className="font-bold text-stone-900">{getCraftTechniqueTranslation(extractedData.craftTechnique, language)}</p>
             </div>
             <div className="bg-stone-50 p-2.5 rounded-xl">
-              <span className="text-stone-500 text-[10px]">{isHindi ? 'श्रम समय (Days)' : 'Crafting Time'}</span>
-              <p className="font-bold text-blue-700">{extractedData.productionDays} {isHindi ? 'दिन' : 'Days'}</p>
+              <span className="text-stone-500 text-[10px]">{translate(language, 'auto.crafting_time.188')}</span>
+              <p className="font-bold text-blue-700">{extractedData.productionDays} {translate(language, 'auto.days.189')}</p>
             </div>
             <div className="bg-stone-50 p-2.5 rounded-xl">
-              <span className="text-stone-500 text-[10px]">{isHindi ? 'कच्चा माल (Raw Cost)' : 'Raw Material Cost'}</span>
+              <span className="text-stone-500 text-[10px]">{translate(language, 'auto.raw_material_cost.190')}</span>
               <p className="font-bold text-emerald-700">₹{extractedData.rawMaterialCost.toLocaleString('en-IN')}</p>
             </div>
           </div>
@@ -644,14 +637,14 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
                 <div className="flex items-center justify-between text-[11px] font-bold border-b border-amber-200/80 pb-1.5">
                   <span className="flex items-center gap-1.5 text-amber-900">
                     <FileText className="w-3.5 h-3.5 text-amber-700" />
-                    {isHindi ? 'AI ऑडियो ट्रांसक्रिप्शन (Live Audio Transcript):' : 'AI Speech Audio Transcription:'}
+                    {translate(language, 'auto.ai_speech_audio_tran.191')}
                   </span>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
                       isSpeaking ? 'bg-red-100 text-red-700 animate-pulse border border-red-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
-                      {isSpeaking ? (isHindi ? 'AI बोल रहा है...' : 'AI Speaking...') : (isHindi ? 'रोका गया / पढ़ने के लिए तैयार' : 'Stopped / Ready to Read')}
+                      {isSpeaking ? (translate(language, 'auto.ai_speaking.192')) : (translate(language, 'auto.stopped_ready_to_rea.193'))}
                     </span>
                     <button
                       onClick={() => {
@@ -660,7 +653,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
                         setTimeout(() => setIsTranscriptCopied(false), 2000);
                       }}
                       className="text-stone-500 hover:text-stone-800 p-1 rounded hover:bg-amber-100/80 transition-colors"
-                      title={isHindi ? 'प्रतिलिपि कॉपी करें' : 'Copy transcript'}
+                      title={translate(language, 'auto.copy_transcript.194')}
                     >
                       {isTranscriptCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
@@ -683,8 +676,8 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
                   "{spokenCatalogTranscript}"
                 </p>
                 <div className="flex items-center justify-between text-[10px] text-stone-500 pt-0.5">
-                  <span>{isHindi ? '💡 ध्यान से सुनने या पढ़ने के लिए प्ले/स्टॉप का उपयोग करें।' : '💡 Listen carefully or read the exact speech transcript above.'}</span>
-                  {isTranscriptCopied && <span className="text-emerald-700 font-semibold">{isHindi ? 'कॉपी कर लिया गया!' : 'Transcript copied!'}</span>}
+                  <span>{translate(language, 'auto.listen_carefully_or_.195')}</span>
+                  {isTranscriptCopied && <span className="text-emerald-700 font-semibold">{translate(language, 'auto.transcript_copied.196')}</span>}
                 </div>
               </div>
             )}
@@ -694,7 +687,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
           <div className="space-y-1.5">
             <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider flex items-center gap-1">
               <Tag className="w-3 h-3 text-stone-400" />
-              {isHindi ? 'स्वचालित खोज टैग्स (SEO Keywords):' : 'Generated Search Keywords:'}
+              {translate(language, 'auto.generated_search_key.197')}
             </span>
             <div className="flex flex-wrap gap-1.5">
               {extractedData.seoKeywords.map((kw, i) => (
@@ -717,7 +710,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
               </div>
             ) : (
               <div className="text-[11px] text-stone-500 hidden sm:block">
-                <span>{isHindi ? 'मूल व एआई संवर्धित दोनों फोटो फायरबेस पर सुरक्षित होंगी।' : 'Original & AI enhanced images will be saved to Firebase Storage.'}</span>
+                <span>{translate(language, 'auto.original_ai_enhanced.198')}</span>
               </div>
             )}
 
@@ -729,11 +722,11 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
               {isPublishing ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>{isHindi ? 'प्रकाशित हो रहा है...' : 'Saving to Firestore...'}</span>
+                  <span>{translate(language, 'auto.saving_to_firestore.199')}</span>
                 </>
               ) : (
                 <>
-                  <span>{isHindi ? 'कैटलॉग में प्रकाशित करें' : 'Publish to MoSJE Smart Catalog'}</span>
+                  <span>{translate(language, 'auto.publish_to_mosje_sma.200')}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

@@ -4,6 +4,8 @@ import { ProductListing, Language, ProductReview } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
 import { ReviewsSection } from './ReviewsSection';
+import { translate, getLanguageName } from '../services/translations';
+import { getProductTitle, getProductDescription, getCategoryTranslation, getCraftTechniqueTranslation, getMaterialTranslation } from '../services/displayTranslation';
 
 interface ProductDetailModalProps {
   product: ProductListing | null;
@@ -28,7 +30,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onAddReview,
   currentBuyerName = 'Vikram Mehta'
 }) => {
-  const [activeLang, setActiveLang] = useState<'hi' | 'en'>(language === 'hi' ? 'hi' : 'en');
+  const [showEnglishSEO, setShowEnglishSEO] = useState<boolean>(language === 'en');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [spokenTranscript, setSpokenTranscript] = useState<string | null>(null);
   const [isCopiedTranscript, setIsCopiedTranscript] = useState(false);
@@ -37,7 +39,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   if (!product) return null;
 
-  const isHindi = activeLang === 'hi';
+  const t = (key: string) => translate(language, key);
+
+  const isHindi = !showEnglishSEO && language === 'hi';
 
   const enhancedImg = product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage;
   const originalImg = product.originalImageUrl || product.originalImage || product.enhancedImageUrl || product.enhancedImage;
@@ -50,7 +54,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       return;
     }
 
-    const textToSpeak = isHindi ? product.descriptionHi : product.descriptionEn;
+    const textToSpeak = showEnglishSEO ? product.descriptionEn : getProductDescription(product, language);
     setSpokenTranscript(textToSpeak);
     setIsSpeaking(true);
 
@@ -93,7 +97,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-3 left-3 bg-[#2D3338]/90 backdrop-blur text-white text-[10px] font-medium px-2.5 py-0.5 rounded-full shadow-sm">
-                  {isHindi ? 'पहले (मूल फोटो)' : 'Before (Original)'}
+                  {translate(language, 'auto.before_original.120')}
                 </div>
               </div>
 
@@ -106,7 +110,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 />
                 <div className="absolute top-3 left-3 bg-[#2D5A43]/90 backdrop-blur text-white text-[10px] font-medium px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-300" />
-                  <span>{isHindi ? 'बाद में (एआई संवर्धित)' : 'After (Enhanced)'}</span>
+                  <span>{translate(language, 'auto.after_enhanced.121')}</span>
                 </div>
               </div>
             </div>
@@ -118,7 +122,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <Scissors className="w-3.5 h-3.5 text-stone-700" />
                 </div>
                 <span className="text-[9px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>बैकग्राउंड<br />हटाना</> : <>Background<br />Removal</>}
+                  {t('studio.featureBgRemoval')}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center space-y-0.5">
@@ -126,7 +130,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <SunMedium className="w-3.5 h-3.5 text-stone-700" />
                 </div>
                 <span className="text-[9px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>बेहतर<br />लाइटिंग</> : <>Better<br />Lighting</>}
+                  {t('studio.featureLighting')}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center space-y-0.5">
@@ -134,7 +138,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <Palette className="w-3.5 h-3.5 text-stone-700" />
                 </div>
                 <span className="text-[9px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>प्राकृतिक रंग<br />सुधार</> : <>Natural Color<br />Correction</>}
+                  {t('studio.featureColor')}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center space-y-0.5">
@@ -142,7 +146,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <Crop className="w-3.5 h-3.5 text-stone-700" />
                 </div>
                 <span className="text-[9px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>उचित स्थिति<br />व क्रॉपिंग</> : <>Proper Positioning<br />& Cropping</>}
+                  {t('studio.featurePosition')}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center space-y-0.5">
@@ -150,7 +154,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                 </div>
                 <span className="text-[9px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>संवर्धित<br />गुणवत्ता</> : <>Enhanced<br />Quality</>}
+                  {t('studio.featureQuality')}
                 </span>
               </div>
             </div>
@@ -179,8 +183,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5">
               <Sparkles className="w-3 h-3 text-amber-300" />
               {imageTab === 'enhanced'
-                ? (language === 'hi' ? 'कैटलॉग में प्रदर्शित फोटो' : 'Catalog Display Image')
-                : (language === 'hi' ? 'मूल कार्यशाला फोटो' : 'Original Workshop Photo')}
+                ? (translate(language, 'auto.catalog_display_imag.122'))
+                : (translate(language, 'auto.original_workshop_ph.123'))}
             </div>
           </div>
         )}
@@ -188,7 +192,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         {/* Image Mode Toggle Pill Row */}
         <div className="bg-stone-100/90 border-b border-stone-200 px-4 py-2 flex items-center justify-between gap-2">
           <span className="text-[11px] font-medium text-stone-500 hidden sm:inline">
-            {isHindi ? 'फोटो प्रदर्शन मोड:' : 'Photo Display Mode:'}
+            {translate(language, 'auto.photo_display_mode.124')}
           </span>
           <div className="flex items-center bg-white rounded-xl p-1 shadow-2xs border border-stone-200/80 ml-auto">
             <button
@@ -200,7 +204,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               }`}
             >
               <Sparkles className="w-2.5 h-2.5 text-amber-300" />
-              <span>{language === 'hi' ? 'एआई संवर्धित' : 'AI Enhanced'}</span>
+              <span>{translate(language, 'auto.ai_enhanced.125')}</span>
             </button>
             <button
               onClick={() => setImageTab('before_after')}
@@ -211,7 +215,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               }`}
             >
               <Columns className="w-2.5 h-2.5 text-amber-400" />
-              <span>{language === 'hi' ? 'पहले / बाद (Showcase)' : 'Before / After'}</span>
+              <span>{translate(language, 'auto.before_after.126')}</span>
             </button>
             <button
               onClick={() => setImageTab('original')}
@@ -221,7 +225,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <span>{language === 'hi' ? 'मूल फोटो' : 'Original'}</span>
+              <span>{translate(language, 'auto.original.127')}</span>
             </button>
           </div>
         </div>
@@ -258,10 +262,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-stone-100 pb-4">
               <div className="space-y-1">
                 <span className="text-xs font-bold text-saffron-700 uppercase tracking-wider">
-                  {product.category} • {product.state}
+                  {getCategoryTranslation(product.category, language)} • {product.state}
                 </span>
                 <h2 className="text-lg sm:text-xl font-black text-stone-900 leading-tight">
-                  {isHindi ? product.titleHi : product.titleEn}
+                  {getProductTitle(product, language)}
                 </h2>
                 <div className="flex items-center space-x-2 text-xs text-stone-500">
                   <span className="flex items-center gap-1">
@@ -269,7 +273,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     {product.artisanName} ({product.state})
                   </span>
                   <span>•</span>
-                  <span>{product.productionDays} {isHindi ? 'दिन की कारीगरी' : 'days crafting time'}</span>
+                  <span>{product.productionDays} {translate(language, 'auto.days_crafting_time.128')}</span>
                 </div>
               </div>
 
@@ -287,17 +291,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 bg-stone-100 p-1 rounded-xl">
                   <button
-                    onClick={() => setActiveLang('hi')}
+                    onClick={() => setShowEnglishSEO(false)}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                      activeLang === 'hi' ? 'bg-white text-saffron-700 shadow-sm' : 'text-stone-600'
+                      !showEnglishSEO ? 'bg-white text-saffron-700 shadow-sm' : 'text-stone-600'
                     }`}
                   >
-                    🇮🇳 हिन्दी विवरण
+                    🇮🇳 {language === 'hi' ? 'हिन्दी विवरण' : (language === 'en' ? 'Artisan Story' : `${getLanguageName(language)} विवरण`)}
                   </button>
                   <button
-                    onClick={() => setActiveLang('en')}
+                    onClick={() => setShowEnglishSEO(true)}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                      activeLang === 'en' ? 'bg-white text-saffron-700 shadow-sm' : 'text-stone-600'
+                      showEnglishSEO ? 'bg-white text-saffron-700 shadow-sm' : 'text-stone-600'
                     }`}
                   >
                     🇬🇧 English SEO
@@ -311,17 +315,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse shadow-sm'
                       : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
                   }`}
-                  title={isSpeaking ? (isHindi ? 'रोकें (Stop)' : 'Stop Speech') : (isHindi ? 'विवरण सुनें' : 'Listen to description')}
+                  title={isSpeaking ? (translate(language, 'auto.stop_speech.129')) : (translate(language, 'auto.listen_to_descriptio.130'))}
                 >
                   {isSpeaking ? (
                     <>
                       <Square className="w-3.5 h-3.5 fill-white text-white" />
-                      <span>{isHindi ? 'रोकें (Stop)' : 'Stop'}</span>
+                      <span>{translate(language, 'auto.stop.131')}</span>
                     </>
                   ) : (
                     <>
                       <Volume2 className="w-3.5 h-3.5 text-saffron-600" />
-                      <span>{isHindi ? 'सुनें' : 'Listen'}</span>
+                      <span>{translate(language, 'auto.listen.132')}</span>
                     </>
                   )}
                 </button>
@@ -333,15 +337,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <div className="flex items-center justify-between text-amber-900 font-bold text-[11px]">
                     <span className="flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5 text-amber-700" />
-                      {isHindi ? 'एआई विवरण वाणी प्रतिलेख (AI Spoken Transcript):' : 'AI Speech Transcription:'}
+                      {translate(language, 'auto.ai_speech_transcript.133')}
                       {isSpeaking ? (
                         <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded-full animate-pulse flex items-center gap-1">
                           <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-                          {isHindi ? 'बोल रहा है...' : 'Speaking...'}
+                          {translate(language, 'auto.speaking.134')}
                         </span>
                       ) : (
                         <span className="bg-stone-200 text-stone-700 text-[9px] px-1.5 py-0.2 rounded-full font-mono">
-                          {isHindi ? 'रोका गया (Stopped)' : 'Stopped'}
+                          {translate(language, 'auto.stopped.135')}
                         </span>
                       )}
                     </span>
@@ -351,7 +355,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         className="text-stone-600 hover:text-stone-900 text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-amber-200 hover:bg-amber-100 transition-colors"
                       >
                         {isCopiedTranscript ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                        {isCopiedTranscript ? (isHindi ? 'कॉपी हुआ' : 'Copied') : (isHindi ? 'कॉपी' : 'Copy')}
+                        {isCopiedTranscript ? (translate(language, 'auto.copied.136')) : (translate(language, 'auto.copy.137'))}
                       </button>
                       <button
                         onClick={() => setSpokenTranscript(null)}
@@ -369,7 +373,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               )}
 
               <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 text-xs text-stone-700 leading-relaxed whitespace-pre-line">
-                {isHindi ? product.descriptionHi : product.descriptionEn}
+                {showEnglishSEO ? product.descriptionEn : getProductDescription(product, language)}
               </div>
             </div>
 
@@ -377,11 +381,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
               <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
                 <span className="text-stone-500 text-[10px]">Craft Technique</span>
-                <p className="font-bold text-stone-900 mt-0.5">{product.craftTechnique}</p>
+                <p className="font-bold text-stone-900 mt-0.5">{getCraftTechniqueTranslation(product.craftTechnique, language)}</p>
               </div>
               <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
                 <span className="text-stone-500 text-[10px]">Primary Material</span>
-                <p className="font-bold text-stone-900 mt-0.5">{product.primaryMaterial}</p>
+                <p className="font-bold text-stone-900 mt-0.5">{getMaterialTranslation(product.primaryMaterial, language)}</p>
               </div>
               <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
                 <span className="text-stone-500 text-[10px]">Fair Artisan Wage</span>
