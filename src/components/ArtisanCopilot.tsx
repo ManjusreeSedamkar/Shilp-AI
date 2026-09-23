@@ -222,7 +222,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-stone-200 flex flex-col h-[calc(100dvh-180px)] min-h-[380px] max-h-[720px] w-full max-w-full overflow-hidden">
-      {/* Copilot Header */}
+      {/* ShilpSaathi Header */}
       <div className="bg-stone-900 p-4 text-white flex items-center justify-between border-b border-stone-800">
         <div className="flex items-center space-x-3">
           <div className="relative">
@@ -234,10 +234,10 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <h3 className="font-bold text-sm text-white">
-                {t('dashboard.copilot')}
+                ShilpSaathi
               </h3>
               <span className="text-[10px] bg-white/20 px-1.5 py-0.2 rounded font-medium text-amber-200">
-                {hasGemini ? 'Gemini 2.0 AI' : 'Copilot AI'}
+                {hasGemini ? 'Gemini 2.0 AI' : 'ShilpSaathi AI'}
               </span>
             </div>
             <p className="text-[11px] text-stone-300">
@@ -284,7 +284,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                 <div className="flex items-center justify-between mb-1.5 text-[10px] opacity-80 border-b border-stone-100/50 pb-1">
                   <span className="font-bold flex items-center gap-1">
                     {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3 text-stone-700" />}
-                    {isUser ? (isHindi ? 'आप (कारीगर)' : 'You (Artisan)') : 'SHILP Copilot AI'}
+                    {isUser ? (isHindi ? 'आप (कारीगर)' : 'You (Artisan)') : 'ShilpSaathi'}
                   </span>
 
                   {/* Play / Stop Voice Button for Every AI Response */}
@@ -432,7 +432,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
           <div className="flex items-start space-x-2">
             <div className="bg-white border border-stone-200 rounded-2xl rounded-bl-none p-3 shadow-xs flex items-center space-x-2 text-stone-600 text-xs">
               <Loader2 className="w-4 h-4 animate-spin text-saffron-600" />
-              <span>{hasGemini ? 'Gemini 2.0 Thinking...' : 'Copilot Analyzing...'}</span>
+              <span>{hasGemini ? 'Gemini 2.0 Thinking...' : 'ShilpSaathi Thinking...'}</span>
             </div>
           </div>
         )}
@@ -506,7 +506,7 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
             placeholder={
               isRecording
                 ? (isHindi ? 'सुन रहा हूँ... बोलिए' : 'Listening... speak now')
-                : (isHindi ? 'शिल्प, कीमत या ऐप के बारे में पूछें...' : 'Ask Copilot anything about craft, pricing or app...')
+                : (isHindi ? 'शिल्प, कीमत या ऐप के बारे में पूछें...' : 'Ask ShilpSaathi anything about craft, pricing or app...')
             }
             className="flex-1 px-4 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-stone-400 focus:bg-white transition-all"
           />

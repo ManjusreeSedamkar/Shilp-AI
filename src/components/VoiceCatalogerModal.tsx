@@ -7,11 +7,14 @@ import { Language, ProductListing } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
 import { getSpeechLangCode, translate } from '../services/translations';
 import { AIImageStudio, DEFAULT_IMAGE_OPTIONS } from '../services/imageStudio';
-import { uploadImageToStorage, saveProductToFirestore } from '../services/firebase';
+import { uploadImageToStorage } from '../services/firebase';
+import { saveProductToSupabase } from '../services/supabase';
 
 interface VoiceCatalogerModalProps {
   language?: Language;
   onListingCreated?: (listing: ProductListing) => void;
+  /** Called with the built ProductListing to hand off to final review step */
+  onReadyForReview?: (listing: ProductListing) => void;
   selectedPhotoUrl?: string;
   originalPhotoUrl?: string;
 }
@@ -19,6 +22,7 @@ interface VoiceCatalogerModalProps {
 export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
   language = 'en',
   onListingCreated,
+  onReadyForReview,
   selectedPhotoUrl,
   originalPhotoUrl
 }) => {
@@ -208,7 +212,7 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
 
       const listing: ProductListing = {
         id: productId,
-        artisanId: CURRENT_ARTISAN.id,
+        artisanId: CURRENT_ARTISAN.id, // UUID: '00000000-0000-0000-0000-000000000101' (demo) or currentUser.id
         artisanName: CURRENT_ARTISAN.name,
         state: CURRENT_ARTISAN.state,
         titleEn: extractedData.titleEn,
@@ -236,12 +240,17 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
         createdAt: new Date().toISOString().split('T')[0]
       };
 
-      // Step 4: Save to Firestore
-      setPublishingStep(isHindi ? 'क्लाउड फायरस्टोर में कैटलॉग सहेजा जा रहा है...' : 'Saving listing to Cloud Firestore...');
-      await saveProductToFirestore(listing);
-
-      // Step 5: Update Local App & State
-      onListingCreated?.(listing);
+      // Step 4: Hand off to ProductSubmitReview (preferred) or save directly (fallback)
+      if (onReadyForReview) {
+        // Smart Catalog flow: pass to final review step
+        onReadyForReview(listing);
+      } else {
+        // Standalone mode: save to Supabase directly
+        setPublishingStep(isHindi ? 'सुपाबेस में कैटलॉग सहेजा जा रहा है...' : 'Saving listing to Supabase...');
+        await saveProductToSupabase(listing);
+        // Step 5: Update Local App & State
+        onListingCreated?.(listing);
+      }
     } catch (err) {
       console.error('Failed to create listing:', err);
       alert(isHindi ? 'कैटलॉग प्रकाशित करने में समस्या आई। पुनः प्रयास करें।' : 'Error publishing product. Please try again.');

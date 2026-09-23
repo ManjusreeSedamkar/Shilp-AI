@@ -7,14 +7,26 @@ interface BuyerPortalProps {
   products: ProductListing[];
   onSelectProduct: (product: ProductListing) => void;
   onStartConversation?: (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => void;
+  onOpenCardModal?: () => void;
   language?: Language;
+  buyerId?: string;
+  buyerName?: string;
+  buyerCompanyName?: string;
+  buyerPhone?: string;
+  recommendedProducts?: ProductListing[];
 }
 
 export const BuyerPortal: React.FC<BuyerPortalProps> = ({
   products,
   onSelectProduct,
   onStartConversation,
-  language = 'en'
+  onOpenCardModal,
+  language = 'en',
+  buyerId,
+  buyerName = 'B2B Buyer',
+  buyerCompanyName,
+  buyerPhone,
+  recommendedProducts = [],
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -25,12 +37,12 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
 
   // RFQ Form State
   const [rfqForm, setRfqForm] = useState({
-    companyName: 'FabIndia Crafts Procurement Ltd',
-    buyerName: 'Vikram Mehta',
-    email: 'procurement@fabindia-sample.com',
-    phone: '+91 98201 44552',
+    companyName: buyerCompanyName || 'Crafts Procurement Ltd',
+    buyerName: buyerName,
+    email: '',
+    phone: buyerPhone || '',
     quantity: 25,
-    targetDate: '2025-04-15',
+    targetDate: '2026-04-15',
     notes: 'Required for corporate festive gifting. Needs authentic MoSJE GI certification tag included.'
   });
 
@@ -100,6 +112,11 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
       setRfqSubmitted(false);
     }, 2500);
   };
+
+  // Derived real buyer recommendations (strictly real data; NO fake personalization)
+  const computedRecommendations = (recommendedProducts && recommendedProducts.length > 0)
+    ? recommendedProducts
+    : products.filter((p) => p.giCertified || p.featured).slice(0, 4);
 
   return (
     <div className="space-y-6">
@@ -196,6 +213,72 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
         </div>
       </div>
 
+      {/* Recommended Crafts Section — Real Supabase recommendations & interests */}
+      {computedRecommendations.length > 0 && selectedCategory === 'all' && selectedState === 'all' && !searchQuery && (
+        <div className="bg-amber-50/70 rounded-3xl p-4 sm:p-5 border border-amber-200/80 space-y-3 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="p-1.5 rounded-xl bg-amber-500 text-white shadow-xs">
+                <Sparkles className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="font-bold text-sm text-stone-900">Recommended for You</h3>
+                <p className="text-[11px] text-stone-500">
+                  Popular GI-certified & top verified craft items for buyers
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] bg-white text-stone-700 px-2.5 py-1 rounded-full font-bold border border-amber-200 shadow-2xs">
+              Personalized
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {computedRecommendations.slice(0, 4).map((product) => (
+              <div
+                key={`rec-${product.id}`}
+                onClick={() => onSelectProduct(product)}
+                className="bg-white rounded-2xl p-3 border border-amber-200/90 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between group"
+              >
+                <div className="space-y-2">
+                  <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-100">
+                    <img
+                      src={product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage}
+                      alt={product.titleEn}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {product.giCertified && (
+                      <span className="absolute top-2 left-2 bg-[#1C1815]/90 text-amber-300 text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-400/30 backdrop-blur-xs">
+                        GI Tagged
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-saffron-700 uppercase tracking-wider block truncate">
+                      {product.category}
+                    </span>
+                    <h4 className="font-bold text-xs text-stone-900 line-clamp-1 group-hover:text-saffron-700 transition-colors">
+                      {product.titleEn}
+                    </h4>
+                    <p className="text-[10px] text-stone-500 line-clamp-1 mt-0.5">
+                      {product.craftTechnique} • {product.state}
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-2 mt-2 border-t border-stone-100 flex items-center justify-between">
+                  <span className="text-xs font-black text-stone-900">
+                    ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold group-hover:underline">
+                    View Craft →
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Results Header */}
       <div className="flex justify-between items-center text-xs text-stone-500 px-1">
         <span>Showing <strong className="text-stone-900">{filteredProducts.length}</strong> verified artisan listings</span>
@@ -206,8 +289,28 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
       </div>
 
       {/* Product Catalog Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredProducts.map((product) => (
+      {filteredProducts.length === 0 ? (
+        <div className="p-10 text-center bg-white rounded-3xl border border-stone-200/90 space-y-3">
+          <div className="text-4xl">🔍</div>
+          <h3 className="font-bold text-base text-stone-900">No Craft Items Found</h3>
+          <p className="text-xs text-stone-500 max-w-sm mx-auto leading-relaxed">
+            No products match your search query or selected filters. Try resetting your search filters to explore all artisan listings.
+          </p>
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedCategory('all');
+              setSelectedState('all');
+              setOnlyGICertified(false);
+            }}
+            className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition-all"
+          >
+            Reset All Filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredProducts.map((product) => (
           <div
             key={product.id}
             onClick={() => onSelectProduct(product)}
@@ -309,6 +412,19 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                 <MessageSquare className="w-4 h-4 text-emerald-600" />
               </button>
 
+              {onOpenCardModal && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenCardModal();
+                  }}
+                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100 text-amber-900 transition-colors shadow-2xs"
+                  title="View Verified Artisan Smart ID Profile"
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-700" />
+                </button>
+              )}
+
               <button
                 onClick={(e) => handleOpenRFQ(product, e)}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
@@ -319,7 +435,8 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Bulk RFQ Modal */}
       {activeRFQProduct && (

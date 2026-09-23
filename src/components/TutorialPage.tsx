@@ -6,7 +6,6 @@ import {
   Volume2, 
   Square, 
   Video, 
-  Upload, 
   FileText, 
   Copy, 
   Check, 
@@ -18,8 +17,7 @@ import {
   Bot, 
   CheckCircle2, 
   Info, 
-  X,
-  ExternalLink
+  X
 } from 'lucide-react';
 import { Language } from '../types';
 import { translate, getSpeechLangCode } from '../services/translations';
@@ -52,16 +50,12 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
   language = 'en'
 }) => {
   const [selectedLang, setSelectedLang] = useState<'hi' | 'en'>(language === 'hi' ? 'hi' : 'en');
-  const [customVideoSrc, setCustomVideoSrc] = useState<{ [key: string]: string }>({});
   const [videoError, setVideoError] = useState<{ [key: string]: boolean }>({});
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [spokenTranscript, setSpokenTranscript] = useState<string | null>(null);
   const [isCopiedTranscript, setIsCopiedTranscript] = useState(false);
-  const [customUrlInput, setCustomUrlInput] = useState('');
-  const [showUrlInput, setShowUrlInput] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync selectedLang with language prop so English gets English video and Hindi gets Hindi video
   useEffect(() => {
@@ -167,39 +161,7 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
   };
 
   const currentTutorial = tutorials[selectedLang];
-  const activeVideoUrl = customVideoSrc[selectedLang] || currentTutorial.defaultVideoSrc;
-
-  // Handle local video file upload from user's computer
-  const handleLocalVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setCustomVideoSrc((prev) => ({
-        ...prev,
-        [selectedLang]: objectUrl
-      }));
-      setVideoError((prev) => ({
-        ...prev,
-        [selectedLang]: false
-      }));
-    }
-  };
-
-  // Handle custom URL input
-  const handleApplyCustomUrl = () => {
-    if (customUrlInput.trim()) {
-      setCustomVideoSrc((prev) => ({
-        ...prev,
-        [selectedLang]: customUrlInput.trim()
-      }));
-      setVideoError((prev) => ({
-        ...prev,
-        [selectedLang]: false
-      }));
-      setShowUrlInput(false);
-      setCustomUrlInput('');
-    }
-  };
+  const activeVideoUrl = currentTutorial.defaultVideoSrc;
 
   // Toggle voice playback of the tutorial summary notes
   const handleToggleSpeak = async () => {
@@ -320,65 +282,12 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
               {currentTutorial.description}
             </p>
           </div>
-
-          {/* Video Sourcing Actions */}
-          <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="video/mp4,video/webm,video/ogg,video/*"
-              onChange={handleLocalVideoUpload}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 md:flex-initial px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition-all flex items-center justify-center gap-1.5 shadow-xs"
-              title="Select local video file from your computer"
-            >
-              <Upload className="w-3.5 h-3.5 text-saffron-300" />
-              <span>{isHindi ? 'लोकल वीडियो फ़ाइल' : 'Choose Video File'}</span>
-            </button>
-            <button
-              onClick={() => setShowUrlInput(!showUrlInput)}
-              className="flex-1 md:flex-initial px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition-all flex items-center justify-center gap-1.5 shadow-xs"
-              title="Add video URL"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-blue-300" />
-              <span>{isHindi ? 'URL दर्ज करें' : 'Video URL'}</span>
-            </button>
-          </div>
         </div>
-
-        {/* Custom URL Input Bar if toggled */}
-        {showUrlInput && (
-          <div className="p-3 bg-stone-100 border-b border-stone-200 flex items-center gap-2">
-            <input
-              type="url"
-              value={customUrlInput}
-              onChange={(e) => setCustomUrlInput(e.target.value)}
-              placeholder={isHindi ? 'वीडियो URL पेस्ट करें (उदा. https://...)' : 'Paste video URL (e.g. https://...)'}
-              className="flex-1 px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-saffron-500"
-            />
-            <button
-              onClick={handleApplyCustomUrl}
-              disabled={!customUrlInput.trim()}
-              className="px-4 py-2 bg-saffron-600 text-white rounded-xl text-xs font-bold hover:bg-saffron-700 transition-colors disabled:opacity-40"
-            >
-              {isHindi ? 'लागू करें' : 'Apply URL'}
-            </button>
-            <button
-              onClick={() => setShowUrlInput(false)}
-              className="p-2 text-stone-500 hover:text-stone-800"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
 
         {/* Video Player Area */}
         <div className="relative bg-black aspect-video max-h-[520px] w-full flex items-center justify-center overflow-hidden">
           {videoError[selectedLang] ? (
-            /* Fallback display if video file is missing or still being added */
+            /* Fallback display if video file is missing */
             <div className="p-8 text-center text-stone-300 space-y-3 max-w-md">
               <div className="w-16 h-16 rounded-2xl bg-stone-800 text-saffron-400 mx-auto flex items-center justify-center border border-stone-700">
                 <Video className="w-8 h-8" />
@@ -388,18 +297,9 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
               </h3>
               <p className="text-xs text-stone-400 leading-relaxed">
                 {isHindi
-                  ? `अपनी हिन्दी वीडियो फ़ाइल को public/videos/tutorial-hi.mp4 के रूप में रखें, या ऊपर दिए गए 'लोकल वीडियो फ़ाइल चुनें' बटन से सीधे सेलेक्ट करें।`
-                  : `Place your video file in 'public/videos/${selectedLang === 'hi' ? 'tutorial-hi.mp4' : 'tutorial-en.mp4'}', or click 'Choose Video File' above to play any local video instantly.`}
+                  ? `अपनी हिन्दी वीडियो फ़ाइल को public/videos/tutorial-hi.mp4 के रूप में रखें।`
+                  : `Place your video file in 'public/videos/${selectedLang === 'hi' ? 'tutorial-hi.mp4' : 'tutorial-en.mp4'}'.`}
               </p>
-              <div className="pt-2 flex justify-center gap-2">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 rounded-xl bg-saffron-600 hover:bg-saffron-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>{isHindi ? 'लोकल वीडियो फ़ाइल अपलोड करें' : 'Choose Local Video'}</span>
-                </button>
-              </div>
             </div>
           ) : (
             <video

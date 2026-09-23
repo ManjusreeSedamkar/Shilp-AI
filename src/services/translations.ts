@@ -1905,13 +1905,14 @@ const translations: LanguageTranslations = {
 
 // Translation helper function
 export function translate(lang: Language, key: string): string {
-  const dict = translations[lang] || translations.en;
-  return dict[key] || translations.en[key] || key;
+  const enDict = translations.en || {};
+  const dict = translations[lang] || enDict;
+  return dict[key] || enDict[key] || key;
 }
 
 // Get language name in its own language
 export function getLanguageName(lang: Language): string {
-  const names: Record<Language, string> = {
+  const names: Partial<Record<Language, string>> = {
     en: 'English',
     hi: 'हिन्दी',
     te: 'తెలుగు',
@@ -1920,12 +1921,12 @@ export function getLanguageName(lang: Language): string {
     mr: 'मराठी',
     gu: 'ગુજરાતી',
   };
-  return names[lang];
+  return names[lang] || 'English';
 }
 
 // Get speech synthesis language code
 export function getSpeechLangCode(lang: Language): string {
-  const codes: Record<Language, string> = {
+  const codes: Partial<Record<Language, string>> = {
     en: 'en-IN',
     hi: 'hi-IN',
     te: 'te-IN',
@@ -1934,7 +1935,7 @@ export function getSpeechLangCode(lang: Language): string {
     mr: 'mr-IN',
     gu: 'gu-IN',
   };
-  return codes[lang];
+  return codes[lang] || 'en-IN';
 }
 
 // Get Web Speech Recognition language code

@@ -277,7 +277,7 @@ function translateDynamicText(text: string, language: Language): string | null {
   let m = text.match(/^Showing\s+(\d+)\s+verified artisan listings$/i);
   if (m) {
     const n = m[1];
-    const out: Record<Language, string> = {
+    const out: Partial<Record<Language, string>> = {
       en: `Showing ${n} verified artisan listings`,
       hi: `${n} सत्यापित कारीगर लिस्टिंग दिखाई जा रही हैं`,
       te: `${n} ధృవీకరించబడిన కళాకారుల జాబితాలు చూపబడుతున్నాయి`,
@@ -286,16 +286,16 @@ function translateDynamicText(text: string, language: Language): string | null {
       mr: `${n} सत्यापित कारागीर सूची दाखवल्या जात आहेत`,
       gu: `${n} ચકાસાયેલ કારીગર લિસ્ટિંગ્સ બતાવવામાં આવી રહી છે`,
     };
-    return out[language];
+    return out[language] || null;
   }
 
   m = text.match(/^Qty:\s*(\d+)$/i);
   if (m) {
-    const out: Record<Language, string> = {
+    const out: Partial<Record<Language, string>> = {
       en: `Qty: ${m[1]}`, hi: `मात्रा: ${m[1]}`, te: `పరిమాణం: ${m[1]}`, ta: `அளவு: ${m[1]}`,
       bn: `পরিমাণ: ${m[1]}`, mr: `प्रमाण: ${m[1]}`, gu: `જથ્થો: ${m[1]}`
     };
-    return out[language];
+    return out[language] || null;
   }
 
   return null;
@@ -320,14 +320,16 @@ function toEnglish(value: string): string {
     }
   }
 
+  const enDict = translations.en || {};
+
   // Existing application dictionary.
-  for (const key of Object.keys(translations.en)) {
-    const english = translations.en[key];
+  for (const key of Object.keys(enDict)) {
+    const english = enDict[key];
     if (typeof english !== 'string' || !english.trim()) continue;
     if (normalize(english) === v) return english;
 
     for (const lang of Object.keys(translations) as Language[]) {
-      const candidate = translations[lang][key];
+      const candidate = (translations[lang] || {})[key];
       if (typeof candidate === 'string' && normalize(candidate) === v) return english;
     }
   }
@@ -339,11 +341,12 @@ function buildMap(language: Language): TextMap {
   const map: TextMap = new Map();
   if (language === 'en') return map;
 
-  const targetDict = translations[language] || translations.en;
+  const enDict = translations.en || {};
+  const targetDict = translations[language] || enDict;
 
   // Existing canonical English dictionary.
-  for (const key of Object.keys(translations.en)) {
-    const english = translations.en[key];
+  for (const key of Object.keys(enDict)) {
+    const english = enDict[key];
     const target = targetDict[key];
 
     if (

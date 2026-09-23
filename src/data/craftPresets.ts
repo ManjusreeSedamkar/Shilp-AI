@@ -1,7 +1,7 @@
 import { ProductListing, ArtisanProfile } from '../types';
 
 export const CURRENT_ARTISAN: ArtisanProfile = {
-  id: 'art-101',
+  id: '00000000-0000-0000-0000-000000000101',
   name: 'Rameshwaram Koli',
   regionalName: 'रामेश्वरम कोली',
   phone: '+91 98480 23145',
@@ -143,7 +143,7 @@ export const CRAFT_PRESETS: CraftPreset[] = [
 const RAW_INITIAL_PRODUCTS: ProductListing[] = [
   {
     id: 'prod-001',
-    artisanId: 'art-101',
+    artisanId: '00000000-0000-0000-0000-000000000101',
     artisanName: 'Rameshwaram Koli',
     state: 'Uttar Pradesh',
     titleEn: 'Heritage Banarasi Katan Silk Saree with Tested Zari (GI Certified)',

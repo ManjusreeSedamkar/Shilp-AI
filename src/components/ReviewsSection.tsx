@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Star, MessageSquare, CheckCircle2, Send } from 'lucide-react';
-import { ProductReview, Language } from '../types';
+import { ProductReview, Language, UserRole } from '../types';
 import { translate } from '../services/translations';
 
 interface ReviewsSectionProps {
@@ -9,6 +9,8 @@ interface ReviewsSectionProps {
   reviews: ProductReview[];
   language: Language;
   currentBuyerName: string;
+  currentBuyerId?: string;
+  currentUserRole?: UserRole;
   onAddReview: (review: ProductReview) => void;
 }
 
@@ -18,6 +20,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   reviews,
   language,
   currentBuyerName,
+  currentBuyerId,
+  currentUserRole,
   onAddReview,
 }) => {
   const [rating, setRating] = useState(5);
@@ -26,12 +30,24 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   const [submitted, setSubmitted] = useState(false);
   const t = (key: string) => translate(language, key);
 
+  const isArtisan = currentUserRole === 'artisan';
+
+  // Check if current user has already reviewed this product
+  const hasAlreadyReviewed = reviews.some(
+    (r) => (currentBuyerId && r.buyerId === currentBuyerId) ||
+           (r.buyerName.toLowerCase() === currentBuyerName.toLowerCase() && r.buyerName !== 'Guest')
+  );
+
   const handleSubmit = () => {
-    if (!comment.trim()) return;
+    if (isArtisan || !comment.trim()) return;
+    if (hasAlreadyReviewed) {
+      alert('You have already submitted a review for this craft item.');
+      return;
+    }
     const review: ProductReview = {
       id: `review-${Date.now()}`,
       productId,
-      buyerId: 'buyer-201',
+      buyerId: currentBuyerId || '00000000-0000-0000-0000-000000000201',
       buyerName: currentBuyerName,
       rating,
       comment: comment.trim(),
@@ -75,13 +91,23 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs"
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          {t('review.writeReview')}
-        </button>
+        {/* Artisans view reviews only — write option disabled for artisans */}
+        {!isArtisan && (
+          hasAlreadyReviewed ? (
+            <span className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              Reviewed
+            </span>
+          ) : (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              {t('review.writeReview')}
+            </button>
+          )
+        )}
       </div>
 
       {/* Success Message */}
