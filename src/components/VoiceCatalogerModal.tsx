@@ -8,6 +8,8 @@ import { CURRENT_ARTISAN } from '../data/craftPresets';
 import { getSpeechLangCode, translate } from '../services/translations';
 import { AIImageStudio, DEFAULT_IMAGE_OPTIONS } from '../services/imageStudio';
 import { uploadImageToStorage, saveProductToFirestore } from '../services/firebase';
+import { retrieveCulturalContext, DiwaliRetrievalResult } from '../services/diwaliRetriever';
+import { generateCulturalDescription, analyzeImageVisuals, hasGeminiApiKey, hasOpenRouterApiKey } from '../services/geminiService';
 
 interface VoiceCatalogerModalProps {
   language?: Language;
@@ -32,6 +34,11 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
   const [isTranscriptCopied, setIsTranscriptCopied] = useState(false);
   const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
   
+  // DIWALI Cultural RAG state
+  const [diwaliContextResult, setDiwaliContextResult] = useState<DiwaliRetrievalResult | null>(null);
+  const [isEnrichingWithDiwali, setIsEnrichingWithDiwali] = useState<boolean>(false);
+  const [isDiwaliGrounded, setIsDiwaliGrounded] = useState<boolean>(false);
+
   // Staged product photo state - AI enhanced studio photo
   const [currentPhoto, setCurrentPhoto] = useState<string>(selectedPhotoUrl || CRAFT_PRESETS[0].enhancedImage);
   const [originalPhoto, setOriginalPhoto] = useState<string>(originalPhotoUrl || CRAFT_PRESETS[0].rawImage);
@@ -43,10 +50,168 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
   const t = (key: string) => translate(language, key);
   const isHindi = language === 'hi';
 
-  // Sync selected photo prop
+  const processVoiceExtraction = async (
+    sampleText: string,
+    baseExtracted: ExtractedProductAttributes,
+    imageOverride?: string
+  ) => {
+    // 1. Reset previous session state
+    setIsDiwaliGrounded(false);
+    setDiwaliContextResult(null);
+    setIsEnrichingWithDiwali(true);
+
+    const imageToPass = imageOverride || currentPhoto || originalPhoto || selectedPhotoUrl;
+
+    try {
+      let finalAttributes: ExtractedProductAttributes = { ...baseExtracted };
+
+      // 2. Vision Analysis (Gemini Vision)
+      let visionResult = null;
+      if (hasGeminiApiKey() && imageToPass) {
+        visionResult = await analyzeImageVisuals(imageToPass);
+      }
+
+      // SOURCE PRIORITY ARCHITECTURE:
+      // Priority 1: Explicit Voice Match (artisan stated specific craft terms)
+      // Priority 2: Gemini Vision (when voice is generic OR to supplement missing VISUAL attributes)
+      // Priority 3: Neutral Fallback
+      const isExplicitVoice = baseExtracted.isExplicitVoiceMatch;
+
+      if (!isExplicitVoice && visionResult && visionResult.visualObjectType) {
+        // Vision is authoritative for category/technique/material when voice is generic
+        finalAttributes.category = visionResult.craftCategorySuggestion;
+        finalAttributes.craftTechnique = visionResult.visualObjectType;
+        finalAttributes.primaryMaterial = visionResult.apparentMaterial;
+        finalAttributes.color = visionResult.visibleColors;
+        finalAttributes.titleEn = visionResult.visualObjectType;
+        finalAttributes.titleHi = visionResult.visualObjectType;
+      }
+
+      // Supplement VISUAL attributes from image where voice did not state them
+      // (applies even when voice IS explicit — image fills in visual-only gaps)
+      if (visionResult) {
+        // Pattern: if artisan didn't state one, use image observation
+        if (!finalAttributes.pattern && visionResult.visiblePatternsMotifs &&
+            visionResult.visiblePatternsMotifs !== 'Traditional Motifs') {
+          finalAttributes.pattern = visionResult.visiblePatternsMotifs;
+        }
+        // Border color: supplement from image if artisan didn't state it
+        if (!finalAttributes.borderColor && visionResult.visibleBorderColor) {
+          finalAttributes.borderColor = visionResult.visibleBorderColor;
+        }
+        // Color: supplement from image ONLY if voice didn't state a color
+        if (!baseExtracted.color || baseExtracted.color === 'Natural Finish') {
+          if (visionResult.visibleColors && visionResult.visibleColors !== 'Natural Finish') {
+            finalAttributes.color = visionResult.visibleColors;
+          }
+        }
+      }
+
+      // Dev diagnostics — console only, never shown in artisan UI
+      if ((import.meta as any).env?.DEV) {
+        console.group('[Shilp-AI] 🔍 Pipeline Debug');
+        console.log('Voice match:', isExplicitVoice ? 'Explicit craft match' : 'Generic/vague (vision primary)');
+        console.log('Final category:', finalAttributes.category);
+        console.log('Craft technique:', finalAttributes.craftTechnique);
+        console.log('weavingMethod:', finalAttributes.weavingMethod);
+        console.log('constructionMethod:', finalAttributes.constructionMethod);
+        console.log('pattern:', finalAttributes.pattern);
+        console.log('borderColor:', finalAttributes.borderColor);
+        console.log('dyeType:', finalAttributes.dyeType);
+        console.log('zariType:', finalAttributes.zariType);
+        console.log('fabricType:', finalAttributes.fabricType);
+        console.log('visionResult:', visionResult);
+        console.groupEnd();
+      }
+
+      setExtractedData(finalAttributes);
+
+      // 3. DIWALI Retrieval (Supporting cultural evidence ONLY — NEVER classifies or overrides attributes)
+      const diwaliRes = await retrieveCulturalContext({
+        category: finalAttributes.category,
+        craftTechnique: finalAttributes.craftTechnique,
+        primaryMaterial: finalAttributes.primaryMaterial,
+        titleEn: finalAttributes.titleEn,
+        titleHi: finalAttributes.titleHi,
+        visualObjectType: visionResult?.visualObjectType,
+        keywords: visionResult?.keywords
+      });
+
+      const diwaliContextStr = diwaliRes
+        ? diwaliRes.contextString
+        : 'No specific cultural heritage match in dataset for this item.';
+
+      setDiwaliContextResult(diwaliRes);
+
+      // Dev diagnostics for DIWALI
+      if ((import.meta as any).env?.DEV) {
+        console.log('[Shilp-AI] 🏺 DIWALI match:', diwaliRes
+          ? `${diwaliRes.matchedConcept} (score: ${diwaliRes.score})`
+          : 'null (no match / below threshold)');
+      }
+
+      // 4. Cultural Description Generation (Gemini Primary -> OpenRouter Fallback -> Structured Fallback)
+      if (hasGeminiApiKey() || hasOpenRouterApiKey()) {
+        const enhanced = await generateCulturalDescription(
+          {
+            category: finalAttributes.category,
+            craftTechnique: finalAttributes.craftTechnique,
+            primaryMaterial: finalAttributes.primaryMaterial,
+            productionDays: finalAttributes.productionDays,
+            rawMaterialCost: finalAttributes.rawMaterialCost,
+            color: finalAttributes.color,
+            titleEn: finalAttributes.titleEn,
+            titleHi: finalAttributes.titleHi,
+            // Pass all rich artisan-provided attributes
+            productType: finalAttributes.productType,
+            style: finalAttributes.style,
+            subject: finalAttributes.subject,
+            weavingMethod: finalAttributes.weavingMethod,
+            constructionMethod: finalAttributes.constructionMethod,
+            pattern: finalAttributes.pattern,
+            motif: finalAttributes.motif,
+            borderColor: finalAttributes.borderColor,
+            dyeType: finalAttributes.dyeType,
+            zariType: finalAttributes.zariType,
+            fabricType: finalAttributes.fabricType,
+            artisanClaims: finalAttributes.artisanClaims,
+          },
+          diwaliContextStr,
+          imageToPass
+        );
+
+        if (enhanced) {
+          setExtractedData(prev => prev ? {
+            ...prev,
+            titleEn: enhanced.titleEn || prev.titleEn,
+            titleHi: enhanced.titleHi || prev.titleHi,
+            descriptionEn: enhanced.descriptionEn,
+            descriptionHi: enhanced.descriptionHi,
+            culturalContext: enhanced.culturalContext || (diwaliRes ? diwaliRes.contextString : undefined),
+            seoKeywords: enhanced.seoKeywords || prev.seoKeywords,
+            searchTags: enhanced.searchTags || (enhanced.seoKeywords || prev.seoKeywords),
+            metaDescription: enhanced.metaDescription || enhanced.descriptionEn || prev.descriptionEn
+          } : null);
+          setIsDiwaliGrounded(true);
+        }
+      }
+    } catch (err) {
+      console.warn('Cultural pipeline error:', err);
+    } finally {
+      setIsEnrichingWithDiwali(false);
+    }
+  };
+
+
+  // Sync selected photo prop and reset session attributes
   useEffect(() => {
     if (selectedPhotoUrl) {
       setCurrentPhoto(selectedPhotoUrl);
+      setExtractedData(null);
+      setDiwaliContextResult(null);
+      setIsDiwaliGrounded(false);
+      latestTranscriptRef.current = '';
+      setTranscript('');
     }
     if (originalPhotoUrl) {
       setOriginalPhoto(originalPhotoUrl);
@@ -57,6 +222,9 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
   useEffect(() => {
     setSelectedLangCode(getSpeechLangCode(language));
   }, [language]);
+
+  // Ref to track latest transcript for recognition.onend
+  const latestTranscriptRef = useRef('');
 
   // Initialize Web Speech Recognition
   useEffect(() => {
@@ -73,13 +241,20 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
           currentTranscript += event.results[i][0].transcript;
         }
         setTranscript(currentTranscript);
-        // Automatically extract attributes in real time
+        latestTranscriptRef.current = currentTranscript;
+        // Update basic extracted attributes locally during live speech (NO Gemini API calls while speaking)
         const extracted = VoiceCatalogerEngine.extractAttributesFromSpeech(currentTranscript);
         setExtractedData(extracted);
       };
 
       recognition.onend = () => {
         setIsRecording(false);
+        // Execute single final Gemini RAG call only when speech finishes
+        const finalText = latestTranscriptRef.current;
+        if (finalText && finalText.trim()) {
+          const extracted = VoiceCatalogerEngine.extractAttributesFromSpeech(finalText);
+          processVoiceExtraction(finalText, extracted);
+        }
       };
 
       recognition.onerror = (event: any) => {
@@ -95,8 +270,14 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
     if (isRecording) {
       recognitionInstance?.stop();
       setIsRecording(false);
+      const finalText = latestTranscriptRef.current;
+      if (finalText && finalText.trim()) {
+        const extracted = VoiceCatalogerEngine.extractAttributesFromSpeech(finalText);
+        processVoiceExtraction(finalText, extracted);
+      }
     } else {
       setTranscript('');
+      latestTranscriptRef.current = '';
       try {
         recognitionInstance?.start();
         setIsRecording(true);
@@ -113,8 +294,9 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
 
   const handleSelectSample = (sampleText: string) => {
     setTranscript(sampleText);
+    latestTranscriptRef.current = sampleText;
     const extracted = VoiceCatalogerEngine.extractAttributesFromSpeech(sampleText);
-    setExtractedData(extracted);
+    processVoiceExtraction(sampleText, extracted);
   };
 
   const handleToggleSpeak = async (text: string, langCode: string) => {
@@ -145,13 +327,22 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
           const rawUrl = event.target.result as string;
           setOriginalPhoto(rawUrl);
           setIsEnhancingUpload(true);
+          let newImageToPass = rawUrl;
           try {
             const res = await AIImageStudio.processImage(rawUrl, DEFAULT_IMAGE_OPTIONS);
-            setCurrentPhoto(res.enhancedDataUrl);
+            newImageToPass = res.enhancedDataUrl;
+            setCurrentPhoto(newImageToPass);
           } catch {
             setCurrentPhoto(rawUrl);
           } finally {
             setIsEnhancingUpload(false);
+            if (extractedData) {
+              processVoiceExtraction(
+                latestTranscriptRef.current || CRAFT_PRESETS[0].sampleVoiceHindi,
+                extractedData,
+                newImageToPass
+              );
+            }
           }
         }
       };
@@ -228,12 +419,28 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
         hasLightingEnhanced: true,
         descriptionEn: extractedData.descriptionEn,
         descriptionHi: extractedData.descriptionHi,
+        culturalContext: extractedData.culturalContext || diwaliContextResult?.contextString,
         seoKeywords: extractedData.seoKeywords,
+        searchTags: extractedData.searchTags || extractedData.seoKeywords,
+        metaDescription: extractedData.metaDescription || extractedData.descriptionEn,
         pricing: pricing,
         targetBuyers: extractedData.targetBuyers,
         stockQuantity: 15,
         giCertified: true,
-        createdAt: new Date().toISOString().split('T')[0]
+        createdAt: new Date().toISOString().split('T')[0],
+        // Rich structured artisan attributes persistence
+        productType: extractedData.productType || undefined,
+        style: extractedData.style || undefined,
+        subject: extractedData.subject || undefined,
+        weavingMethod: extractedData.weavingMethod || undefined,
+        constructionMethod: extractedData.constructionMethod || undefined,
+        pattern: extractedData.pattern || undefined,
+        motif: extractedData.motif || undefined,
+        borderColor: extractedData.borderColor || undefined,
+        dyeType: extractedData.dyeType || undefined,
+        zariType: extractedData.zariType || undefined,
+        fabricType: extractedData.fabricType || undefined,
+        artisanClaims: extractedData.artisanClaims?.length ? extractedData.artisanClaims : undefined
       };
 
       // Step 4: Save to Firestore
@@ -512,235 +719,267 @@ export const VoiceCatalogerModal: React.FC<VoiceCatalogerModalProps> = ({
       </div>
 
       {/* Extracted Attributes & Smart Catalog Card */}
-      {extractedData && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-200 space-y-4">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-            <div className="flex items-center space-x-2">
-              <span className="p-1.5 rounded-lg bg-saffron-100 text-saffron-800">
-                <Sparkles className="w-4 h-4" />
-              </span>
-              <div>
-                <h3 className="font-bold text-stone-900 text-base">
-                  {isHindi ? 'एआई द्वारा पहचाने गए शिल्प विवरण' : 'AI Extracted Smart Attributes'}
-                </h3>
-                <p className="text-xs text-stone-500">
-                  {isHindi ? 'वाणी से स्वतः निष्कर्षित उत्पाद डेटा' : 'Zero manual typing required for artisan'}
-                </p>
-              </div>
-            </div>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800">
-              100% Extracted
-            </span>
-          </div>
+      {extractedData && (() => {
+        const productDetails = [
+          { label: isHindi ? 'उत्पाद (Product)' : 'Product', value: extractedData.productType },
+          { label: isHindi ? 'शैली (Style)' : 'Style', value: extractedData.style },
+          { label: isHindi ? 'विषय / आकृति' : 'Subject', value: extractedData.subject },
+          { label: isHindi ? 'रंग (Color)' : 'Color', value: extractedData.color !== 'Natural Finish' ? extractedData.color : null },
+          { label: isHindi ? 'सामग्री (Material)' : 'Material', value: extractedData.fabricType || (extractedData.primaryMaterial !== 'Authentic Artisan Material' ? extractedData.primaryMaterial : null) },
+          { label: isHindi ? 'बुनाई (Weaving)' : 'Weaving', value: extractedData.weavingMethod },
+          { label: isHindi ? 'तकनीक / निर्माण' : 'Crafting Technique', value: extractedData.constructionMethod || (extractedData.craftTechnique !== 'Traditional Handcrafted Artistry' ? extractedData.craftTechnique : null) },
+          { label: isHindi ? 'पैटर्न (Pattern)' : 'Pattern', value: extractedData.pattern },
+          { label: isHindi ? 'डिज़ाइन (Design)' : 'Design Motif', value: extractedData.motif },
+          { label: isHindi ? 'बॉर्डर (Border)' : 'Border', value: extractedData.borderColor },
+          { label: isHindi ? 'रंगाई (Dye Type)' : 'Dye Type', value: extractedData.dyeType },
+          { label: isHindi ? 'ज़री (Zari)' : 'Zari', value: extractedData.zariType },
+          { label: isHindi ? 'फिनिश (Finish)' : 'Finish', value: extractedData.finish },
+          { label: isHindi ? 'श्रम समय (Time)' : 'Crafting Time', value: extractedData.productionDays > 0 ? `${extractedData.productionDays} ${isHindi ? 'दिन' : 'Days'}` : null },
+          { label: isHindi ? 'कच्चा माल (Raw Cost)' : 'Raw Material Cost', value: extractedData.rawMaterialCost > 0 ? `₹${extractedData.rawMaterialCost.toLocaleString('en-IN')}` : null },
+        ].filter((item): item is { label: string; value: string } => Boolean(item.value));
 
-          {/* Key Attributes Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-            <div className="bg-stone-50 p-2.5 rounded-xl">
-              <span className="text-stone-500 text-[10px]">{isHindi ? 'श्रेणी (Category)' : 'Category'}</span>
-              <p className="font-bold text-stone-900">{extractedData.category}</p>
-            </div>
-            <div className="bg-stone-50 p-2.5 rounded-xl">
-              <span className="text-stone-500 text-[10px]">{isHindi ? 'तकनीक (Technique)' : 'Craft Technique'}</span>
-              <p className="font-bold text-stone-900">{extractedData.craftTechnique}</p>
-            </div>
-            <div className="bg-stone-50 p-2.5 rounded-xl">
-              <span className="text-stone-500 text-[10px]">{isHindi ? 'श्रम समय (Days)' : 'Crafting Time'}</span>
-              <p className="font-bold text-blue-700">{extractedData.productionDays} {isHindi ? 'दिन' : 'Days'}</p>
-            </div>
-            <div className="bg-stone-50 p-2.5 rounded-xl">
-              <span className="text-stone-500 text-[10px]">{isHindi ? 'कच्चा माल (Raw Cost)' : 'Raw Material Cost'}</span>
-              <p className="font-bold text-emerald-700">₹{extractedData.rawMaterialCost.toLocaleString('en-IN')}</p>
-            </div>
-          </div>
-
-          {/* Dual Description Tabs (Hindi / English) */}
-          <div className="space-y-3 pt-2">
-            <div className="flex border-b border-stone-200">
-              <button
-                onClick={() => setActiveTab('hindi')}
-                className={`pb-2 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 ${
-                  activeTab === 'hindi'
-                    ? 'border-saffron-600 text-saffron-700'
-                    : 'border-transparent text-stone-500 hover:text-stone-800'
-                }`}
-              >
-                <span>🇮🇳 हिन्दी विवरण (Cultural Story)</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('english')}
-                className={`pb-2 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 ${
-                  activeTab === 'english'
-                    ? 'border-saffron-600 text-saffron-700'
-                    : 'border-transparent text-stone-500 hover:text-stone-800'
-                }`}
-              >
-                <span>🇬🇧 English SEO Catalog</span>
-              </button>
-            </div>
-
-            {activeTab === 'hindi' ? (
-              <div className="p-3.5 bg-saffron-50/40 rounded-xl border border-saffron-200/60 space-y-2">
-                <div className="flex justify-between items-center gap-2">
-                  <h4 className="font-bold text-stone-900 text-sm">{extractedData.titleHi}</h4>
-                  <button
-                    onClick={() => handleToggleSpeak(extractedData.descriptionHi, 'hi-IN')}
-                    className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold shadow-xs transition-all ${
-                      isSpeaking && spokenCatalogTranscript === extractedData.descriptionHi
-                        ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 ring-2 ring-red-300 animate-pulse'
-                        : 'bg-saffron-100/90 text-saffron-900 border border-saffron-300/80 hover:bg-saffron-200'
-                    }`}
-                  >
-                    {isSpeaking && spokenCatalogTranscript === extractedData.descriptionHi ? (
-                      <>
-                        <Square className="w-3.5 h-3.5 fill-red-600 text-red-600" />
-                        <span>रुकें (Stop AI Speech)</span>
-                      </>
-                    ) : (
-                      <>
-                        <Volume2 className="w-3.5 h-3.5 text-saffron-700" />
-                        <span>सुनें (Listen)</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-line">
-                  {extractedData.descriptionHi}
-                </p>
-              </div>
-            ) : (
-              <div className="p-3.5 bg-blue-50/40 rounded-xl border border-blue-200/60 space-y-2">
-                <div className="flex justify-between items-center gap-2">
-                  <h4 className="font-bold text-stone-900 text-sm">{extractedData.titleEn}</h4>
-                  <button
-                    onClick={() => handleToggleSpeak(extractedData.descriptionEn, 'en-IN')}
-                    className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold shadow-xs transition-all ${
-                      isSpeaking && spokenCatalogTranscript === extractedData.descriptionEn
-                        ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 ring-2 ring-red-300 animate-pulse'
-                        : 'bg-blue-100/90 text-blue-900 border border-blue-300/80 hover:bg-blue-200'
-                    }`}
-                  >
-                    {isSpeaking && spokenCatalogTranscript === extractedData.descriptionEn ? (
-                      <>
-                        <Square className="w-3.5 h-3.5 fill-red-600 text-red-600" />
-                        <span>Stop AI Speech</span>
-                      </>
-                    ) : (
-                      <>
-                        <Volume2 className="w-3.5 h-3.5 text-blue-700" />
-                        <span>Listen</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-line">
-                  {extractedData.descriptionEn}
-                </p>
-              </div>
-            )}
-
-            {/* Dedicated Audio Transcription Card when AI is Speaking or Stopped */}
-            {spokenCatalogTranscript && (
-              <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 text-stone-800 space-y-2 animate-in fade-in duration-200 shadow-xs">
-                <div className="flex items-center justify-between text-[11px] font-bold border-b border-amber-200/80 pb-1.5">
-                  <span className="flex items-center gap-1.5 text-amber-900">
-                    <FileText className="w-3.5 h-3.5 text-amber-700" />
-                    {isHindi ? 'AI ऑडियो ट्रांसक्रिप्शन (Live Audio Transcript):' : 'AI Speech Audio Transcription:'}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
-                      isSpeaking ? 'bg-red-100 text-red-700 animate-pulse border border-red-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
-                      {isSpeaking ? (isHindi ? 'AI बोल रहा है...' : 'AI Speaking...') : (isHindi ? 'रोका गया / पढ़ने के लिए तैयार' : 'Stopped / Ready to Read')}
-                    </span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(spokenCatalogTranscript);
-                        setIsTranscriptCopied(true);
-                        setTimeout(() => setIsTranscriptCopied(false), 2000);
-                      }}
-                      className="text-stone-500 hover:text-stone-800 p-1 rounded hover:bg-amber-100/80 transition-colors"
-                      title={isHindi ? 'प्रतिलिपि कॉपी करें' : 'Copy transcript'}
-                    >
-                      {isTranscriptCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (isSpeaking) {
-                          VoiceCatalogerEngine.stopSpeaking();
-                          setIsSpeaking(false);
-                        }
-                        setSpokenCatalogTranscript(null);
-                      }}
-                      className="text-stone-400 hover:text-stone-700 p-1 rounded hover:bg-amber-100/80 transition-colors"
-                      title="Dismiss"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-                <p className="text-xs text-stone-700 font-mono leading-relaxed bg-white/70 p-2.5 rounded-lg border border-amber-200/50 select-text">
-                  "{spokenCatalogTranscript}"
-                </p>
-                <div className="flex items-center justify-between text-[10px] text-stone-500 pt-0.5">
-                  <span>{isHindi ? '💡 ध्यान से सुनने या पढ़ने के लिए प्ले/स्टॉप का उपयोग करें।' : '💡 Listen carefully or read the exact speech transcript above.'}</span>
-                  {isTranscriptCopied && <span className="text-emerald-700 font-semibold">{isHindi ? 'कॉपी कर लिया गया!' : 'Transcript copied!'}</span>}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Search Keywords & Tags */}
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider flex items-center gap-1">
-              <Tag className="w-3 h-3 text-stone-400" />
-              {isHindi ? 'स्वचालित खोज टैग्स (SEO Keywords):' : 'Generated Search Keywords:'}
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {extractedData.seoKeywords.map((kw, i) => (
-                <span
-                  key={i}
-                  className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[11px] font-medium border border-stone-200"
-                >
-                  #{kw}
+        return (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-stone-200 space-y-5">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <span className="p-1.5 rounded-lg bg-saffron-100 text-saffron-800">
+                  <Sparkles className="w-4 h-4" />
                 </span>
+                <div>
+                  <h3 className="font-bold text-stone-900 text-base">
+                    {isHindi ? 'उत्पाद विवरण' : 'PRODUCT DETAILS'}
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    {isHindi ? 'वाणी व चित्र से निष्कर्षित प्रमाणिक उत्पाद विवरण' : 'Extracted from artisan speech and product image'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                {extractedData.category !== 'Other Heritage Craft' ? extractedData.category : (isHindi ? 'हस्तशिल्प' : 'Handicraft')}
+              </span>
+            </div>
+
+            {/* Dynamic Point-wise Product Details Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 text-xs">
+              {productDetails.map((item, idx) => (
+                <div key={idx} className="bg-stone-50 p-2.5 rounded-xl border border-stone-100 flex flex-col justify-between">
+                  <span className="text-stone-400 text-[10px] font-semibold uppercase tracking-wider">{item.label}</span>
+                  <p className="font-bold text-stone-900 text-xs mt-0.5">{item.value}</p>
+                </div>
               ))}
             </div>
-          </div>
 
-          {/* Publish / Add to Catalog Button */}
-          <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-            {isPublishing ? (
-              <div className="flex items-center gap-2 text-xs text-stone-700 bg-amber-50/80 px-3.5 py-2 rounded-xl border border-amber-200/80 w-full sm:w-auto animate-pulse">
-                <RefreshCw className="w-3.5 h-3.5 text-amber-700 animate-spin shrink-0" />
-                <span className="font-semibold text-[11px] truncate">{publishingStep}</span>
+            {/* Heritage Story Section */}
+            <div className="space-y-3 pt-2 border-t border-stone-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="p-1 rounded bg-amber-100 text-amber-800">
+                    <BookOpen className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+                    {isHindi ? 'सांस्कृतिक विरासत कथा' : 'HERITAGE STORY'}
+                  </span>
+                </div>
+                {isEnrichingWithDiwali ? (
+                  <span className="text-[11px] font-medium text-amber-700 flex items-center gap-1.5 animate-pulse">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    {isHindi ? 'सांस्कृतिक कहानी तैयार हो रही है...' : 'Crafting cultural story...'}
+                  </span>
+                ) : isDiwaliGrounded ? (
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                    {isHindi ? 'धरोहर सत्यापित' : 'Culturally Grounded'}
+                  </span>
+                ) : null}
               </div>
-            ) : (
-              <div className="text-[11px] text-stone-500 hidden sm:block">
-                <span>{isHindi ? 'मूल व एआई संवर्धित दोनों फोटो फायरबेस पर सुरक्षित होंगी।' : 'Original & AI enhanced images will be saved to Firebase Storage.'}</span>
-              </div>
-            )}
 
-            <button
-              onClick={handleCreateListing}
-              disabled={isPublishing}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs shadow-sm transition-all"
-            >
-              {isPublishing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>{isHindi ? 'प्रकाशित हो रहा है...' : 'Saving to Firestore...'}</span>
-                </>
+              {/* Dual Description Tabs (Hindi / English) */}
+              <div className="flex border-b border-stone-200">
+                <button
+                  onClick={() => setActiveTab('hindi')}
+                  className={`pb-2 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 ${
+                    activeTab === 'hindi'
+                      ? 'border-saffron-600 text-saffron-700'
+                      : 'border-transparent text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <span>🇮🇳 हिन्दी विवरण</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('english')}
+                  className={`pb-2 px-4 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 ${
+                    activeTab === 'english'
+                      ? 'border-saffron-600 text-saffron-700'
+                      : 'border-transparent text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <span>🇬🇧 English Catalog</span>
+                </button>
+              </div>
+
+              {activeTab === 'hindi' ? (
+                <div className="p-3.5 bg-saffron-50/40 rounded-xl border border-saffron-200/60 space-y-2">
+                  <div className="flex justify-between items-center gap-2">
+                    <h4 className="font-bold text-stone-900 text-sm">{extractedData.titleHi}</h4>
+                    <button
+                      onClick={() => handleToggleSpeak(extractedData.descriptionHi, 'hi-IN')}
+                      className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold shadow-xs transition-all ${
+                        isSpeaking && spokenCatalogTranscript === extractedData.descriptionHi
+                          ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 ring-2 ring-red-300 animate-pulse'
+                          : 'bg-saffron-100/90 text-saffron-900 border border-saffron-300/80 hover:bg-saffron-200'
+                      }`}
+                    >
+                      {isSpeaking && spokenCatalogTranscript === extractedData.descriptionHi ? (
+                        <>
+                          <Square className="w-3.5 h-3.5 fill-red-600 text-red-600" />
+                          <span>रुकें</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="w-3.5 h-3.5 text-saffron-700" />
+                          <span>सुनें</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-line">
+                    {extractedData.descriptionHi}
+                  </p>
+                </div>
               ) : (
-                <>
-                  <span>{isHindi ? 'कैटलॉग में प्रकाशित करें' : 'Publish to MoSJE Smart Catalog'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
+                <div className="p-3.5 bg-blue-50/40 rounded-xl border border-blue-200/60 space-y-2">
+                  <div className="flex justify-between items-center gap-2">
+                    <h4 className="font-bold text-stone-900 text-sm">{extractedData.titleEn}</h4>
+                    <button
+                      onClick={() => handleToggleSpeak(extractedData.descriptionEn, 'en-IN')}
+                      className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold shadow-xs transition-all ${
+                        isSpeaking && spokenCatalogTranscript === extractedData.descriptionEn
+                          ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 ring-2 ring-red-300 animate-pulse'
+                          : 'bg-blue-100/90 text-blue-900 border border-blue-300/80 hover:bg-blue-200'
+                      }`}
+                    >
+                      {isSpeaking && spokenCatalogTranscript === extractedData.descriptionEn ? (
+                        <>
+                          <Square className="w-3.5 h-3.5 fill-red-600 text-red-600" />
+                          <span>Stop</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="w-3.5 h-3.5 text-blue-700" />
+                          <span>Listen</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-line">
+                    {extractedData.descriptionEn}
+                  </p>
+                </div>
               )}
-            </button>
-          </div>
-        </div>
-      )}
+            </div>
+              {/* Dedicated Audio Transcription Card when AI is Speaking or Stopped */}
+              {spokenCatalogTranscript && (
+                <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 text-stone-800 space-y-2 animate-in fade-in duration-200 shadow-xs">
+                  <div className="flex items-center justify-between text-[11px] font-bold border-b border-amber-200/80 pb-1.5">
+                    <span className="flex items-center gap-1.5 text-amber-900">
+                      <FileText className="w-3.5 h-3.5 text-amber-700" />
+                      {isHindi ? 'AI ऑडियो ट्रांसक्रिप्शन (Live Audio Transcript):' : 'AI Speech Audio Transcription:'}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
+                        isSpeaking ? 'bg-red-100 text-red-700 animate-pulse border border-red-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                        {isSpeaking ? (isHindi ? 'AI बोल रहा है...' : 'AI Speaking...') : (isHindi ? 'रोका गया / पढ़ने के लिए तैयार' : 'Stopped / Ready to Read')}
+                      </span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(spokenCatalogTranscript);
+                          setIsTranscriptCopied(true);
+                          setTimeout(() => setIsTranscriptCopied(false), 2000);
+                        }}
+                        className="text-stone-500 hover:text-stone-800 p-1 rounded hover:bg-amber-100/80 transition-colors"
+                        title={isHindi ? 'प्रतिलिपि कॉपी करें' : 'Copy transcript'}
+                      >
+                        {isTranscriptCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (isSpeaking) {
+                            VoiceCatalogerEngine.stopSpeaking();
+                            setIsSpeaking(false);
+                          }
+                          setSpokenCatalogTranscript(null);
+                        }}
+                        className="text-stone-400 hover:text-stone-700 p-1 rounded hover:bg-amber-100/80 transition-colors"
+                        title="Dismiss"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-stone-700 font-mono leading-relaxed bg-white/70 p-2.5 rounded-lg border border-amber-200/50 select-text">
+                    "{spokenCatalogTranscript}"
+                  </p>
+                  <div className="flex items-center justify-between text-[10px] text-stone-500 pt-0.5">
+                    <span>{isHindi ? '💡 ध्यान से सुनने या पढ़ने के लिए प्ले/स्टॉप का उपयोग करें।' : '💡 Listen carefully or read the exact speech transcript above.'}</span>
+                    {isTranscriptCopied && <span className="text-emerald-700 font-semibold">{isHindi ? 'कॉपी कर लिया गया!' : 'Transcript copied!'}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Search Keywords & Tags */}
+              <div className="space-y-1.5 border-t border-stone-100 pt-3">
+                <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider flex items-center gap-1">
+                  <Tag className="w-3 h-3 text-stone-400" />
+                  {isHindi ? 'स्वचालित खोज टैग्स (SEO Keywords):' : 'Generated Search Keywords:'}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {extractedData.seoKeywords.map((kw, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 text-[11px] font-medium border border-stone-200"
+                    >
+                      #{kw}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Publish / Add to Catalog Button */}
+              <div className="pt-3 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                {isPublishing ? (
+                  <div className="flex items-center gap-2 text-xs text-stone-700 bg-amber-50/80 px-3.5 py-2 rounded-xl border border-amber-200/80 w-full sm:w-auto animate-pulse">
+                    <RefreshCw className="w-3.5 h-3.5 text-amber-700 animate-spin shrink-0" />
+                    <span className="font-semibold text-[11px] truncate">{publishingStep}</span>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-stone-500 hidden sm:block">
+                    <span>{isHindi ? 'मूल व एआई संवर्धित दोनों फोटो फायरबेस पर सुरक्षित होंगी।' : 'Original & AI enhanced images will be saved to Firebase Storage.'}</span>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleCreateListing}
+                  disabled={isPublishing}
+                  className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs shadow-sm transition-all"
+                >
+                  {isPublishing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{isHindi ? 'प्रकाशित हो रहा है...' : 'Saving to Firestore...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{isHindi ? 'कैटलॉग में प्रकाशित करें' : 'Publish to MoSJE Smart Catalog'}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 };

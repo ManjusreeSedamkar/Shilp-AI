@@ -20,7 +20,7 @@ import { ProductListing, UserRole, Language, Conversation, ChatMessage, Customiz
 import { Home, Camera, Mic, Bot, IndianRupee, Sparkles, CheckCircle2, ShoppingBag, MessageSquare, Star, ShieldCheck, Video } from 'lucide-react';
 import { translate } from './services/translations';
 import { LanguageAutoTranslator } from './components/LanguageAutoTranslator';
-import { fetchProductsFromFirestore, saveProductToFirestore } from './services/firebase';
+import { fetchProductsFromFirestore, saveProductToFirestore, safeSetLocalStorage } from './services/firebase';
 
 // Sample initial conversations
 const INITIAL_CONVERSATIONS: Conversation[] = [
@@ -159,11 +159,7 @@ export function App() {
 
   // Save products to localStorage
   useEffect(() => {
-    try {
-      localStorage.setItem('shilp_ai_products', JSON.stringify(products));
-    } catch (err) {
-      console.warn('Failed to persist products:', err);
-    }
+    safeSetLocalStorage('shilp_ai_products', products);
   }, [products]);
 
   // Save conversations to localStorage

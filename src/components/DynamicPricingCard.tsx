@@ -20,7 +20,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
   onPriceUpdate
 }) => {
   const [rawCost, setRawCost] = useState<number>(initialPricing?.rawMaterialCost || 2500);
-  const [days, setDays] = useState<number>(initialPricing?.productionDays || 5);
+  const [days, setDays] = useState<number>(initialPricing?.productionDays && initialPricing.productionDays > 0 ? initialPricing.productionDays : 1);
   const [marginPercent, setMarginPercent] = useState<number>(initialPricing?.artisanMarginPercent || 28);
   const [productSize, setProductSize] = useState<'Small' | 'Medium' | 'Large' | 'Extra-Large'>('Medium');
   const [qualityTier, setQualityTier] = useState<'Standard' | 'Premium Heritage' | 'Masterpiece'>('Standard');
