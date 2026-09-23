@@ -1,8 +1,33 @@
-export type Language = 'hi' | 'en' | 'te' | 'ta' | 'bn' | 'mr' | 'gu';
+// ============================================================
+// Supported Languages
+// ============================================================
+
+export type Language =
+  | 'en'  // English
+  | 'hi'  // Hindi
+  | 'te'  // Telugu
+  | 'ta'  // Tamil
+  | 'bn'  // Bengali
+  | 'mr'  // Marathi
+  | 'gu'  // Gujarati
+  | 'kn'  // Kannada
+  | 'ml'  // Malayalam
+  | 'pa'  // Punjabi
+  | 'or'  // Odia
+  | 'as'  // Assamese
+  | 'ur'  // Urdu
+  | 'sa'  // Sanskrit
+  | 'mai' // Maithili
+  | 'kok' // Konkani
+  | 'ne'  // Nepali
+  | 'sd'  // Sindhi
+  | 'doi' // Dogri
+  | 'brx' // Bodo
+  | 'sat'; // Santali
 
 export type UserRole = 'artisan' | 'buyer';
 
-export type CraftCategory = 
+export type CraftCategory =
   | 'Textiles & Handloom'
   | 'Clay & Terracotta'
   | 'Metalcraft & Dhokra'
@@ -46,10 +71,17 @@ export interface PricingBreakdown {
   marketBenchmarkMin: number;
   marketBenchmarkMax: number;
   recommendedPrice?: number;
-  fairPriceRange?: { min: number; max: number };
+  fairPriceRange?: {
+    min: number;
+    max: number;
+  };
   modelType?: 'xgboost_regressor' | 'heuristic_ml';
   xgboostConfidence?: number;
-  featureContributions?: { feature: string; impact: string; weight: number }[];
+  featureContributions?: {
+    feature: string;
+    impact: string;
+    weight: number;
+  }[];
   wholesaleTiers: {
     tier: string;
     minUnits: number;
@@ -63,20 +95,26 @@ export interface ProductListing {
   artisanId: string;
   artisanName: string;
   state: string;
+
   titleEn: string;
   titleHi: string;
+
   category: CraftCategory;
   craftTechnique: string;
   primaryMaterial: string;
   color: string;
+
   productionDays: number;
   rawMaterialCost: number;
+
   originalImage: string;
   enhancedImage: string;
   originalImageUrl?: string;
   enhancedImageUrl?: string;
+
   hasBackgroundRemoved: boolean;
   hasLightingEnhanced: boolean;
+
   descriptionEn: string;
   descriptionHi: string;
   culturalContext?: string;
@@ -88,8 +126,11 @@ export interface ProductListing {
   stockQuantity: number;
   giCertified: boolean;
   createdAt: string;
+
   featured?: boolean;
+
   productSize?: 'Small' | 'Medium' | 'Large' | 'Extra-Large';
+
   qualityTier?: 'Standard' | 'Premium Heritage' | 'Masterpiece';
   // Rich artisan-provided attributes — optional, backward-compatible with existing Firestore records
   productType?: string;       // e.g. "Shawl", "Saree", "Sculpture"
@@ -112,8 +153,12 @@ export interface CopilotMessage {
   text: string;
   audioText?: string;
   timestamp: string;
+
   actionCard?: {
-    type: 'product_extracted' | 'pricing_suggested' | 'listing_ready';
+    type:
+      | 'product_extracted'
+      | 'pricing_suggested'
+      | 'listing_ready';
     data: any;
   };
 }
@@ -130,7 +175,13 @@ export interface BulkRFQInquiry {
   offeredUnitPrice: number;
   deliveryDateNeeded: string;
   customizationNotes?: string;
-  status: 'pending' | 'accepted' | 'negotiating' | 'declined';
+
+  status:
+    | 'pending'
+    | 'accepted'
+    | 'negotiating'
+    | 'declined';
+
   createdAt: string;
 }
 
@@ -156,7 +207,9 @@ export interface ChatMessage {
   senderName: string;
   text: string;
   timestamp: string;
+
   customizationRequest?: CustomizationRequest;
+
   isRead: boolean;
 }
 
@@ -166,9 +219,12 @@ export interface Conversation {
   buyerName: string;
   artisanId: string;
   artisanName: string;
+
   productId?: string;
   productTitle?: string;
+
   messages: ChatMessage[];
+
   lastMessageAt: string;
   unreadCount: number;
 }
@@ -178,13 +234,23 @@ export interface ProductReview {
   productId: string;
   buyerId: string;
   buyerName: string;
+
   rating: number; // 1-5
   comment: string;
   createdAt: string;
+
   verifiedPurchase?: boolean;
 }
 
-// Translation dictionary type
+// ============================================================
+// Translation Types
+// ============================================================
+
 export type TranslationKey = string;
-export type TranslationDictionary = Record<TranslationKey, string>;
+
+export type TranslationDictionary = Record<
+  TranslationKey,
+  string
+>;
+
 export type LanguageTranslations = Record<Language, TranslationDictionary>;

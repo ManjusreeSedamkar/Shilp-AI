@@ -1,3 +1,5 @@
+import { Language } from '../types';
+import { getStoredTranslation, queuePhrasesForTranslation } from './hybridTranslation';
 import { CraftCategory, PricingBreakdown } from '../types';
 import { XGBoostFairPricingRegressor, XGBoostPricingInput } from './xgboostPricingModel';
 
@@ -95,7 +97,7 @@ export class DynamicPricingEngine {
   /**
    * Plain-language explanation for low-literacy artisans in Hindi & English
    */
-  static getPricingExplanation(breakdown: PricingBreakdown, lang: 'hi' | 'en' = 'en'): string {
+  static getPricingExplanation(breakdown: PricingBreakdown, lang: Language = 'en'): string {
     const minRange = breakdown.fairPriceRange?.min || breakdown.fairMinimumPrice;
     const maxRange = breakdown.fairPriceRange?.max || breakdown.marketBenchmarkMax;
     const recommended = breakdown.recommendedPrice || breakdown.suggestedRetailPrice;
@@ -103,6 +105,20 @@ export class DynamicPricingEngine {
     if (lang === 'hi') {
       return `एक्सजीबूस्ट (XGBoost) एआई उचित मूल्य: अनुशंसित मूल्य ₹${recommended.toLocaleString('en-IN')} है (उचित मूल्य सीमा: ₹${minRange.toLocaleString('en-IN')} से ₹${maxRange.toLocaleString('en-IN')})। इसमें ₹${breakdown.rawMaterialCost.toLocaleString('en-IN')} कच्चा माल और ${breakdown.productionDays} दिन की मजदूरी (₹${breakdown.dailyLaborRate}/दिन) शामिल है। थोक ऑर्डर (10+ पीस) के लिए ₹${breakdown.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')}/पीस की दर तय करें।`;
     }
-    return `XGBoost AI Fair Pricing: Recommended Price is ₹${recommended.toLocaleString('en-IN')} (Fair Price Range: ₹${minRange.toLocaleString('en-IN')} – ₹${maxRange.toLocaleString('en-IN')}). Based on ₹${breakdown.rawMaterialCost.toLocaleString('en-IN')} raw materials + ${breakdown.productionDays} days labor (at ₹${breakdown.dailyLaborRate}/day). For bulk wholesale (10+ pcs), quote ₹${breakdown.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')}/pc.`;
+
+    const englishText = `XGBoost AI Fair Pricing: Recommended Price is ₹${recommended.toLocaleString('en-IN')} (Fair Price Range: ₹${minRange.toLocaleString('en-IN')} – ₹${maxRange.toLocaleString('en-IN')}). Based on ₹${breakdown.rawMaterialCost.toLocaleString('en-IN')} raw materials + ${breakdown.productionDays} days labor (at ₹${breakdown.dailyLaborRate}/day). For bulk wholesale (10+ pcs), quote ₹${breakdown.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')}/pc.`;
+
+    if (lang !== 'en') {
+      const cached = getStoredTranslation(lang, englishText);
+      if (cached) return cached;
+      queuePhrasesForTranslation([englishText], lang);
+
+      const isDevanagari = ['mr', 'sa', 'mai', 'kok', 'ne', 'doi', 'brx'].includes(lang);
+      if (isDevanagari) {
+        return `एक्सजीबूस्ट (XGBoost) एआई उचित मूल्य: अनुशंसित मूल्य ₹${recommended.toLocaleString('en-IN')} है। कच्चा माल ₹${breakdown.rawMaterialCost.toLocaleString('en-IN')} + ${breakdown.productionDays} दिन की मजदूरी।`;
+      }
+    }
+
+    return englishText;
   }
 }

@@ -125,7 +125,7 @@ export async function askGemini(
  * Get language name for prompt
  */
 function getLanguageNameForPrompt(lang: Language): string {
-  const names: Record<Language, string> = {
+  const names: Partial<Record<Language, string>> = {
     en: 'English',
     hi: 'Hindi (हिन्दी)',
     te: 'Telugu (తెలుగు)',
@@ -612,4 +612,4 @@ function buildFallbackDescription(
     metaDescription: descriptionEn.slice(0, 160),
   };
 }
-
+

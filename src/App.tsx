@@ -18,7 +18,8 @@ import { TutorialPage } from './components/TutorialPage';
 import { INITIAL_PRODUCTS, CURRENT_ARTISAN } from './data/craftPresets';
 import { ProductListing, UserRole, Language, Conversation, ChatMessage, CustomizationRequest, ProductReview } from './types';
 import { Home, Camera, Mic, Bot, IndianRupee, Sparkles, CheckCircle2, ShoppingBag, MessageSquare, Star, ShieldCheck, Video } from 'lucide-react';
-import { translate } from './services/translations';
+import { translate, LANGUAGE_METADATA } from './services/translations';
+import { getProductTitle, getProductDescription } from './services/displayTranslation';
 import { LanguageAutoTranslator } from './components/LanguageAutoTranslator';
 import { fetchProductsFromFirestore, saveProductToFirestore, safeSetLocalStorage } from './services/firebase';
 
@@ -92,7 +93,22 @@ const INITIAL_REVIEWS: ProductReview[] = [
 
 export function App() {
   const [role, setRole] = useState<UserRole>('artisan');
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem('shilp_ai_language');
+      return (saved as Language) || 'en';
+    } catch {
+      return 'en';
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('shilp_ai_language', language);
+    // Document Language & RTL Support
+    const dir = LANGUAGE_METADATA[language]?.direction || 'ltr';
+    document.documentElement.dir = dir;
+    document.documentElement.lang = language;
+  }, [language]);
   const [isMobileFrame, setIsMobileFrame] = useState<boolean>(false);
   const [artisanTab, setArtisanTab] = useState<'dashboard' | 'studio' | 'voice' | 'copilot' | 'pricing' | 'chat' | 'reviews' | 'tutorials'>('dashboard');
   
@@ -239,7 +255,7 @@ export function App() {
       setStagedOriginalPhotoUrl(originalUrl);
     }
     setArtisanTab('voice');
-    showToast(language === 'hi' ? 'एआई संवर्धित फोटो स्मार्ट कैटलॉग के लिए चुनी गई!' : 'AI enhanced photo selected for Smart Catalog!');
+    showToast(translate(language, 'success.published') || 'AI enhanced photo selected for Smart Catalog!');
   };
 
   // 1-to-1 Chat Messaging System
@@ -528,7 +544,7 @@ export function App() {
                     }`}
                   >
                     <Video className="w-4 h-4" />
-                    <span>{language === 'hi' ? 'ट्यूटोरियल' : 'Tutorials'}</span>
+                    <span>{translate(language, 'nav.tutorials') || 'Tutorials'}</span>
                     <span className="bg-stone-100 text-stone-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full border border-stone-200">
                       2
                     </span>

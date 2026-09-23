@@ -3,6 +3,7 @@ import { IndianRupee, TrendingUp, Volume2, ShieldCheck, Check, Sparkles, Buildin
 import { PricingBreakdown, Language } from '../types';
 import { DynamicPricingEngine } from '../services/pricingEngine';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
+import { translate, getSpeechLangCode } from '../services/translations';
 
 interface DynamicPricingCardProps {
   initialPricing?: PricingBreakdown;
@@ -48,12 +49,12 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
       return;
     }
 
-    const explanation = DynamicPricingEngine.getPricingExplanation(pricing, language === 'hi' ? 'hi' : 'en');
+    const explanation = DynamicPricingEngine.getPricingExplanation(pricing, language);
     setPricingTranscript(explanation);
     setIsSpeaking(true);
 
     try {
-      await VoiceCatalogerEngine.speak(explanation, language === 'hi' ? 'hi-IN' : 'en-IN');
+      await VoiceCatalogerEngine.speak(explanation, getSpeechLangCode(language));
     } finally {
       setIsSpeaking(false);
     }
@@ -65,7 +66,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
     setTimeout(() => setIsCopiedTranscript(false), 2000);
   };
 
-  const isHindi = language === 'hi';
+  // isHindi removed — use t() translations
   const recommendedPrice = pricing.recommendedPrice || pricing.suggestedRetailPrice;
   const rangeMin = pricing.fairPriceRange?.min || pricing.fairMinimumPrice;
   const rangeMax = pricing.fairPriceRange?.max || pricing.marketBenchmarkMax;
@@ -80,16 +81,14 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
               <TrendingUp className="w-4 h-4" />
             </span>
             <h3 className="font-bold text-stone-900 text-base">
-              {isHindi ? 'एक्सजीबूस्ट (XGBoost) एआई उचित मूल्य निर्धारण' : 'XGBoost Fair Pricing Assistant'}
+              {translate(language, 'auto.xgboost_fair_pricing.98')}
             </h3>
             <span className="text-[10px] bg-stone-100 text-stone-600 font-mono px-2 py-0.5 rounded-md border border-stone-200/70">
               ML Regressor
             </span>
           </div>
           <p className="text-xs text-stone-500 mt-1">
-            {isHindi
-              ? 'सामग्री, श्रम, आकार, गुणवत्ता और बाजार मांग के आधार पर निष्पक्ष मूल्य'
-              : 'Predicts fair market valuation balancing artisan livelihood and buyer demand'}
+            {translate(language, 'auto.predicts_fair_market.99')}
           </p>
         </div>
 
@@ -101,17 +100,17 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
               ? 'bg-stone-900 text-white'
               : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200'
           }`}
-          title={isSpeaking ? (isHindi ? 'रोकें' : 'Stop') : (isHindi ? 'व्याख्या सुनें' : 'Listen to explanation')}
+          title={isSpeaking ? (translate(language, 'auto.stop.100')) : (translate(language, 'auto.listen_to_explanatio.101'))}
         >
           {isSpeaking ? (
             <>
               <Square className="w-3.5 h-3.5 fill-white text-white" />
-              <span>{isHindi ? 'रोकें' : 'Stop'}</span>
+              <span>{translate(language, 'auto.stop.102')}</span>
             </>
           ) : (
             <>
               <Volume2 className="w-3.5 h-3.5 text-stone-600" />
-              <span>{isHindi ? 'सुनें' : 'Listen'}</span>
+              <span>{translate(language, 'auto.listen.103')}</span>
             </>
           )}
         </button>
@@ -123,7 +122,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
           <div className="flex items-center justify-between text-stone-800 font-bold text-[11px]">
             <span className="flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-stone-600" />
-              {isHindi ? 'मूल्य निर्धारण वाणी प्रतिलेख:' : 'AI Pricing Explanation:'}
+              {translate(language, 'auto.ai_pricing_explanati.104')}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -152,7 +151,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
             <span className="text-[11px] font-bold text-stone-300 uppercase tracking-wider">
-              {isHindi ? 'अनुशंसित बिक्री मूल्य (Recommended Price)' : 'Recommended Price'}
+              {translate(language, 'auto.recommended_price.105')}
             </span>
             <div className="flex items-baseline space-x-1.5 mt-1">
               <span className="text-3xl font-extrabold text-white">₹{recommendedPrice.toLocaleString('en-IN')}</span>
@@ -163,13 +162,13 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
           {/* Fair Price Range Display */}
           <div className="bg-white/10 backdrop-blur rounded-xl p-3 border border-white/10 text-left sm:text-right">
             <span className="text-[10px] font-bold text-amber-200 uppercase tracking-wider block">
-              {isHindi ? 'उचित मूल्य सीमा (Fair Price Range)' : 'Fair Price Range'}
+              {translate(language, 'auto.fair_price_range.106')}
             </span>
             <div className="text-base font-bold text-white mt-0.5">
               ₹{rangeMin.toLocaleString('en-IN')} – ₹{rangeMax.toLocaleString('en-IN')}
             </div>
             <span className="text-[10px] text-stone-300">
-              {isHindi ? 'जीविकोपार्जन फर्श से प्रीमियम तक' : 'Living wage floor to market ceiling'}
+              {translate(language, 'auto.living_wage_floor_to.107')}
             </span>
           </div>
         </div>
@@ -177,15 +176,15 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
         {/* Feature Sub-Stats */}
         <div className="mt-4 pt-3 border-t border-stone-800 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-stone-300">
           <div>
-            <span className="text-stone-400 text-[10px] block">{isHindi ? 'श्रम मजदूरी (Labor):' : 'Labor Wage:'}</span>
+            <span className="text-stone-400 text-[10px] block">{translate(language, 'auto.labor_wage.108')}</span>
             <span className="font-semibold text-white">₹{pricing.totalLaborWage.toLocaleString('en-IN')}</span>
           </div>
           <div>
-            <span className="text-stone-400 text-[10px] block">{isHindi ? 'कच्चा माल (Materials):' : 'Materials + Buffer:'}</span>
+            <span className="text-stone-400 text-[10px] block">{translate(language, 'auto.materials_buffer.109')}</span>
             <span className="font-semibold text-white">₹{(pricing.rawMaterialCost + pricing.wastageBuffer).toLocaleString('en-IN')}</span>
           </div>
           <div>
-            <span className="text-stone-400 text-[10px] block">{isHindi ? 'कारीगर लाभ (Profit):' : 'Artisan Margin:'}</span>
+            <span className="text-stone-400 text-[10px] block">{translate(language, 'auto.artisan_margin.110')}</span>
             <span className="font-semibold text-emerald-400">+₹{pricing.artisanProfitAmount.toLocaleString('en-IN')}</span>
           </div>
         </div>
@@ -194,14 +193,14 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
       {/* Interactive Controls & Feature Sliders */}
       <div className="bg-stone-50 rounded-xl p-4 space-y-4 border border-stone-200/70">
         <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center justify-between">
-          <span>{isHindi ? 'उत्पाद मापदंड (Product Features)' : 'Adjust Product Features'}</span>
+          <span>{translate(language, 'auto.adjust_product_featu.111')}</span>
           <span className="text-[10px] text-stone-500 font-normal">Auto-recalculates with XGBoost</span>
         </h4>
 
         {/* Product Size Selector */}
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-stone-600 block">
-            {isHindi ? 'उत्पाद का आकार (Size):' : 'Craft Size:'}
+            {translate(language, 'auto.craft_size.112')}
           </label>
           <div className="grid grid-cols-4 gap-1.5">
             {(['Small', 'Medium', 'Large', 'Extra-Large'] as const).map((size) => (
@@ -224,7 +223,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
         {/* Quality Tier Selector */}
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-stone-600 block">
-            {isHindi ? 'कारीगरी गुणवत्ता (Quality Tier):' : 'Quality & Finish Tier:'}
+            {translate(language, 'auto.quality_finish_tier.113')}
           </label>
           <div className="grid grid-cols-3 gap-1.5">
             {(['Standard', 'Premium Heritage', 'Masterpiece'] as const).map((tier) => (
@@ -247,7 +246,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
         {/* Raw Material Cost Slider */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-medium">
-            <span className="text-stone-600">{isHindi ? 'कच्चा माल खर्च:' : 'Raw Material Cost:'}</span>
+            <span className="text-stone-600">{translate(language, 'auto.raw_material_cost.114')}</span>
             <span className="font-bold text-stone-900">₹{rawCost.toLocaleString('en-IN')}</span>
           </div>
           <input
@@ -264,8 +263,8 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
         {/* Production Days Slider */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-medium">
-            <span className="text-stone-600">{isHindi ? 'श्रम समय:' : 'Artisan Crafting Days:'}</span>
-            <span className="font-bold text-stone-900">{days} {isHindi ? 'दिन' : 'days'} (₹{days * 750} wage)</span>
+            <span className="text-stone-600">{translate(language, 'auto.artisan_crafting_day.115')}</span>
+            <span className="font-bold text-stone-900">{days} {translate(language, 'auto.days.116')} (₹{days * 750} wage)</span>
           </div>
           <input
             type="range"
@@ -281,7 +280,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
         {/* Profit Margin % */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-medium">
-            <span className="text-stone-600">{isHindi ? 'लाभ मार्जिन:' : 'Artisan Margin:'}</span>
+            <span className="text-stone-600">{translate(language, 'auto.artisan_margin.117')}</span>
             <span className="font-bold text-stone-900">{marginPercent}%</span>
           </div>
           <input
@@ -300,7 +299,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
       {pricing.featureContributions && (
         <div className="space-y-2">
           <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center justify-between">
-            <span>{isHindi ? 'एक्सजीबूस्ट फीचर प्रभाव (Feature Importance)' : 'XGBoost Feature Contributions'}</span>
+            <span>{translate(language, 'auto.xgboost_feature_cont.118')}</span>
             <span className="text-[10px] text-stone-500 font-mono">Ensemble Trees</span>
           </h4>
           <div className="space-y-1.5 bg-stone-50 p-3 rounded-xl border border-stone-200/60">
@@ -319,7 +318,7 @@ export const DynamicPricingCard: React.FC<DynamicPricingCardProps> = ({
         <div className="bg-stone-50 px-3 py-2 flex items-center justify-between border-b border-stone-200/80">
           <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
             <Building2 className="w-3.5 h-3.5 text-stone-600" />
-            {isHindi ? 'थोक व सरकारी मार्केटप्लेस दरें' : 'B2B Wholesale & Bulk Tiers'}
+            {translate(language, 'auto.b2b_wholesale_bulk_t.119')}
           </span>
           <span className="text-[10px] text-stone-500">Volume Discounts</span>
         </div>

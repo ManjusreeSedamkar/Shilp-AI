@@ -25,6 +25,7 @@ import { ProductListing, Language } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
 import { translate, getSpeechLangCode } from '../services/translations';
+import { getProductTitle, getCategoryTranslation as getCategoryDisplayTranslation, getCraftTechniqueTranslation } from '../services/displayTranslation';
 
 interface ArtisanDashboardProps {
   products: ProductListing[];
@@ -166,7 +167,7 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
               <div className="flex items-center gap-2 flex-wrap">
 
                 <h1 className="text-lg sm:text-xl font-black">
-                  {language === 'hi'
+                  {language !== 'en' && CURRENT_ARTISAN.regionalName
                     ? CURRENT_ARTISAN.regionalName
                     : CURRENT_ARTISAN.name}
                 </h1>
@@ -210,18 +211,18 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
                   ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse'
                   : 'bg-white/15 hover:bg-white/25 text-white backdrop-blur border border-white/20'
               }`}
-              title={isSpeakingAnalytics ? (language === 'hi' ? 'रोकें (Stop)' : 'Stop Speech') : t('dashboard.listenSummary')}
+              title={isSpeakingAnalytics ? (translate(language, 'auto.stop_speech.28')) : t('dashboard.listenSummary')}
             >
               {isSpeakingAnalytics ? (
                 <>
                   <Square className="w-3.5 h-3.5 fill-white text-white" />
-                  <span>{language === 'hi' ? 'रोकें (Stop)' : 'Stop Speech'}</span>
+                  <span>{translate(language, 'auto.stop_speech.29')}</span>
                 </>
               ) : (
                 <>
                   <Volume2 className="w-4 h-4 text-saffron-300" />
                   <span>
-                    {language === 'hi' ? 'विश्लेषण सुनें' : t('dashboard.listenSummary')}
+                    {t('dashboard.listenSummary')}
                   </span>
                 </>
               )}
@@ -240,15 +241,15 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
             <div className="flex items-center justify-between text-white font-bold text-[11px]">
               <span className="flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-amber-300" />
-                {language === 'hi' ? 'एआई विश्लेषण वाणी प्रतिलेख (AI Spoken Transcript):' : 'AI Speech Transcription:'}
+                {translate(language, 'auto.ai_speech_transcript.30')}
                 {isSpeakingAnalytics ? (
                   <span className="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-                    {language === 'hi' ? 'बोल रहा है...' : 'Speaking...'}
+                    {translate(language, 'auto.speaking.31')}
                   </span>
                 ) : (
                   <span className="bg-white/20 text-stone-200 text-[9px] px-2 py-0.5 rounded-full font-mono">
-                    {language === 'hi' ? 'रोका गया (Stopped)' : 'Stopped / Ready'}
+                    {translate(language, 'auto.stopped_ready.32')}
                   </span>
                 )}
               </span>
@@ -258,7 +259,7 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
                   className="text-stone-300 hover:text-white text-[10px] flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 transition-colors"
                 >
                   {isCopiedTranscript ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  {isCopiedTranscript ? (language === 'hi' ? 'कॉपी हुआ' : 'Copied') : (language === 'hi' ? 'कॉपी' : 'Copy')}
+                  {isCopiedTranscript ? (translate(language, 'auto.copied.33')) : (translate(language, 'auto.copy.34'))}
                 </button>
                 <button
                   onClick={() => setAnalyticsTranscript(null)}
@@ -343,25 +344,23 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="font-black text-sm sm:text-base text-white tracking-wide truncate">
-                  {language === 'hi' ? 'वीडियो ट्यूटोरियल (Tutorial)' : 'Tutorial'}
+                  {translate(language, 'auto.tutorial.35')}
                 </h4>
                 <span className="bg-white/10 text-stone-200 text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/15 flex items-center gap-1">
-                  <span>2 {language === 'hi' ? 'वीडियो' : 'Videos'}:</span>
-                  <span className="text-amber-200 font-bold">English & हिन्दी</span>
+                  <span>2 {translate(language, 'auto.videos.36')}:</span>
+                  <span className="text-amber-200 font-bold">{translate(language, 'auto.english_hindi_videos.41')}</span>
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0"></span>
               </div>
               <p className="text-[11px] sm:text-xs text-stone-300 mt-0.5 font-normal leading-tight">
-                {language === 'hi'
-                  ? 'क्लिक करें और वीडियो देखें: AI स्टूडियो, बोलकर कैटलॉग बनाना व निष्पक्ष कारीगर मूल्य'
-                  : 'Click to watch step-by-step video tutorials on AI Studio, Voice Cataloging & Fair Pricing'}
+                {translate(language, 'auto.click_to_watch_step_.37')}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/15 shadow-2xs group-hover:bg-white group-hover:text-stone-900 transition-all shrink-0 self-start sm:self-auto">
             <Play className="w-3.5 h-3.5 fill-current text-current" />
-            <span>{language === 'hi' ? 'ट्यूटोरियल देखें' : 'Watch Tutorials'}</span>
+            <span>{translate(language, 'auto.watch_tutorials.38')}</span>
           </div>
         </div>
       </div>
@@ -484,15 +483,15 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
 
             <div>
               <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-wider block truncate">
-                {language === 'hi' ? 'वीडियो गाइड' : 'Video Guides'}
+                {translate(language, 'auto.video_guides.39')}
               </span>
 
               <h4 className="font-bold text-stone-900 text-xs sm:text-sm truncate mt-0.5">
-                {language === 'hi' ? 'ट्यूटोरियल' : 'Tutorial'}
+                {translate(language, 'auto.tutorial.40')}
               </h4>
 
               <p className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5 leading-tight line-clamp-2">
-                {language === 'hi' ? '2 वीडियो: हिन्दी व अंग्रेजी' : 'English & Hindi Videos'}
+                {translate(language, 'auto.english_hindi_videos.41')}
               </p>
             </div>
           </button>
@@ -533,17 +532,17 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
                 ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
                 : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
             }`}
-            title={isSpeakingAnalytics ? (language === 'hi' ? 'रोकें (Stop)' : 'Stop Speech') : t('dashboard.readAloud')}
+            title={isSpeakingAnalytics ? (translate(language, 'auto.stop_speech.42')) : t('dashboard.readAloud')}
           >
             {isSpeakingAnalytics ? (
               <>
                 <Square className="w-3 h-3 fill-white text-white" />
-                <span>{language === 'hi' ? 'रोकें' : 'Stop'}</span>
+                <span>{translate(language, 'auto.stop.43')}</span>
               </>
             ) : (
               <>
                 <Volume2 className="w-3.5 h-3.5 text-saffron-600" />
-                <span>{language === 'hi' ? 'सुनें' : 'Listen'}</span>
+                <span>{translate(language, 'auto.listen.44')}</span>
               </>
             )}
           </button>
@@ -556,14 +555,14 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
             <div className="flex items-center justify-between text-amber-900 font-bold text-[11px]">
               <span className="flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-amber-700" />
-                {language === 'hi' ? 'एआई वाणी प्रतिलेख (AI Audio Transcript):' : 'AI Speech Transcription:'}
+                {translate(language, 'auto.ai_speech_transcript.45')}
                 {isSpeakingAnalytics ? (
                   <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded-full animate-pulse">
-                    {language === 'hi' ? 'बोल रहा है...' : 'Speaking...'}
+                    {translate(language, 'auto.speaking.46')}
                   </span>
                 ) : (
                   <span className="bg-stone-200 text-stone-700 text-[9px] px-1.5 py-0.2 rounded-full font-mono">
-                    {language === 'hi' ? 'रोका गया' : 'Stopped'}
+                    {translate(language, 'auto.stopped.47')}
                   </span>
                 )}
               </span>
@@ -573,7 +572,7 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
                   className="text-stone-600 hover:text-stone-900 text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white border border-amber-200 hover:bg-amber-100 transition-colors"
                 >
                   {isCopiedTranscript ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                  {isCopiedTranscript ? (language === 'hi' ? 'कॉपी हुआ' : 'Copied') : (language === 'hi' ? 'कॉपी' : 'Copy')}
+                  {isCopiedTranscript ? (translate(language, 'auto.copied.48')) : (translate(language, 'auto.copy.49'))}
                 </button>
                 <button
                   onClick={() => setAnalyticsTranscript(null)}
@@ -740,7 +739,7 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
                 {/* AI Enhanced / Studio Photo Badge */}
                 <span className="absolute top-3 right-3 bg-emerald-700/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 border border-emerald-500/40">
                   <Sparkles className="w-2.5 h-2.5 text-amber-300" />
-                  {product.enhancedImageUrl || product.enhancedImage ? (language === 'hi' ? 'एआई संवर्धित' : 'AI Enhanced') : t('dashboard.originalPhoto')}
+                  {product.enhancedImageUrl || product.enhancedImage ? (translate(language, 'auto.ai_enhanced.50')) : t('dashboard.originalPhoto')}
                 </span>
 
                 {/* GI Badge */}
@@ -753,7 +752,7 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
 
                 {/* Bottom Peek Pill */}
                 <div className="absolute bottom-2.5 inset-x-3 bg-black/65 backdrop-blur-xs text-white text-[9px] font-medium py-1 px-2.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                  <span>{language === 'hi' ? 'विवरण व पहले/बाद तुलना देखने हेतु टैप करें' : 'Tap to view details & Before/After comparison'}</span>
+                  <span>{translate(language, 'auto.tap_to_view_details_.51')}</span>
                 </div>
 
               </div>
@@ -770,14 +769,12 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
 
                   {/* Product Title */}
                   <h4 className="font-bold text-xs text-stone-900 line-clamp-1 group-hover:text-saffron-700 transition-colors">
-                    {language === 'hi'
-                      ? product.titleHi
-                      : product.titleEn}
+                    {getProductTitle(product, language)}
                   </h4>
 
                   {/* Technique + Days */}
                   <p className="text-[11px] text-stone-500 line-clamp-1 mt-0.5">
-                    {product.craftTechnique} • {product.productionDays}{' '}
+                    {getCraftTechniqueTranslation(product.craftTechnique, language)} • {product.productionDays}{' '}
                     {t('dashboard.days')}
                   </p>
 
