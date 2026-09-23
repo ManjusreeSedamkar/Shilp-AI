@@ -34,3 +34,5 @@ src_old/
 src_old(2)/
 *.zip
 supabase/.temp/
+
+supabase/.temp/
