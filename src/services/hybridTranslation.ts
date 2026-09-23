@@ -1,16 +1,24 @@
 import { Language } from '../types';
-import { translateBatchWithGemini, hasGeminiApiKey } from './geminiService';
+import {
+  translateBatchWithSarvam,
+  translateWithSarvam,
+  splitTextIntoChunks
+} from './sarvamTranslationService';
+
+export { splitTextIntoChunks, translateWithSarvam, translateBatchWithSarvam };
 
 /**
- * SARAL-AI-inspired Hybrid Multilingual Translation Engine for SHILP-AI.
+ * Hybrid Multilingual Translation Engine for SHILP-AI.
  * 
  * Features:
- * 1. Priority to existing static dictionaries (en, hi, te, ta, bn, mr, gu).
- * 2. On-demand dynamic Gemini translation fallback for remaining languages (kn, ml, pa, or, as, ur, sa, etc.).
+ * 1. Priority to existing static dictionaries.
+ * 2. On-demand dynamic Sarvam translation via Firebase Cloud Function (Phase 1)
+ *    for missing languages/phrases with zero API keys exposed in frontend.
  * 3. Two-tiered cache (fast In-Memory Map + persistent LocalStorage).
- * 4. Request deduplication & batched translation to prevent per-DOM-node Gemini calls.
+ * 4. Request deduplication & batched translation to prevent per-DOM-node calls.
  * 5. Strict safety filter to never translate proper names, numbers, prices, URLs, emails, or IDs.
  * 6. Canonical English fallback preserved at all times.
+ * 7. Long text chunking within Sarvam's 2,000-character limit.
  */
 
 // Normalizes text by collapsing extra whitespace
@@ -79,7 +87,7 @@ function getLangMap(lang: Language): Map<string, string> {
 export function shouldTranslate(text: string): boolean {
   if (!text || typeof text !== 'string') return false;
   const t = text.trim();
-  if (t.length < 2 || t.length > 300) return false;
+  if (t.length < 2 || t.length > 1800) return false;
 
   // Skip pure numbers, punctuation, mathematical symbols, dividers
   if (/^[\d\s.,:;!?'"()#%&*+=\-_/\\|~`^$<>{}[\]₹$€£•→←✓★\n\r]+$/.test(t)) return false;
@@ -99,10 +107,6 @@ export function shouldTranslate(text: string): boolean {
   if (/^(?:MoSJE|GI|DBT|QR|API|UID|ID|GST|GSTIN|PAN|Aadhaar|Vite|React|XGBoost|NLP)[A-Z0-9\-_.]*$/i.test(t)) return false;
   if (/^[A-Z0-9]{2,}(?:-[A-Z0-9]+)+$/.test(t)) return false;
   if (/^\d{4}-\d{2}-\d{2}/.test(t)) return false; // Dates (2025-04-15)
-
-  // Skip known proper artisan/buyer names from data presets
-  const properNames = ['Rameshwaram', 'FabIndia', 'Vikram Mehta', 'TRIFED', 'Bastar', 'Pochampally', 'Bankura', 'Mithila'];
-  if (properNames.some(name => t === name || t === `${name} ji` || t === `${name} Ltd`)) return false;
 
   // Skip percentages or aspect ratios
   if (/^\d+(\.\d+)?%$/.test(t)) return false;
@@ -139,6 +143,7 @@ export function getAllStoredTranslations(lang: Language): Record<string, string>
  */
 export function saveStoredTranslation(lang: Language, englishText: string, translatedText: string): void {
   if (lang === 'en' || !englishText || !translatedText) return;
+  if (normalize(englishText) === normalize(translatedText)) return; // Never cache un-translated fallback strings
   const langMap = getLangMap(lang);
   const normKey = normalize(englishText);
   langMap.set(normKey, translatedText);
@@ -155,7 +160,7 @@ export function saveStoredTranslationsBatch(lang: Language, translations: Record
   let hasNew = false;
 
   for (const [eng, tr] of Object.entries(translations)) {
-    if (typeof tr === 'string' && tr.trim()) {
+    if (typeof tr === 'string' && tr.trim() && normalize(eng) !== normalize(tr)) { // Never cache un-translated fallback strings
       langMap.set(normalize(eng), tr.trim());
       hasNew = true;
     }
@@ -188,80 +193,128 @@ function notifyListeners(lang: Language): void {
   });
 }
 
-// In-flight tracking to deduplicate concurrent requests for the same phrase
+// In-flight tracking to deduplicate concurrent requests for the same phrase: Set<"targetLang:normalizedText">
 const inFlightKeys = new Set<string>();
 
-// Queue of phrases waiting to be sent to Gemini in a debounced batch
-const pendingBatches: Map<Language, Set<string>> = new Map();
-let batchDebounceTimers: Map<Language, any> = new Map();
+// Queued phrases per language waiting to be translated: Map<Language, Set<normalizedText>>
+const pendingQueues: Map<Language, Set<string>> = new Map();
+
+// Concurrency control for active HTTP requests
+let activeWorkerCount = 0;
+const MAX_CONCURRENT_WORKERS = 3;
+const CHUNK_SIZE = 12;
+
+let processTimer: any = null;
+
+function scheduleWorkerProcessing(): void {
+  if (processTimer) return;
+  processTimer = setTimeout(() => {
+    processTimer = null;
+    triggerQueueWorkers();
+  }, 50);
+}
 
 /**
- * Queue phrases for batched, deduplicated runtime translation via Gemini.
- * Groups phrases into batches of up to 20, debounced by 150ms.
+ * Queue phrases for batched, deduplicated runtime translation via Supabase Sarvam function.
+ * Deduplicates requests, enforces max 3 active HTTP requests, and caches results.
  */
 export function queuePhrasesForTranslation(phrases: string[], targetLang: Language): void {
-  if (targetLang === 'en' || !phrases.length) return;
-  if (!hasGeminiApiKey()) return; // Skip if no API key configured to avoid unnecessary errors
+  if (targetLang === 'en' || !phrases || !phrases.length) return;
 
   const langMap = getLangMap(targetLang);
-  let pendingSet = pendingBatches.get(targetLang);
-  if (!pendingSet) {
-    pendingSet = new Set<string>();
-    pendingBatches.set(targetLang, pendingSet);
+  let queue = pendingQueues.get(targetLang);
+  if (!queue) {
+    queue = new Set<string>();
+    pendingQueues.set(targetLang, queue);
   }
 
-  let addedCount = 0;
+  let added = 0;
   for (const phrase of phrases) {
     if (!shouldTranslate(phrase)) continue;
     const norm = normalize(phrase);
     if (langMap.has(norm)) continue; // Already cached
     const flightKey = `${targetLang}:${norm}`;
     if (inFlightKeys.has(flightKey)) continue; // Already in-flight
-    if (pendingSet.has(norm)) continue; // Already queued
+    if (queue.has(norm)) continue; // Already queued
 
-    pendingSet.add(norm);
-    addedCount++;
+    queue.add(norm);
+    added++;
   }
 
-  if (addedCount === 0) return;
-
-  // Clear previous timer for this language
-  const existingTimer = batchDebounceTimers.get(targetLang);
-  if (existingTimer) {
-    clearTimeout(existingTimer);
+  if (added > 0) {
+    scheduleWorkerProcessing();
   }
-
-  // Set new debounced timer
-  const timer = setTimeout(() => {
-    flushPendingBatch(targetLang);
-  }, 150);
-  batchDebounceTimers.set(targetLang, timer);
 }
 
-// Process and send the queued phrases in batches of up to 20
-async function flushPendingBatch(targetLang: Language): Promise<void> {
-  const pendingSet = pendingBatches.get(targetLang);
-  if (!pendingSet || pendingSet.size === 0) return;
+async function triggerQueueWorkers(): Promise<void> {
+  while (activeWorkerCount < MAX_CONCURRENT_WORKERS) {
+    let targetLang: Language | null = null;
+    let pendingSet: Set<string> | null = null;
 
-  const allPhrases = Array.from(pendingSet);
-  pendingSet.clear();
-
-  // Process in chunks of max 20 phrases to keep prompt concise and reliable
-  const CHUNK_SIZE = 20;
-  for (let i = 0; i < allPhrases.length; i += CHUNK_SIZE) {
-    const chunk = allPhrases.slice(i, i + CHUNK_SIZE);
-    
-    // Mark as in-flight
-    chunk.forEach((p) => inFlightKeys.add(`${targetLang}:${p}`));
-
-    try {
-      const results = await translateBatchWithGemini(chunk, targetLang);
-      saveStoredTranslationsBatch(targetLang, results);
-    } catch (err) {
-      console.warn(`Failed to translate batch for ${targetLang}:`, err);
-    } finally {
-      // Remove from in-flight
-      chunk.forEach((p) => inFlightKeys.delete(`${targetLang}:${p}`));
+    for (const [lang, q] of pendingQueues.entries()) {
+      if (q.size > 0) {
+        targetLang = lang;
+        pendingSet = q;
+        break;
+      }
     }
+
+    if (!targetLang || !pendingSet || pendingSet.size === 0) {
+      break;
+    }
+
+    const chunk: string[] = [];
+    for (const norm of Array.from(pendingSet)) {
+      chunk.push(norm);
+      pendingSet.delete(norm);
+      inFlightKeys.add(`${targetLang}:${norm}`);
+      if (chunk.length >= CHUNK_SIZE) break;
+    }
+
+    if (chunk.length === 0) continue;
+
+    activeWorkerCount++;
+    runWorkerChunk(targetLang, chunk);
   }
+}
+
+async function runWorkerChunk(targetLang: Language, chunk: string[]): Promise<void> {
+  try {
+    const results = await translateBatchWithSarvam(chunk, targetLang, 'en');
+    saveStoredTranslationsBatch(targetLang, results);
+  } catch (err) {
+    console.warn(`Worker batch translation failed for ${targetLang}:`, err);
+  } finally {
+    chunk.forEach((p) => inFlightKeys.delete(`${targetLang}:${p}`));
+    activeWorkerCount--;
+    triggerQueueWorkers();
+  }
+}
+
+/**
+ * Translate dynamic or long text with caching and Sarvam Firebase fallback.
+ * Safely handles chunking for text > 1,800 chars and preserves English fallback.
+ */
+export async function translateDynamicText(
+  text: string,
+  targetLang: Language,
+  sourceLang = 'en'
+): Promise<string> {
+  if (targetLang === 'en' || !text || !text.trim()) return text;
+
+  const norm = normalize(text);
+  const cached = getStoredTranslation(targetLang, norm);
+  if (cached) return cached;
+
+  try {
+    const translated = await translateWithSarvam(text, targetLang, sourceLang);
+    if (translated && translated !== text) {
+      saveStoredTranslation(targetLang, norm, translated);
+      return translated;
+    }
+  } catch (err) {
+    console.warn(`Dynamic translation failed for ${targetLang}:`, err);
+  }
+
+  return text;
 }

@@ -79,7 +79,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <UserCheck className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Artisan Studio</span>
             <span className="sm:hidden text-[11px] font-bold">Artisan</span>
-            <span className="hidden lg:inline text-[10px] opacity-75 font-normal">(कारीगर)</span>
           </button>
           <button
             onClick={() => setRole('buyer')}
@@ -92,7 +91,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ShoppingBag className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Buyer Marketplace</span>
             <span className="sm:hidden text-[11px] font-bold">Buyer</span>
-            <span className="hidden lg:inline text-[10px] opacity-75 font-normal">(खरीदार)</span>
           </button>
         </div>
 

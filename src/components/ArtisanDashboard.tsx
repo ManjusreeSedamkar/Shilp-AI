@@ -347,7 +347,7 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
                 </h4>
                 <span className="bg-white/10 text-stone-200 text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/15 flex items-center gap-1">
                   <span>2 {translate(language, 'auto.videos.36')}:</span>
-                  <span className="text-amber-200 font-bold">English & हिन्दी</span>
+                  <span className="text-amber-200 font-bold">{translate(language, 'auto.english_hindi_videos.41')}</span>
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0"></span>
               </div>

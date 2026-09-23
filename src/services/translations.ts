@@ -2262,7 +2262,7 @@ export function translateAIText(text: string, lang: Language): string {
   
   // If the text is already in the target language script, return as-is
   const matcher = SCRIPT_MATCHERS[lang];
-  if (matcher && matcher.test(text)) {
+  if (matcher && matcher.test(text) && !/^[A-Za-z0-9\s.,!?'"()\-:;₹]+$/.test(text)) {
     return text;
   }
   

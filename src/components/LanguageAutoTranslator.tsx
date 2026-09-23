@@ -424,15 +424,19 @@ function translateTextNodes(root: Node, map: TextMap, language: Language) {
       const leading = currentText.match(/^\s*/)?.[0] ?? '';
       const trailing = currentText.match(/\s*$/)?.[0] ?? '';
       node.nodeValue = `${leading}${translated}${trailing}`;
+    } else if (!translated && language === 'en' && source && normalize(source) !== currentNormalized) {
+      const leading = currentText.match(/^\s*/)?.[0] ?? '';
+      const trailing = currentText.match(/\s*$/)?.[0] ?? '';
+      node.nodeValue = `${leading}${source}${trailing}`;
     } else if (!translated && language !== 'en') {
-      // Collect eligible UI phrases for batched, deduplicated Gemini translation
+      // Collect eligible UI phrases for batched, deduplicated Sarvam translation
       if (shouldTranslate(source)) {
         untranslatedToQueue.push(source);
       }
     }
   }
 
-  // Enqueue unmapped phrases for background Gemini batch translation
+  // Enqueue unmapped phrases for background Sarvam batch translation
   if (untranslatedToQueue.length > 0 && language !== 'en') {
     queuePhrasesForTranslation(untranslatedToQueue, language);
   }
@@ -451,6 +455,8 @@ function translateAttributes(root: Node, map: TextMap, language: Language) {
       const translated = map.get(normalize(source));
       if (translated && normalize(translated) !== normalize(value)) {
         element.setAttribute(attr, translated);
+      } else if (!translated && language === 'en' && source && normalize(source) !== normalize(value)) {
+        element.setAttribute(attr, source);
       } else if (!translated && language !== 'en' && shouldTranslate(source)) {
         untranslatedToQueue.push(source);
       }
@@ -465,6 +471,10 @@ function translateAttributes(root: Node, map: TextMap, language: Language) {
 export const LanguageAutoTranslator: React.FC<{ language: Language }> = ({ language }) => {
   useEffect(() => {
     if (typeof document === 'undefined') return;
+
+    // Set document language and text direction (RTL for Urdu, LTR for others)
+    document.documentElement.lang = language;
+    document.documentElement.dir = LANGUAGE_METADATA[language]?.direction || 'ltr';
 
     let map = buildMap(language);
     let scheduled = false;
@@ -485,7 +495,7 @@ export const LanguageAutoTranslator: React.FC<{ language: Language }> = ({ langu
     // with their canonical source before another language is selected.
     schedule();
 
-    // Subscribe to background hybrid runtime translation arrivals from Gemini
+    // Subscribe to background hybrid runtime translation arrivals from Firebase Sarvam function
     const unsubscribeTranslations = subscribeToTranslations((updatedLang) => {
       if (updatedLang === language) {
         map = buildMap(language);

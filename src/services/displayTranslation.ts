@@ -204,21 +204,15 @@ export function getProductTitle(product: ProductListing, lang: Language): string
   const cached = getStoredTranslation(lang, product.titleEn);
   if (cached) return cached;
 
-  // Queue for background translation via Gemini
+  // Queue for background translation via Sarvam
   queuePhrasesForTranslation([product.titleEn], lang);
-
-  // Devanagari script family fallback to Hindi title if available
-  const isDevanagari = ['mr', 'sa', 'mai', 'kok', 'ne', 'doi', 'brx'].includes(lang);
-  if (isDevanagari && product.titleHi) {
-    return product.titleHi;
-  }
 
   return product.titleEn;
 }
 
 /**
  * Returns the localized description of a product.
- * Supports all 21 languages with caching, Devanagari fallback and background queuing.
+ * Supports all 21 languages with caching and background queuing.
  */
 export function getProductDescription(product: ProductListing, lang: Language): string {
   if (lang === 'en') return product.descriptionEn;
@@ -228,14 +222,8 @@ export function getProductDescription(product: ProductListing, lang: Language): 
   const cached = getStoredTranslation(lang, product.descriptionEn);
   if (cached) return cached;
 
-  // Queue for background translation via Gemini
+  // Queue for background translation via Sarvam
   queuePhrasesForTranslation([product.descriptionEn], lang);
-
-  // Devanagari script family fallback to Hindi description if available
-  const isDevanagari = ['mr', 'sa', 'mai', 'kok', 'ne', 'doi', 'brx'].includes(lang);
-  if (isDevanagari && product.descriptionHi) {
-    return product.descriptionHi;
-  }
 
   return product.descriptionEn;
 }
@@ -286,17 +274,11 @@ export function getCraftTechniqueTranslation(technique: string, lang: Language):
   const staticMatch = COMMON_TECHNIQUES[technique]?.[lang];
   if (staticMatch) return staticMatch;
 
-  // Devanagari family fallback to Hindi static technique
-  const isDevanagari = ['mr', 'sa', 'mai', 'kok', 'ne', 'doi', 'brx'].includes(lang);
-  if (isDevanagari && COMMON_TECHNIQUES[technique]?.hi) {
-    return COMMON_TECHNIQUES[technique]!.hi!;
-  }
-
   // 2. Check hybrid runtime cache
   const cached = getStoredTranslation(lang, technique);
   if (cached) return cached;
 
-  // 3. Queue for background translation via Gemini
+  // 3. Queue for background translation via Sarvam
   queuePhrasesForTranslation([technique], lang);
 
   return technique;
@@ -314,17 +296,11 @@ export function getMaterialTranslation(material: string, lang: Language): string
   const staticMatch = COMMON_MATERIALS[material]?.[lang];
   if (staticMatch) return staticMatch;
 
-  // Devanagari family fallback to Hindi static material
-  const isDevanagari = ['mr', 'sa', 'mai', 'kok', 'ne', 'doi', 'brx'].includes(lang);
-  if (isDevanagari && COMMON_MATERIALS[material]?.hi) {
-    return COMMON_MATERIALS[material]!.hi!;
-  }
-
   // 2. Check hybrid runtime cache
   const cached = getStoredTranslation(lang, material);
   if (cached) return cached;
 
-  // 3. Queue for background translation via Gemini
+  // 3. Queue for background translation via Sarvam
   queuePhrasesForTranslation([material], lang);
 
   return material;
