@@ -3,6 +3,7 @@ import { Camera, Upload, Sparkles, Sliders, CheckCircle2, Download, ArrowRight, 
 import { CRAFT_PRESETS, CraftPreset } from '../data/craftPresets';
 import { AIImageStudio, ImageProcessingOptions, DEFAULT_IMAGE_OPTIONS, ProcessedImageResult } from '../services/imageStudio';
 import { Language } from '../types';
+import { translate } from '../services/translations';
 
 interface ArtisanStudioProps {
   onPhotoSelected?: (photoUrl: string, originalUrl?: string) => void;
@@ -27,7 +28,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
   const [isFlashing, setIsFlashing] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const isHindi = language === 'hi';
+  const t = (key: string) => translate(language, key);
 
   // Stop camera on unmount
   useEffect(() => {
@@ -61,9 +62,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
     } catch (err: any) {
       console.warn('Camera error:', err);
       setCameraError(
-        isHindi
-          ? 'कैमरा शुरू करने में असमर्थ। कृपया ब्राउज़र अनुमति दें या फोटो अपलोड विकल्प का उपयोग करें।'
-          : 'Unable to access live camera. Please check camera permissions or use the upload option.'
+        translate(language, 'auto.unable_to_access_liv.52')
       );
     }
   };
@@ -172,15 +171,13 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
           <div className="space-y-1">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/10 backdrop-blur text-amber-300">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              {isHindi ? 'कंप्यूटर विजन स्टूडियो' : 'AI Computer Vision Studio'}
+              {translate(language, 'auto.ai_computer_vision_s.53')}
             </span>
             <h2 className="text-xl sm:text-2xl font-black">
-              {isHindi ? 'एआई फोटो क्लीनर व स्टूडियो फ्रेम' : 'AI Image Enhancer & Studio'}
+              {translate(language, 'auto.ai_image_enhancer_st.54')}
             </h2>
             <p className="text-xs sm:text-sm text-stone-300 max-w-xl">
-              {isHindi
-                ? 'कारीगर की अव्यवस्थित कार्यशाला की साधारण फोटो को पेशेवर ई-कॉमर्स उत्पाद फोटो में बदलें।'
-                : 'Turn raw workshop photos into studio-grade e-commerce listings with automatic background removal & lighting correction.'}
+              {translate(language, 'auto.turn_raw_workshop_ph.55')}
             </p>
           </div>
           <div className="hidden sm:block">
@@ -195,9 +192,9 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200 space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">
-            {isHindi ? 'त्वरित शिल्प नमूने (Test with Craft Presets):' : 'Test With Sample Crafts:'}
+            {translate(language, 'auto.test_with_sample_cra.56')}
           </span>
-          <span className="text-[11px] text-stone-500">{isHindi ? '1-क्लिक परीक्षण' : '1-Click Demo'}</span>
+          <span className="text-[11px] text-stone-500">{translate(language, 'auto.1_click_demo.57')}</span>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {CRAFT_PRESETS.map((preset) => {
@@ -244,14 +241,14 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
               className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold transition-colors"
             >
               <Upload className="w-3.5 h-3.5 text-stone-700" />
-              <span>{isHindi ? 'फोटो अपलोड करें' : 'Upload Photo'}</span>
+              <span>{translate(language, 'auto.upload_photo.58')}</span>
             </button>
             <button
               onClick={() => startCamera()}
               className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold transition-colors shadow-xs"
             >
               <Camera className="w-3.5 h-3.5 text-amber-300" />
-              <span>{isHindi ? 'कैमरा फोटो लें' : 'Take Photo'}</span>
+              <span>{translate(language, 'auto.take_photo.59')}</span>
             </button>
           </div>
 
@@ -265,7 +262,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
               }`}
             >
               <Columns className="w-3.5 h-3.5 text-amber-600" />
-              <span>{isHindi ? 'शोकेस दृश्य' : 'Before / After'}</span>
+              <span>{translate(language, 'auto.before_after.60')}</span>
             </button>
             <button
               onClick={() => setViewMode('slider')}
@@ -276,7 +273,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
               }`}
             >
               <SplitSquareVertical className="w-3.5 h-3.5 text-amber-600" />
-              <span>{isHindi ? 'स्प्लिट स्लाइडर' : 'Slider'}</span>
+              <span>{translate(language, 'auto.slider.61')}</span>
             </button>
           </div>
         </div>
@@ -294,7 +291,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-3 left-3 bg-[#2D3338]/90 backdrop-blur text-white text-[11px] font-medium px-3 py-1 rounded-full shadow-sm">
-                  {isHindi ? 'पहले (मूल फोटो)' : 'Before (Original)'}
+                  {translate(language, 'auto.before_original.62')}
                 </div>
               </div>
 
@@ -307,7 +304,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 />
                 <div className="absolute top-3 left-3 bg-[#2D5A43]/90 backdrop-blur text-white text-[11px] font-medium px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-300" />
-                  <span>{isHindi ? 'बाद में (एआई संवर्धित)' : 'After (Enhanced)'}</span>
+                  <span>{translate(language, 'auto.after_enhanced.63')}</span>
                 </div>
               </div>
             </div>
@@ -320,7 +317,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                   <Scissors className="w-3.5 h-3.5 text-stone-700" />
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>बैकग्राउंड<br />हटाना</> : <>Background<br />Removal</>}
+                  {t('studio.featureBgRemoval')}
                 </span>
               </div>
 
@@ -330,7 +327,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                   <SunMedium className="w-3.5 h-3.5 text-stone-700" />
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>बेहतर<br />लाइटिंग</> : <>Better<br />Lighting</>}
+                  {t('studio.featureLighting')}
                 </span>
               </div>
 
@@ -340,7 +337,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                   <Palette className="w-3.5 h-3.5 text-stone-700" />
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>प्राकृतिक रंग<br />सुधार</> : <>Natural Color<br />Correction</>}
+                  {t('studio.featureColor')}
                 </span>
               </div>
 
@@ -350,7 +347,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                   <Crop className="w-3.5 h-3.5 text-stone-700" />
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>उचित स्थिति<br />व क्रॉपिंग</> : <>Proper Positioning<br />& Cropping</>}
+                  {t('studio.featurePosition')}
                 </span>
               </div>
 
@@ -360,7 +357,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                 </div>
                 <span className="text-[10px] sm:text-[11px] font-medium text-stone-700 leading-tight">
-                  {isHindi ? <>संवर्धित<br />गुणवत्ता</> : <>Enhanced<br />Quality</>}
+                  {t('studio.featureQuality')}
                 </span>
               </div>
             </div>
@@ -395,13 +392,13 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 />
                 {/* Raw Label */}
                 <div className="absolute top-3 left-3 bg-[#2D3338]/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur">
-                  {isHindi ? 'मूल फोटो (कच्चा)' : 'Before (Original)'}
+                  {translate(language, 'auto.before_original.64')}
                 </div>
               </div>
 
               {/* Enhanced Label */}
               <div className="absolute top-3 right-3 bg-[#2D5A43]/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
-                {isHindi ? 'एआई स्टूडियो' : 'After (Enhanced)'}
+                {translate(language, 'auto.after_enhanced.65')}
               </div>
 
               {/* Draggable Divider Line */}
@@ -429,14 +426,14 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center text-white z-30 space-y-2">
                   <RefreshCw className="w-8 h-8 animate-spin text-saffron-400" />
                   <span className="text-xs font-semibold">
-                    {isHindi ? 'एआई पृष्ठभूमि साफ कर रहा है...' : 'AI Segmenting & Correcting Lighting...'}
+                    {translate(language, 'auto.ai_segmenting_correc.66')}
                   </span>
                 </div>
               )}
             </div>
 
             <p className="text-center text-[11px] text-stone-500">
-              {isHindi ? 'स्लाइडर को खींचकर पहले और बाद का अंतर देखें' : '← Drag slider to compare Raw Workshop Photo vs AI Studio Output →'}
+              {translate(language, 'auto.drag_slider_to_compa.67')}
             </p>
           </div>
         )}
@@ -445,19 +442,19 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
         {processedResult && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-stone-100">
             <div className="bg-stone-50 p-2.5 rounded-xl text-center border border-stone-200/60">
-              <span className="text-[10px] text-stone-500 uppercase font-semibold">{isHindi ? 'प्रोसेसिंग समय' : 'Latency'}</span>
+              <span className="text-[10px] text-stone-500 uppercase font-semibold">{translate(language, 'auto.latency.68')}</span>
               <p className="text-sm font-bold text-stone-800">{processedResult.processingTimeMs} ms</p>
             </div>
             <div className="bg-stone-50 p-2.5 rounded-xl text-center border border-stone-200/60">
-              <span className="text-[10px] text-stone-500 uppercase font-semibold">{isHindi ? 'पृष्ठभूमि सफाई' : 'BG Removal'}</span>
+              <span className="text-[10px] text-stone-500 uppercase font-semibold">{translate(language, 'auto.bg_removal.69')}</span>
               <p className="text-sm font-bold text-emerald-600">{processedResult.stats.backgroundPurity}</p>
             </div>
             <div className="bg-stone-50 p-2.5 rounded-xl text-center border border-stone-200/60">
-              <span className="text-[10px] text-stone-500 uppercase font-semibold">{isHindi ? 'प्रकाश स्पष्टता' : 'Lighting Boost'}</span>
+              <span className="text-[10px] text-stone-500 uppercase font-semibold">{translate(language, 'auto.lighting_boost.70')}</span>
               <p className="text-sm font-bold text-amber-700">{processedResult.stats.contrastImprovement}</p>
             </div>
             <div className="bg-stone-50 p-2.5 rounded-xl text-center border border-stone-200/60">
-              <span className="text-[10px] text-stone-500 uppercase font-semibold">{isHindi ? 'ई-कॉमर्स मानक' : 'Format'}</span>
+              <span className="text-[10px] text-stone-500 uppercase font-semibold">{translate(language, 'auto.format.71')}</span>
               <p className="text-sm font-bold text-stone-900">1:1 Square</p>
             </div>
           </div>
@@ -468,15 +465,15 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5 text-stone-500" />
-              {isHindi ? 'स्टूडियो व फोटो नियंत्रण (Studio & Light Controls)' : 'Studio AI & Photographic Controls'}
+              {translate(language, 'auto.studio_ai_photograph.72')}
             </span>
             <button
               onClick={() => setOptions(DEFAULT_IMAGE_OPTIONS)}
               className="flex items-center gap-1 text-[11px] font-semibold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200/80 transition-colors shadow-2xs"
-              title={isHindi ? 'एआई की सर्वोत्तम सेटिंग्स पर रीसेट करें' : 'Reset to AI optimal settings'}
+              title={translate(language, 'auto.reset_to_ai_optimal_.73')}
             >
               <RotateCcw className="w-3 h-3 text-amber-700" />
-              <span>{isHindi ? 'एआई इष्टतम रीसेट' : 'Reset to AI Optimal'}</span>
+              <span>{translate(language, 'auto.reset_to_ai_optimal.74')}</span>
             </button>
           </div>
 
@@ -489,7 +486,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 onChange={(e) => setOptions({ ...options, removeBackground: e.target.checked })}
                 className="rounded text-stone-900 accent-stone-900 focus:ring-stone-400"
               />
-              <span>{isHindi ? 'पृष्ठभूमि हटाएं' : 'Remove BG'}</span>
+              <span>{translate(language, 'auto.remove_bg.75')}</span>
             </label>
 
             {/* Toggle Lighting Correction */}
@@ -500,7 +497,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 onChange={(e) => setOptions({ ...options, enhanceLighting: e.target.checked })}
                 className="rounded text-stone-900 accent-stone-900 focus:ring-stone-400"
               />
-              <span>{isHindi ? 'लाइटिंग सुधारें' : 'Studio Lighting'}</span>
+              <span>{translate(language, 'auto.studio_lighting.76')}</span>
             </label>
 
             {/* Toggle Drop Shadow */}
@@ -511,7 +508,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 onChange={(e) => setOptions({ ...options, addStudioShadow: e.target.checked })}
                 className="rounded text-stone-900 accent-stone-900 focus:ring-stone-400"
               />
-              <span>{isHindi ? 'स्टूडियो छाया' : 'Ground Shadow'}</span>
+              <span>{translate(language, 'auto.ground_shadow.77')}</span>
             </label>
           </div>
 
@@ -520,10 +517,10 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
             <div className="flex items-center justify-between text-[11px] font-bold text-stone-700">
               <span className="flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-amber-600" />
-                {isHindi ? 'फोटोग्राफिक फाइन-ट्यूनिंग (Brightness, Saturation, Contrast)' : 'Photographic Fine-Tuning'}
+                {translate(language, 'auto.photographic_fine_tu.78')}
               </span>
               <span className="text-[10px] text-stone-400 font-normal">
-                {isHindi ? 'लाइव समायोजन' : 'Live Realtime'}
+                {translate(language, 'auto.live_realtime.79')}
               </span>
             </div>
 
@@ -533,7 +530,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 <div className="flex justify-between text-[11px]">
                   <span className="text-stone-600 font-medium flex items-center gap-1">
                     <SunMedium className="w-3 h-3 text-amber-500" />
-                    {isHindi ? 'चमक (Brightness)' : 'Brightness'}
+                    {translate(language, 'auto.brightness.80')}
                   </span>
                   <span className="font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">
                     {options.brightness > 0 ? `+${options.brightness}` : options.brightness}%
@@ -554,7 +551,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 <div className="flex justify-between text-[11px]">
                   <span className="text-stone-600 font-medium flex items-center gap-1">
                     <Sliders className="w-3 h-3 text-stone-500" />
-                    {isHindi ? 'कंट्रास्ट (Contrast)' : 'Contrast'}
+                    {translate(language, 'auto.contrast.81')}
                   </span>
                   <span className="font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">
                     {options.contrast > 0 ? `+${options.contrast}` : options.contrast}%
@@ -575,7 +572,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                 <div className="flex justify-between text-[11px]">
                   <span className="text-stone-600 font-medium flex items-center gap-1">
                     <Palette className="w-3 h-3 text-rose-500" />
-                    {isHindi ? 'रंग संतृप्ति (Saturation)' : 'Saturation'}
+                    {translate(language, 'auto.saturation.82')}
                   </span>
                   <span className="font-bold text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">
                     {options.vibrance > 0 ? `+${options.vibrance}` : options.vibrance}%
@@ -596,14 +593,14 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
           {/* Backdrop Selector */}
           <div className="space-y-1">
             <span className="text-[11px] font-semibold text-stone-600">
-              {isHindi ? 'बैकड्रॉप स्टाइल (Studio Backdrop):' : 'Backdrop Style:'}
+              {translate(language, 'auto.backdrop_style.83')}
             </span>
             <div className="flex gap-2">
               {[
-                { id: 'pure-white', label: isHindi ? 'शुद्ध सफेद' : 'Pure White', bg: 'bg-white' },
-                { id: 'studio-ivory', label: isHindi ? 'आइवरी वार्म' : 'Ivory Studio', bg: 'bg-[#f9f6f0]' },
-                { id: 'soft-gray', label: isHindi ? 'हल्का ग्रे' : 'Soft Gray', bg: 'bg-[#f1f3f7]' },
-                { id: 'transparent', label: isHindi ? 'पारदर्शी' : 'Transparent', bg: 'bg-stone-200' },
+                { id: 'pure-white', label: translate(language, 'auto.pure_white.84'), bg: 'bg-white' },
+                { id: 'studio-ivory', label: translate(language, 'auto.ivory_studio.85'), bg: 'bg-[#f9f6f0]' },
+                { id: 'soft-gray', label: translate(language, 'auto.soft_gray.86'), bg: 'bg-[#f1f3f7]' },
+                { id: 'transparent', label: translate(language, 'auto.transparent.87'), bg: 'bg-stone-200' },
               ].map((b) => (
                 <button
                   key={b.id}
@@ -630,7 +627,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
             className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl border border-stone-300 hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-colors"
           >
             <Download className="w-4 h-4 text-stone-600" />
-            <span>{isHindi ? 'फोटो डाउनलोड करें' : 'Download Photo'}</span>
+            <span>{translate(language, 'auto.download_photo.88')}</span>
           </button>
 
           <button
@@ -644,11 +641,11 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
             {isProcessing ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>{isHindi ? 'एआई फोटो तैयार हो रही है...' : 'AI Enhancing Photo...'}</span>
+                <span>{translate(language, 'auto.ai_enhancing_photo.89')}</span>
               </>
             ) : (
               <>
-                <span>{isHindi ? 'कैटलॉग में इस फोटो का उपयोग करें' : 'Use in Smart Catalog'}</span>
+                <span>{translate(language, 'auto.use_in_smart_catalog.90')}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -664,7 +661,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
             <div className="flex items-center space-x-2">
               <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
               <span className="font-bold text-xs">
-                {isHindi ? 'लाइव कैमरा (शिल्प फोटो लें)' : 'Live Camera Viewfinder'}
+                {translate(language, 'auto.live_camera_viewfind.91')}
               </span>
             </div>
             <button
@@ -688,13 +685,13 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                   }}
                   className="px-4 py-2 rounded-xl bg-saffron-600 text-white text-xs font-bold"
                 >
-                  {isHindi ? 'फोटो अपलोड करें' : 'Upload from Device'}
+                  {translate(language, 'auto.upload_from_device.92')}
                 </button>
                 <button
                   onClick={stopCamera}
                   className="px-4 py-2 rounded-xl bg-white/20 text-white text-xs"
                 >
-                  {isHindi ? 'बंद करें' : 'Close'}
+                  {translate(language, 'auto.close.93')}
                 </button>
               </div>
             </div>
@@ -721,7 +718,7 @@ export const ArtisanStudio: React.FC<ArtisanStudioProps> = ({ onPhotoSelected, l
                   <span>┐</span>
                 </div>
                 <div className="text-center bg-black/50 backdrop-blur text-white text-[11px] font-medium py-1 px-3 rounded-full mx-auto max-w-[200px]">
-                  {isHindi ? 'उत्पाद को फ्रेम के बीच में रखें' : 'Center craft in frame'}
+                  {translate(language, 'auto.center_craft_in_fram.94')}
                 </div>
                 <div className="flex justify-between text-[10px] text-white/80 font-mono">
                   <span>└</span>
