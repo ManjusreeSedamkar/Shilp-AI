@@ -69,6 +69,50 @@ try {
 export { app, db, storage, auth };
 
 /**
+ * Safely persist data to localStorage without crashing on QuotaExceededError.
+ * Prunes redundant heavy base64 strings if storage limit is approached.
+ */
+export function safeSetLocalStorage(key: string, data: any): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (err) {
+    console.warn(`LocalStorage quota exceeded for "${key}". Pruning heavy base64 images to prevent application crash.`);
+    try {
+      // 1. Clear cached storage snippets if present
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('shilp_storage_')) {
+          localStorage.removeItem(k);
+        }
+      }
+
+      // 2. If data is an array of objects (e.g. products), sanitize heavy base64 image properties
+      if (Array.isArray(data)) {
+        const sanitized = data.map((item, idx) => {
+          if (item && typeof item === 'object') {
+            const copy = { ...item };
+            // For items past the first 2, replace large base64 image data (>10KB) with URL fallback
+            if (idx > 1) {
+              if (typeof copy.enhancedImage === 'string' && copy.enhancedImage.startsWith('data:image/') && copy.enhancedImage.length > 10000) {
+                copy.enhancedImage = copy.enhancedImageUrl || INITIAL_PRODUCTS[0]?.enhancedImage || '';
+              }
+              if (typeof copy.originalImage === 'string' && copy.originalImage.startsWith('data:image/') && copy.originalImage.length > 10000) {
+                copy.originalImage = copy.originalImageUrl || INITIAL_PRODUCTS[0]?.originalImage || '';
+              }
+            }
+            return copy;
+          }
+          return item;
+        });
+        localStorage.setItem(key, JSON.stringify(sanitized));
+      }
+    } catch (fallbackErr) {
+      console.warn(`Failed to save sanitized data to localStorage for key "${key}":`, fallbackErr);
+    }
+  }
+}
+
+/**
  * Upload an image (Data URL or base64) to Firebase Storage.
  * Falls back to offline persistent caching when Firebase credentials are not provided.
  */
@@ -85,14 +129,6 @@ export async function uploadImageToStorage(
     } catch (err) {
       console.warn(`Firebase Storage upload to ${path} failed, using local persistent fallback:`, err);
     }
-  }
-
-  // Fallback: Local persistent storage key for offline or demo usage
-  try {
-    const storageCacheKey = `shilp_storage_${path.replace(/[^a-zA-Z0-9_]/g, '_')}`;
-    localStorage.setItem(storageCacheKey, imageDataUrl.slice(0, 50000)); // cached preview snippet
-  } catch (e) {
-    // Ignore quota warnings
   }
 
   return imageDataUrl;
@@ -126,7 +162,7 @@ export async function saveProductToFirestore(product: ProductListing): Promise<s
     const existing: ProductListing[] = existingStr ? JSON.parse(existingStr) : INITIAL_PRODUCTS;
     const filtered = existing.filter(p => p.id !== product.id);
     const updated = [productDocData, ...filtered];
-    localStorage.setItem('shilp_ai_products', JSON.stringify(updated));
+    safeSetLocalStorage('shilp_ai_products', updated);
   } catch (e) {
     console.warn('Local storage write warning:', e);
   }

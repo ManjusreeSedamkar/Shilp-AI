@@ -24,13 +24,26 @@ import { CURRENT_ARTISAN } from '../data/craftPresets';
 import { HeritageHeroSection } from './HeritageHeroSection';
 import { CraftAtlasExplorer } from './CraftAtlasExplorer';
 import { useMobileMode } from './MobileFrame';
+import { translate } from '../services/translations';
+import {
+  getProductTitle,
+  getProductDescription,
+  getCategoryTranslation,
+  getCraftTechniqueTranslation
+} from '../services/displayTranslation';
 
 interface BuyerPortalProps {
   products: ProductListing[];
   onSelectProduct: (product: ProductListing) => void;
   onStartConversation?: (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => void;
+  onOpenCardModal?: () => void;
   language?: Language;
   onLaunchStudio?: () => void;
+  buyerId?: string;
+  buyerName?: string;
+  buyerCompanyName?: string;
+  buyerPhone?: string;
+  recommendedProducts?: ProductListing[];
 }
 
 /**
@@ -77,7 +90,13 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
   onSelectProduct,
   onStartConversation,
   language = 'en',
-  onLaunchStudio
+  onLaunchStudio,
+  onOpenCardModal,
+  buyerId,
+  buyerName = 'B2B Buyer',
+  buyerCompanyName,
+  buyerPhone,
+  recommendedProducts = [],
 }) => {
   const { isMobileMode } = useMobileMode();
   // Search & Faceted Filter States
@@ -114,12 +133,12 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
 
   // RFQ Form State
   const [rfqForm, setRfqForm] = useState({
-    companyName: 'FabIndia Crafts Procurement Ltd',
-    buyerName: 'Vikram Mehta',
-    email: 'procurement@fabindia-sample.com',
-    phone: '+91 98201 44552',
+    companyName: buyerCompanyName || 'Crafts Procurement Ltd',
+    buyerName: buyerName,
+    email: '',
+    phone: buyerPhone || '',
     quantity: 25,
-    targetDate: '2025-04-15',
+    targetDate: '2026-04-15',
     notes: 'Required for corporate festive gifting. Needs authentic MoSJE GI certification tag included.'
   });
 
@@ -386,6 +405,11 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
 
   const visibleProducts = filteredProducts.slice(0, visibleCount);
 
+  // Derived real buyer recommendations (strictly real data; NO fake personalization)
+  const computedRecommendations = (recommendedProducts && recommendedProducts.length > 0)
+    ? recommendedProducts
+    : products.filter((p) => p.giCertified || p.featured).slice(0, 4);
+
   return (
     <div className="w-full p-0 m-0">
       {/* ========================================================================= */}
@@ -445,55 +469,183 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
               </span>
             )}
           </button>
+
           <span className="text-xs text-stone-500 dark:text-stone-400">
             <strong>{filteredProducts.length}</strong> items found
           </span>
         </div>
 
-        {/* TWO-COLUMN REPOSITORY LAYOUT: Left Sidebar + Right Grid */}
-        <div className={`flex ${isMobileMode ? 'flex-col' : 'flex-col lg:flex-row'} items-start gap-4 sm:gap-6 w-full`}>
-          
-          {/* ===================================================================== */}
-          {/* LEFT COLUMN: VASTRA SHILPA KOSH FACETED FILTER SIDEBAR               */}
-          {/* ===================================================================== */}
-          <aside className={`
-            ${isMobileMode 
-              ? 'fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-[#0F172A] border-r border-stone-200 dark:border-stone-800 p-4 overflow-y-auto' 
-              : 'fixed lg:static inset-y-0 left-0 z-50 lg:z-0 w-80 sm:w-84 lg:w-72 xl:w-76 shrink-0 bg-white dark:bg-[#0F172A] lg:bg-transparent border-r lg:border-r-0 border-stone-200 dark:border-stone-800 p-5 lg:p-0 overflow-y-auto lg:overflow-visible'
-            }
-            transition-transform duration-300 ease-in-out
-            ${isMobileFiltersOpen ? 'translate-x-0 shadow-2xl' : (isMobileMode ? '-translate-x-full' : '-translate-x-full lg:translate-x-0')}
-          `}>
-            {/* Mobile Sidebar Close Header */}
-            <div className={`${isMobileMode ? 'flex' : 'lg:hidden flex'} items-center justify-between pb-3 mb-3 border-b border-stone-200 dark:border-stone-800`}>
-              <span className="font-bold text-[#8B1D1D] dark:text-red-400 text-sm">Faceted Repository Filters</span>
-              <button 
-                onClick={() => setIsMobileFiltersOpen(false)}
-                className="p-1 rounded-md text-stone-500 hover:text-stone-900"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        {/* Category Pills */}
+        <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pt-1">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+                selectedCategory === cat
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              {cat === 'all'
+                ? (translate(language, 'buyer.allCategories') || 'All Craft Categories')
+                : getCategoryTranslation(cat, language)}
+            </button>
+          ))}
+        </div>
+        </div>
+
+      {/* Recommended Crafts Section — Real Supabase recommendations & interests */}
+      {computedRecommendations.length > 0 &&
+        selectedCategory === 'all' &&
+        selectedState === 'all' &&
+        !searchQuery && (
+          <div className="bg-amber-50/70 dark:bg-[#1B2435] rounded-3xl p-4 sm:p-5 border border-amber-200/80 dark:border-amber-400/20 space-y-3 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="p-1.5 rounded-xl bg-amber-500 text-white shadow-xs">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+
+                <div>
+                  <h3 className="font-bold text-sm text-stone-900 dark:text-white">
+                    Recommended for You
+                  </h3>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    Popular GI-certified & top verified craft items for buyers
+                  </p>
+                </div>
+              </div>
+
+              <span className="text-[10px] bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-200 px-2.5 py-1 rounded-full font-bold border border-amber-200 dark:border-stone-700 shadow-2xs">
+                Personalized
+              </span>
             </div>
 
-            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-stone-200/90 dark:border-stone-800 p-4 sm:p-5 shadow-xs space-y-5">
-              
-              {/* Vastra Shilpa Kosh Search Box with Red Search Button */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {computedRecommendations.slice(0, 4).map((product) => (
+                <div
+                  key={`rec-${product.id}`}
+                  onClick={() => onSelectProduct(product)}
+                  className="bg-white dark:bg-[#131E33] rounded-2xl p-3 border border-amber-200/90 dark:border-stone-700 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between group"
+                >
+                  <div className="space-y-2">
+                    <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800">
+                      <img
+                        src={product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage}
+                        alt={product.titleEn}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+
+                      {product.giCertified && (
+                        <span className="absolute top-2 left-2 bg-[#1C1815]/90 text-amber-300 text-[9px] font-bold px-2 py-0.5 rounded-full border border-amber-400/30 backdrop-blur-xs">
+                          GI Tagged
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="text-[9px] font-bold text-[#A33F1B] dark:text-amber-300 uppercase tracking-wider block truncate">
+                        {getCategoryTranslation(product.category, language)}
+                      </span>
+
+                      <h4 className="font-bold text-xs text-stone-900 dark:text-white line-clamp-1 group-hover:text-[#C85A32] dark:group-hover:text-amber-300 transition-colors">
+                        {getProductTitle(product, language)}
+                      </h4>
+
+                      <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1 mt-0.5">
+                        {getCraftTechniqueTranslation(product.craftTechnique, language)} • {product.state}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 mt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between">
+                    <span className="text-xs font-black text-stone-900 dark:text-white">
+                      ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
+                    </span>
+
+                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold group-hover:underline">
+                      View Craft →
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+      {/* Results Header */}
+      <div className="flex justify-between items-center text-xs text-stone-500 dark:text-stone-400 px-1">
+        <span>
+          Showing <strong className="text-stone-900 dark:text-white">{filteredProducts.length}</strong> verified artisan listings
+        </span>
+
+        <span className="flex items-center gap-1">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          MoSJE Beneficiary Verified
+        </span>
+      </div>
+
+      {/* Product Catalog Grid */}
+      {filteredProducts.length === 0 ? (
+        <div className="p-10 text-center bg-white dark:bg-[#131E33] rounded-3xl border border-stone-200 dark:border-stone-800 space-y-3">
+          <div className="text-4xl">🔍</div>
+
+          <h3 className="font-bold text-base text-stone-900 dark:text-white">
+            {language === 'hi' ? 'कोई शिल्प वस्तु नहीं मिली' : 'No Craft Items Found'}
+          </h3>
+
+          <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm mx-auto leading-relaxed">
+            No products match your search query or selected filters. Try resetting your search filters to explore all artisan listings.
+          </p>
+
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setSelectedCategory('all');
+              setSelectedState('all');
+              setOnlyGICertified(false);
+            }}
+            className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition-all"
+          >
+            Reset All Filters
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredProducts.map((product) => (
+            <div
+              key={product.id}
+              onClick={() => onSelectProduct(product)}
+              className="bg-white dark:bg-[#131E33] rounded-3xl border-2 border-[#EADCD5] dark:border-[#22355B] overflow-hidden shadow-[0_4px_16px_rgba(200,90,50,0.05)] hover:shadow-[0_12px_32px_rgba(200,90,50,0.12)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
+            >
               <div>
-                <div className="flex items-stretch border border-stone-300 dark:border-stone-700 rounded-sm overflow-hidden bg-white dark:bg-stone-900 shadow-2xs focus-within:ring-2 focus-within:ring-[#8B1D1D]/30">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search repository..."
-                    className="w-full px-3 py-2 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none bg-transparent"
+                {/* Product Visual */}
+                <div className="relative aspect-[4/3] bg-[#FAF7F2] dark:bg-[#0A101D] overflow-hidden flex items-center justify-center">
+                  <img
+                    src={product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage}
+                    alt={product.titleEn}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <button
-                    onClick={() => {}}
-                    className="bg-[#8B1D1D] hover:bg-[#701616] text-white px-3.5 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                    title="Search"
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                  </button>
+
+                  <div className="absolute top-3 left-3 flex flex-col gap-1">
+                    {product.giCertified && (
+                      <span className="bg-[#1C1815]/90 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs shadow-xs border border-amber-400/30 flex items-center gap-1">
+                        <Award className="w-3 h-3 text-amber-300" />
+                        GI Certified
+                      </span>
+                    )}
+
+                    <span className="bg-stone-900/85 text-amber-300 text-[9px] font-mono px-2 py-0.5 rounded-md backdrop-blur">
+                      {product.state}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
                 </div>
 
                 {activeFiltersCount > 0 && (
@@ -589,7 +741,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
               </div>
 
               {/* ----------------------------------------------------------------- */}
-              {/* Accordion 3: State / Origin Region                                */}
+              {/* Accordion 3: State / Origin Region */}
               {/* ----------------------------------------------------------------- */}
               <div className="border-t border-stone-100 dark:border-stone-800/80 pt-3">
                 <button
@@ -627,7 +779,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
               </div>
 
               {/* ----------------------------------------------------------------- */}
-              {/* Accordion 4: Primary Material & Fibres                            */}
+              {/* Accordion 4: Primary Material & Fibres */}
               {/* ----------------------------------------------------------------- */}
               <div className="border-t border-stone-100 dark:border-stone-800/80 pt-3">
                 <button
@@ -665,7 +817,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
               </div>
 
               {/* ----------------------------------------------------------------- */}
-              {/* Accordion 5: GI Tag Certification                                */}
+              {/* Accordion 5: GI Tag Certification */}
               {/* ----------------------------------------------------------------- */}
               <div className="border-t border-stone-100 dark:border-stone-800/80 pt-3">
                 <button
@@ -707,17 +859,15 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
 
           {/* Mobile backdrop */}
           {isMobileFiltersOpen && (
-            <div 
+            <div
               onClick={() => setIsMobileFiltersOpen(false)}
               className={`${isMobileMode ? 'fixed' : 'lg:hidden fixed'} inset-0 z-40 bg-black/60 backdrop-blur-xs`}
             />
           )}
 
-          {/* ===================================================================== */}
-          {/* RIGHT COLUMN: 4-COLUMN MUSEUM ARTIFACT GRID & CATALOG HEADER          */}
-          {/* ===================================================================== */}
+          {/* RIGHT COLUMN: 4-COLUMN MUSEUM ARTIFACT GRID & CATALOG HEADER */}
           <main className="flex-1 w-full min-w-0 space-y-4">
-            
+
             {/* Top Toolbar: Result Count, Active Filter Chips, Sort By */}
             <div className="bg-white dark:bg-[#0F172A] rounded-2xl p-4 border border-stone-200/90 dark:border-stone-800 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
               <div className="space-y-1">
@@ -728,6 +878,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                   <span className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs px-2.5 py-0.5 rounded-full font-bold">
                     {filteredProducts.length} artifacts
                   </span>
+                </div>
                 </div>
                 <p className="text-[11px] text-stone-500 dark:text-stone-400">
                   National Repository standard catalog with direct artisan procurement linkage
@@ -1007,7 +1158,31 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
           </main>
         </div>
 
-      </div>
+              {onOpenCardModal && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenCardModal();
+                  }}
+                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100 text-amber-900 transition-colors shadow-2xs"
+                  title="View Verified Artisan Smart ID Profile"
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-700" />
+                </button>
+              )}
+
+              <button
+                onClick={(e) => handleOpenRFQ(product, e)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <Building2 className="w-3.5 h-3.5 text-amber-300" />
+                <span>Request B2B Quote</span>
+              </button>
+            </div>
+          </div>
+        ))}
+        </div>
+      )}
 
       {/* Bulk RFQ Modal */}
       {activeRFQProduct && (
@@ -1040,10 +1215,10 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                     B2B Wholesale RFQ
                   </span>
                   <h3 className="font-bold text-lg text-stone-900 leading-tight">
-                    {activeRFQProduct.titleEn}
+                    {getProductTitle(activeRFQProduct, language)}
                   </h3>
                   <p className="text-xs text-stone-500">
-                    Artisan: {activeRFQProduct.artisanName} • {activeRFQProduct.craftTechnique}
+                    Artisan: {activeRFQProduct.artisanName} • {getCraftTechniqueTranslation(activeRFQProduct.craftTechnique, language)}
                   </p>
                 </div>
 

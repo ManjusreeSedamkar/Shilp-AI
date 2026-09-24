@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Sparkles, ShoppingBag, UserCheck, Smartphone, Monitor, Globe, Award, Cpu, ShieldCheck, LogIn, LogOut, HelpCircle, User, Sun, Moon } from 'lucide-react';
 import { UserRole, Language } from '../types';
 import { AppLogo } from './AppLogo';
-import { ApiSettingsModal } from './ApiSettingsModal';
 import { AuthUser } from './AuthModal';
 import { translate } from '../services/translations';
 
@@ -37,7 +36,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   isLightOn = true,
   onToggleLightMode,
 }) => {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const t = (key: string) => translate(language, key);
 
@@ -83,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <UserCheck className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Artisan Studio</span>
             <span className="sm:hidden text-[11px] font-bold">Artisan</span>
-            <span className="hidden lg:inline text-[10px] opacity-80 font-normal">(कारीगर)</span>
+<span className="hidden lg:inline text-[10px] opacity-80 font-normal">(कारीगर)</span>
           </button>
           <button
             onClick={() => setRole('buyer')}
@@ -96,7 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ShoppingBag className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Buyer Marketplace</span>
             <span className="sm:hidden text-[11px] font-bold">Buyer</span>
-            <span className="hidden lg:inline text-[10px] opacity-80 font-normal">(खरीदार)</span>
+<span className="hidden lg:inline text-[10px] opacity-80 font-normal">(खरीदार)</span>
           </button>
         </div>
 
@@ -128,6 +126,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               <option value="bn">বাংলা</option>
               <option value="mr">मराठी</option>
               <option value="gu">ગુજરાતી</option>
+              <option value="kn">ಕನ್ನಡ</option>
+              <option value="ml">മലയാളം</option>
+              <option value="pa">ਪੰਜਾਬੀ</option>
+              <option value="or">ଓଡ଼ିଆ</option>
+              <option value="as">অসমীয়া</option>
+              <option value="ur">اردو</option>
+              <option value="sa">संस्कृतम्</option>
+              <option value="mai">मैथिली</option>
+              <option value="kok">कोंकणी</option>
+              <option value="ne">नेपाली</option>
+              <option value="sd">سنڌي</option>
+              <option value="doi">डोगरी</option>
+              <option value="brx">बड़ो</option>
+              <option value="sat">ᱥᱟᱱᱛᱟᱲᱤ</option>
             </select>
           </div>
 
@@ -158,16 +170,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="hidden lg:inline">Mobile Frame</span>
               </>
             )}
-          </button>
-
-          {/* AI Settings Button */}
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            title="Configure Gemini API Key & AI Settings"
-            className="hidden sm:flex p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-colors items-center gap-1"
-          >
-            <Cpu className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden lg:inline">AI Settings</span>
           </button>
 
           {/* User Auth Profile / Login Button */}
@@ -219,17 +221,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     <HelpCircle className="w-3.5 h-3.5 text-blue-600" />
                     <span>How to Use Shilp-AI</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowUserDropdown(false);
-                      setIsSettingsOpen(true);
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-stone-50 text-stone-700 flex items-center gap-2 font-medium"
-                  >
-                    <Cpu className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>AI Engine Settings</span>
                   </button>
 
                   <div className="border-t border-stone-100 my-1"></div>
@@ -313,9 +304,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
       </div>
-
-      {/* API Settings Modal */}
-      <ApiSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </header>
   );
 };

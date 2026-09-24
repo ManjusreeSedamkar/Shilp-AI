@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { X, ShoppingBag, ShieldCheck, Truck, CheckCircle2, CreditCard, ArrowRight, IndianRupee, Sparkles, Building2, User, Phone, MapPin } from 'lucide-react';
 import { ProductListing, Language } from '../types';
 import { translate } from '../services/translations';
+import { saveOrderToSupabase, isSupabaseConfigured } from '../services/supabase';
+import { getProductTitle, getProductDescription, getCategoryTranslation } from '../services/displayTranslation';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -9,6 +11,7 @@ interface CheckoutModalProps {
   product: ProductListing;
   language?: Language;
   onOrderSuccess: (order: PlacedOrder) => void;
+  buyerId?: string;
 }
 
 export interface PlacedOrder {
@@ -35,6 +38,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   product,
   language = 'en',
   onOrderSuccess,
+  buyerId = '00000000-0000-0000-0000-000000000201',
 }) => {
   const [quantity, setQuantity] = useState<number>(1);
   const [orderType, setOrderType] = useState<'retail' | 'bulk'>('retail');
@@ -65,11 +69,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     e.preventDefault();
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const newOrder: PlacedOrder = {
         id: `ORD-${Date.now().toString().slice(-6)}`,
         productId: product.id,
-        productTitle: language === 'hi' ? product.titleHi : product.titleEn,
+        productTitle: getProductTitle(product, language),
         productImage: product.enhancedImage || product.originalImage,
         artisanId: product.artisanId,
         artisanName: product.artisanName,
@@ -92,6 +96,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         console.warn('Could not save order to storage:', err);
       }
 
+      // Save to Supabase (primary database)
+      if (isSupabaseConfigured()) {
+        await saveOrderToSupabase({
+          id: newOrder.id,
+          productId: newOrder.productId,
+          buyerId,
+          buyerName: newOrder.buyerName,
+          artisanId: newOrder.artisanId,
+          quantity: newOrder.quantity,
+          totalAmount: newOrder.totalAmount,
+          status: 'placed',
+        });
+      }
+
       setPlacedOrder(newOrder);
       setIsSubmitting(false);
       onOrderSuccess(newOrder);
@@ -110,11 +128,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div>
               <h3 className="font-extrabold text-base">
                 {placedOrder
-                  ? (language === 'hi' ? 'ऑर्डर की पुष्टि हो गई!' : 'Order Confirmed!')
-                  : (language === 'hi' ? 'कारीगर से सीधे खरीदारी (Direct Purchase)' : 'Direct Artisan Purchase & Checkout')}
+                  ? (translate(language, 'auto.order_confirmed.95'))
+                  : (translate(language, 'auto.direct_artisan_purch.96'))}
               </h3>
               <p className="text-xs text-stone-300">
-                {language === 'hi' ? 'MoSJE शून्य-कमीशन कारीगर एस्क्रो प्रणाली' : '100% Direct to Artisan • Zero Middleman Commission'}
+                {translate(language, 'auto.100_direct_to_artisa.97')}
               </p>
             </div>
           </div>
@@ -191,15 +209,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="flex items-center gap-3.5 p-3.5 bg-stone-50 rounded-2xl border border-stone-200">
               <img
                 src={product.enhancedImage || product.originalImage}
-                alt={product.titleEn}
+                alt={getProductTitle(product, language)}
                 className="w-16 h-16 rounded-xl object-cover border border-stone-200 shadow-xs shrink-0"
               />
               <div className="flex-1 min-w-0">
                 <span className="text-[9px] font-bold uppercase tracking-wider text-saffron-700 bg-saffron-50 px-2 py-0.5 rounded border border-saffron-200">
-                  {product.category}
+                  {getCategoryTranslation(product.category, language)}
                 </span>
                 <h4 className="font-extrabold text-sm text-stone-900 truncate mt-0.5">
-                  {language === 'hi' ? product.titleHi : product.titleEn}
+                  {getProductTitle(product, language)}
                 </h4>
                 <p className="text-[11px] text-stone-500">
                   Artisan: <span className="font-semibold text-stone-800">{product.artisanName}</span> ({product.state})

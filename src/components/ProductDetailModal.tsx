@@ -11,10 +11,12 @@ interface ProductDetailModalProps {
   onRequestQuote: (product: ProductListing) => void;
   onBuyNow?: (product: ProductListing) => void;
   onStartConversation?: (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => void;
+  onOpenArtisanProfile?: () => void;
   language?: Language;
   reviews?: ProductReview[];
   onAddReview?: (review: ProductReview) => void;
   currentBuyerName?: string;
+  currentBuyerId?: string;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -23,10 +25,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onRequestQuote,
   onBuyNow,
   onStartConversation,
+  onOpenArtisanProfile,
   language = 'en',
   reviews = [],
   onAddReview,
-  currentBuyerName = 'Vikram Mehta'
+  currentBuyerName = 'Vikram Mehta',
+  currentBuyerId,
 }) => {
   const [activeLang, setActiveLang] = useState<'hi' | 'en'>(language === 'hi' ? 'hi' : 'en');
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -269,7 +273,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     {product.artisanName} ({product.state})
                   </span>
                   <span>•</span>
-                  <span>{product.productionDays} {isHindi ? 'दिन की कारीगरी' : 'days crafting time'}</span>
+                  <span>{product.productionDays > 0 ? `${product.productionDays} ${isHindi ? 'दिन की कारीगरी' : 'days crafting time'}` : (isHindi ? 'निर्माण समय: उल्लेख नहीं' : 'Crafting time: not stated')}</span>
                 </div>
               </div>
 
@@ -374,24 +378,36 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </div>
 
             {/* Key Specifications Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-                <span className="text-stone-500 text-[10px]">Craft Technique</span>
-                <p className="font-bold text-stone-900 mt-0.5">{product.craftTechnique}</p>
-              </div>
-              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-                <span className="text-stone-500 text-[10px]">Primary Material</span>
-                <p className="font-bold text-stone-900 mt-0.5">{product.primaryMaterial}</p>
-              </div>
-              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-                <span className="text-stone-500 text-[10px]">Fair Artisan Wage</span>
-                <p className="font-bold text-blue-700 mt-0.5">₹{product.pricing.totalLaborWage.toLocaleString('en-IN')}</p>
-              </div>
-              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-                <span className="text-stone-500 text-[10px]">In Stock / Capacity</span>
-                <p className="font-bold text-emerald-700 mt-0.5">{product.stockQuantity} units available</p>
-              </div>
-            </div>
+            {(() => {
+              const specs = [
+                { label: 'Product Type', value: product.productType },
+                { label: 'Style', value: product.style },
+                { label: 'Subject', value: product.subject },
+                { label: 'Craft Technique', value: product.craftTechnique },
+                { label: 'Primary Material', value: product.fabricType || product.primaryMaterial },
+                { label: 'Weaving Method', value: product.weavingMethod },
+                { label: 'Construction', value: product.constructionMethod },
+                { label: 'Color', value: product.color !== 'Natural Finish' ? product.color : null },
+                { label: 'Pattern', value: product.pattern },
+                { label: 'Motif', value: product.motif },
+                { label: 'Border', value: product.borderColor },
+                { label: 'Dye Type', value: product.dyeType },
+                { label: 'Zari Type', value: product.zariType },
+                { label: 'Fair Artisan Wage', value: `₹${product.pricing.totalLaborWage.toLocaleString('en-IN')}` },
+                { label: 'In Stock / Capacity', value: `${product.stockQuantity} units available` },
+              ].filter((s): s is { label: string; value: string } => Boolean(s.value));
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                  {specs.map((item, idx) => (
+                    <div key={idx} className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60 flex flex-col justify-between">
+                      <span className="text-stone-500 text-[10px] font-semibold">{item.label}</span>
+                      <p className="font-bold text-stone-900 mt-0.5">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* B2B Wholesale Tiers Table */}
             <div className="border border-stone-200 rounded-2xl overflow-hidden">
@@ -423,40 +439,49 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
             {/* Artisan Verification Card */}
             <div className="p-3.5 bg-saffron-50/50 rounded-2xl border border-saffron-200 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center space-x-3">
+              <div
+                className="flex items-center space-x-3 cursor-pointer group"
+                onClick={onOpenArtisanProfile}
+                title="View Verified Artisan Digital Smart ID"
+              >
                 <img
                   src={CURRENT_ARTISAN.avatarUrl}
-                  alt={CURRENT_ARTISAN.name}
-                  className="w-11 h-11 rounded-full object-cover border-2 border-saffron-500 shadow-sm"
+                  alt={product.artisanName}
+                  className="w-11 h-11 rounded-full object-cover border-2 border-saffron-500 shadow-sm group-hover:scale-105 transition-transform"
                 />
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <h4 className="font-bold text-xs text-stone-900">{CURRENT_ARTISAN.name}</h4>
+                    <h4 className="font-bold text-xs text-stone-900 group-hover:text-saffron-700 transition-colors">{product.artisanName}</h4>
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   </div>
                   <p className="text-[11px] text-stone-600">
-                    {CURRENT_ARTISAN.craftCluster}, {CURRENT_ARTISAN.state}
+                    {product.craftTechnique} • {product.state}
                   </p>
                   <span className="text-[10px] font-mono text-saffron-800">
-                    ID: {CURRENT_ARTISAN.beneficiaryId}
+                    Verified MoSJE Beneficiary
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2">
+                {onOpenArtisanProfile && (
+                  <button
+                    onClick={onOpenArtisanProfile}
+                    className="px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Smart ID Profile</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => onStartConversation?.(product.artisanId, product.artisanName, product.id, product.titleEn)}
+                  onClick={() => {
+                    onClose();
+                    onStartConversation?.(product.artisanId, product.artisanName, product.id, product.titleEn);
+                  }}
                   className="px-3 py-2 rounded-xl bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
                   <span>Chat & Discuss</span>
-                </button>
-                <button
-                  onClick={() => onStartConversation?.(product.artisanId, product.artisanName, product.id, product.titleEn)}
-                  className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
-                >
-                  <Palette className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Customization</span>
                 </button>
               </div>
             </div>
@@ -494,6 +519,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               reviews={reviews}
               language={language}
               currentBuyerName={currentBuyerName}
+              currentBuyerId={currentBuyerId}
               onAddReview={onAddReview || (() => {})}
             />
           </div>

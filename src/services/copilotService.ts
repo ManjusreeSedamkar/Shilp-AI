@@ -1,4 +1,4 @@
-import { CopilotMessage, ProductListing } from '../types';
+import { CopilotMessage, ProductListing, Language } from '../types';
 import { VoiceCatalogerEngine, ExtractedProductAttributes } from './voiceCataloger';
 import { DynamicPricingEngine } from './pricingEngine';
 import { CURRENT_ARTISAN, CRAFT_PRESETS } from '../data/craftPresets';
@@ -22,7 +22,7 @@ export class ArtisanCopilotService {
   static processArtisanInput(
     input: string,
     history: CopilotMessage[],
-    lang: 'hi' | 'en' = 'en',
+    lang: Language = 'en',
     apiKey?: string
   ): {
     reply: CopilotMessage;
@@ -316,7 +316,7 @@ ${offeredPrice > 0 ? `• **खरीदार के प्रस्ताव (
 
       const draftProduct: Partial<ProductListing> = {
         id: `prod-${Date.now()}`,
-        artisanId: CURRENT_ARTISAN.id,
+        artisanId: CURRENT_ARTISAN.id, // UUID: '00000000-0000-0000-0000-000000000101' (demo), overridden by signed-in user
         artisanName: CURRENT_ARTISAN.name,
         state: CURRENT_ARTISAN.state,
         titleEn: attributes.titleEn,
@@ -401,17 +401,74 @@ What would you like assistance with today?`;
     };
   }
 
-  static getInitialGreeting(lang: 'hi' | 'en' = 'en'): CopilotMessage {
-    const isHindi = lang === 'hi';
+  static getInitialGreeting(lang: Language = 'en'): CopilotMessage {
+    const greetings: Partial<Record<Language, { text: string; audioText: string }>> = {
+      en: {
+        text: `Namaste Rameshwaram ji! 🙏 I am your SHILP-AI Virtual Business Manager.\n\nI am here to solve your real business challenges:\n• Tell me what you want to sell (I'll extract details & create your listing)\n• Ask for bulk buyer negotiation advice\n• Learn about government schemes (PM Vishwakarma, Shilp Samagam stalls, GST exemptions)`,
+        audioText: 'Namaste! I am your SHILP AI virtual business manager. Tell me what you want to sell, or ask about pricing and government schemes.'
+      },
+      hi: {
+        text: `नमस्ते रामेश्वरम जी! 🙏 मैं आपका शिल्प-AI वर्चुअल बिजनेस मैनेजर हूँ।\n\nआप मुझसे बेझिझक अपनी भाषा में बात कर सकते हैं:\n• बोलिए आप क्या बेचना चाहते हैं (फोटो व कैटलॉग तैयार करने के लिए)\n• थोक खरीदारों से मोलभाव की सलाह लें\n• सरकारी योजनाओं (पीएम विश्वकर्मा / शिल्प समागम स्टॉल) की जानकारी लें`,
+        audioText: 'नमस्ते! मैं आपका शिल्प-AI बिजनेस मैनेजर हूँ। बोलिए आप क्या बेचना चाहते हैं, या किसी सरकारी योजना के बारे में पूछिए।'
+      },
+      te: {
+        text: `నమస్కారం రామేశ్వరం గారు! 🙏 నేను మీ SHILP-AI వర్చువల్ బిజినెస్ మేనేజర్‌ని.\n\nమీరు మీ స్వభాషలో నాతో మాట్లాడవచ్చు:\n• మీరు ఏమి విక్రయించాలనుకుంటున్నారో చెప్పండి (కేటలాగ్ కోసం)\n• టోకు కొనుగోలుదారులతో సంప్రదింపుల సలహా పొందండి\n• ప్రభుత్వ పథకాలు (PM విశ్వకర్మ, శిల్ప సమాగమం) గురించి తెలుసుకోండి`,
+        audioText: 'నమస్కారం! నేను మీ SHILP-AI బిజినెస్ మేనేజర్‌ని. మీరు ఏమి విక్రయించాలనుకుంటున్నారో చెప్పండి.'
+      },
+      ta: {
+        text: `வணக்கம் ராமேஸ்வரம் அவர்களே! 🙏 நான் உங்கள் SHILP-AI மெய்நிகர் வணிக மேலாளர்.\n\nஉங்கள் மொழியில் என்னுடன் பேசலாம்:\n• நீங்கள் என்ன விற்க விரும்புகிறீர்கள் என்று சொல்லுங்கள் (பட்டியல் தயாரிக்க)\n• மொத்த வாங்குபவர்களுடன் பேரம் பேச ஆலோசனை பெறுங்கள்\n• அரசு திட்டங்கள் (PM விஸ்வகர்மா, ஷில்ப் சமாகம்) பற்றி அறியுங்கள்`,
+        audioText: 'வணக்கம்! நான் உங்கள் SHILP-AI வணிக மேலாளர். நீங்கள் என்ன விற்க விரும்புகிறீர்கள் என்று சொல்லுங்கள்.'
+      },
+      bn: {
+        text: `নমস্কার রামেশ্বরম জী! 🙏 আমি আপনার SHILP-AI ভার্চুয়াল বিজনেস ম্যানেজার।\n\nআপনি নিজের ভাষায় আমার সাথে কথা বলতে পারেন:\n• বলুন আপনি কী বিক্রি করতে চান (ক্যাটালগ তৈরির জন্য)\n• পাইকারি ক্রেতাদের সাথে আলোচনার পরামর্শ নিন\n• সরকারি প্রকল্প (PM বিশ্বকর্মা, শিল্প সমাগম) সম্পর্কে জানুন`,
+        audioText: 'নমস্কার! আমি আপনার SHILP-AI বিজনেস ম্যানেজার। বলুন আপনি কী বিক্রি করতে চান।'
+      },
+      mr: {
+        text: `नमस्ते रामेश्वरम जी! 🙏 मी तुमचा शिल्प-AI व्हर्च्युअल बिझनेस मॅनेजर आहे.\n\nतुम्ही तुमच्या भाषेत माझ्याशी बोलू शकता:\n• तुम्हाला काय विकायचे आहे ते सांगा (कॅटलॉग तयार करण्यासाठी)\n• घाऊक खरेदीदारांशी वाटाघाटींचा सल्ला घ्या\n• सरकारी योजनांची माहिती घ्या (पीएम विश्वकर्मा, शिल्प समागम)`,
+        audioText: 'नमस्ते! मी तुमचा शिल्प-AI बिझनेस मॅनेजर आहे. सांगा तुम्हाला काय विकायचे आहे.'
+      },
+      gu: {
+        text: `નમસ્તે રામેશ્વરમ જી! 🙏 હું તમારો SHILP-AI વર્ચ્યુઅલ બિઝનેસ મેનેજર છું.\n\nતમે તમારી ભાષામાં મારી સાથે વાત કરી શકો છો:\n• કહો તમે શું વેચવા માંગો છો (કેટલોગ માટે)\n• જથ્થાબંધ ખરીદદારો સાથે સોદાબાજીની સલાહ લો\n• સરકારી યોજનાઓ (પીએમ વિશ્વકર્મા) વિશે જાણો`,
+        audioText: 'નમસ્તે! હું તમારો SHILP-AI બિઝનેસ મેનેજર છું. કહો તમે શું વેચવા માંગો છો.'
+      },
+      kn: {
+        text: `ನಮಸ್ಕಾರ ರಾಮೇಶ್ವರಂ ಅವರೇ! 🙏 ನಾನು ನಿಮ್ಮ SHILP-AI ವರ್ಚುವಲ್ ವ್ಯವಹಾರ ನಿರ್ವಾಹಕ.\n\nನೀವು ನಿಮ್ಮ ಮಾತೃಭಾಷೆಯಲ್ಲಿ ಮಾತನಾಡಬಹುದು:\n• ನೀವು ಏನು ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ ಎಂದು ಹೇಳಿ\n• ಸಗಟು ಖರೀದಿದಾರರೊಂದಿಗೆ ಮಾತುಕತೆಯ ಸಲಹೆ ಪಡೆಯಿರಿ\n• ಸರ್ಕಾರಿ ಯೋಜನೆಗಳ ಬಗ್ಗೆ ತಿಳಿಯಿರಿ (PM ವಿಶ್ವಕರ್ಮ)`,
+        audioText: 'ನಮಸ್ಕಾರ! ನಾನು ನಿಮ್ಮ SHILP-AI ವ್ಯವಹಾರ ನಿರ್ವಾಹಕ. ನೀವು ಏನು ಮಾರಾಟ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ ಎಂದು ಹೇಳಿ.'
+      },
+      ml: {
+        text: `നമസ്കാരം രാമേശ്വരം ജീ! 🙏 ഞാൻ നിങ്ങളുടെ SHILP-AI വെർച്വൽ ബിസിനസ്സ് മാനേജരാണ്.\n\nനിങ്ങൾക്ക് നിങ്ങളുടെ മാതൃഭാഷയിൽ സംസാരിക്കാം:\n• എന്താണ് വിൽക്കാൻ ആഗ്രഹിക്കുന്നതെന്ന് പറയൂ\n• മൊത്തവ്യാപാര ചർച്ചകൾക്കുള്ള ഉപദേശം നേടൂ\n• സർക്കാർ പദ്ധതികളെക്കുറിച്ച് അറിയൂ`,
+        audioText: 'നമസ്കാരം! ഞാൻ നിങ്ങളുടെ SHILP-AI ബിസിനസ്സ് മാനേജരാണ്.'
+      },
+      pa: {
+        text: `ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ ਰਾਮੇਸ਼ਵਰਮ ਜੀ! 🙏 ਮੈਂ ਤੁਹਾਡਾ SHILP-AI ਵਰਚੁਅਲ ਬਿਜ਼ਨਸ ਮੈਨੇਜਰ ਹਾਂ।\n\nਤੁਸੀਂ ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਗੱਲ ਕਰ ਸਕਦੇ ਹੋ:\n• ਦੱਸੋ ਤੁਸੀਂ ਕੀ ਵੇਚਣਾ ਚਾਹੁੰਦੇ ਹੋ\n• ਥੋਕ ਖਰੀਦਦਾਰਾਂ ਨਾਲ ਗੱਲਬਾਤ ਦੀ ਸਲਾਹ ਲਵੋ\n• ਸਰਕਾਰੀ ਸਕੀਮਾਂ ਬਾਰੇ ਜਾਣੋ (ਪੀਐਮ ਵਿਸ਼ਵਕਰਮਾ)`,
+        audioText: 'ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡਾ SHILP-AI ਬਿਜ਼ਨਸ ਮੈਨੇਜਰ ਹਾਂ।'
+      },
+      or: {
+        text: `ନମସ୍କାର ରାମେଶ୍ୱରମ ଜୀ! 🙏 ମୁଁ ଆପଣଙ୍କର SHILP-AI ଭର୍ଚୁଆଲ୍ ବ୍ୟବସାୟ ପରିଚାଳକ।\n\nଆପଣ ନିଜ ଭାଷାରେ ମୋ ସହିତ କଥା ହୋଇପାରିବେ:\n• ଆପଣ କଣ ବିକ୍ରୟ କରିବାକୁ ଚାହାଁନ୍ତି କୁହନ୍ତୁ\n• ହୋଲସେଲ କ୍ରେତାଙ୍କ ସହ ବୁଝାମଣା ପରାମର୍ଶ ନିଅନ୍ତୁ\n• ସରକାରୀ ଯୋଜନା ବିଷୟରେ ଜାଣନ୍ତୁ`,
+        audioText: 'ନମସ୍କାର! ମୁଁ ଆପଣଙ୍କ SHILP-AI ବ୍ୟବସାୟ ପରିଚାଳକ।'
+      },
+      as: {
+        text: `নমস্কাৰ ৰামেশ্বৰম জী! 🙏 মই আপোনাৰ SHILP-AI ভাৰ্চুৱেল ব্যৱসায় পৰিচালক।\n\nআপুনি নিজৰ ভাষাত কথা পাতিব পাৰে:\n• আপুনি কি বিক্ৰী কৰিব বিচাৰে কওক\n• পাইকাৰী ক্ৰেতাৰ সৈতে আলোচনাৰ পৰামৰ্শ লওক\n• চৰকাৰী আঁচনিৰ বিষয়ে জানক`,
+        audioText: 'নমস্কাৰ! মই আপোনাৰ SHILP-AI ব্যৱসায় পৰিচালক।'
+      },
+      ur: {
+        text: `نمستے رمیشورم جی! 🙏 میں آپ کا SHILP-AI ورچوئل بزنس مینیجر ہوں۔\n\nآپ بلا جھجھک اپنی زبان میں بات کر سکتے ہیں:\n• بتائیں آپ کیا بیچنا چاہتے ہیں\n• ہول سیل خریداروں کے ساتھ بات چیت کا مشورہ لیں\n• سرکاری اسکیموں (پی ایم وشوکرما) کے بارے میں جانیں`,
+        audioText: 'نمستے! میں آپ کا SHILP-AI بزنس مینیجر ہوں۔ بتائیں آپ کیا بیچنا چاہتے ہیں۔'
+      },
+      sa: {
+        text: `नमस्ते रामेश्वरम् महोदय! 🙏 अहं भवतः SHILP-AI आभासी-व्यापार-प्रबन्धकः अस्मि।\n\nभवन्तः स्वभाषया वार्तालापं कर्तुं शक्नुवन्ति:\n• किं विक्रेतुम् इच्छन्ति इति वदन्तु\n• विपणन-परामर्शं प्राप्नुवन्तु\n• सर्वकारीय-योजनानां विषये जानन्तु`,
+        audioText: 'नमस्ते! अहं भवतः SHILP-AI व्यापार-प्रबन्धकः अस्मि।'
+      }
+    };
+
+    const isDevanagari = ['mai', 'kok', 'ne', 'doi', 'brx'].includes(lang);
+    const selected = greetings[lang] || (isDevanagari ? greetings.hi : (lang === 'sd' ? greetings.ur : greetings.en));
+
     return {
       id: 'greeting-1',
       sender: 'copilot',
-      text: isHindi
-        ? `नमस्ते रामेश्वरम जी! 🙏 मैं आपका शिल्प-AI वर्चुअल बिजनेस मैनेजर हूँ।\n\nआप मुझसे बेझिझक अपनी भाषा में बात कर सकते हैं:\n• बोलिए आप क्या बेचना चाहते हैं (फोटो व कैटलॉग तैयार करने के लिए)\n• थोक खरीदारों से मोलभाव की सलाह लें\n• सरकारी योजनाओं (पीएम विश्वकर्मा / शिल्प समागम स्टॉल) की जानकारी लें`
-        : `Namaste Rameshwaram ji! 🙏 I am your SHILP-AI Virtual Business Manager.\n\nI am here to solve your real business challenges:\n• Tell me what you want to sell (I'll extract details & create your listing)\n• Ask for bulk buyer negotiation advice\n• Learn about government schemes (PM Vishwakarma, Shilp Samagam stalls, GST exemptions)`,
-      audioText: isHindi 
-        ? 'नमस्ते! मैं आपका शिल्प-AI बिजनेस मैनेजर हूँ। बोलिए आप क्या बेचना चाहते हैं, या किसी सरकारी योजना के बारे में पूछिए।'
-        : 'Namaste! I am your SHILP AI virtual business manager. Tell me what you want to sell, or ask about pricing and government schemes.',
+      text: selected?.text || greetings.en!.text,
+      audioText: selected?.audioText || greetings.en!.audioText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
   }
