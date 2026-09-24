@@ -263,7 +263,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Artisan (कारीगर)</span>
+            <span>Artisan</span>
           </button>
 
           <button
@@ -275,7 +275,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }`}
           >
             <ShoppingBag className="w-3.5 h-3.5" />
-            <span>B2B Buyer (खरीदार)</span>
+            <span>B2B Buyer</span>
           </button>
         </div>
 

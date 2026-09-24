@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Language } from '../types';
-import translations from '../services/translations';
+import translations, { LANGUAGE_METADATA } from '../services/translations';
+import { getAllStoredTranslations, queuePhrasesForTranslation, subscribeToTranslations, shouldTranslate } from '../services/hybridTranslation';
 
 /**
  * Global multilingual safety net for SHILP-AI.
@@ -286,7 +287,7 @@ function translateDynamicText(text: string, language: Language): string | null {
       mr: `${n} सत्यापित कारागीर सूची दाखवल्या जात आहेत`,
       gu: `${n} ચકાસાયેલ કારીગર લિસ્ટિંગ્સ બતાવવામાં આવી રહી છે`,
     };
-    return out[language] || null;
+    return out[language] || out.en || null;
   }
 
   m = text.match(/^Qty:\s*(\d+)$/i);
@@ -295,7 +296,7 @@ function translateDynamicText(text: string, language: Language): string | null {
       en: `Qty: ${m[1]}`, hi: `मात्रा: ${m[1]}`, te: `పరిమాణం: ${m[1]}`, ta: `அளவு: ${m[1]}`,
       bn: `পরিমাণ: ${m[1]}`, mr: `प्रमाण: ${m[1]}`, gu: `જથ્થો: ${m[1]}`
     };
-    return out[language] || null;
+    return out[language] || out.en || null;
   }
 
   return null;
@@ -334,6 +335,17 @@ function toEnglish(value: string): string {
     }
   }
 
+  // Stored hybrid runtime translations across all languages
+  for (const lang of Object.keys(LANGUAGE_METADATA) as Language[]) {
+    if (lang === 'en') continue;
+    const stored = getAllStoredTranslations(lang);
+    for (const [english, translated] of Object.entries(stored)) {
+      if (typeof translated === 'string' && normalize(translated) === v) {
+        return english;
+      }
+    }
+  }
+
   return v;
 }
 
@@ -344,7 +356,7 @@ function buildMap(language: Language): TextMap {
   const enDict = translations.en || {};
   const targetDict = translations[language] || enDict;
 
-  // Existing canonical English dictionary.
+  // 1. Static dictionary (first priority)
   for (const key of Object.keys(enDict)) {
     const english = enDict[key];
     const target = targetDict[key];
@@ -359,10 +371,19 @@ function buildMap(language: Language): TextMap {
     }
   }
 
-  // Extra legacy UI dictionary.
+  // 2. Extra legacy UI dictionary
   for (const [english, dict] of Object.entries(EXTRA_TRANSLATIONS)) {
     const target = dict[language];
     if (target) map.set(normalize(english), target);
+  }
+
+  // 3. SARAL-AI-inspired Hybrid Runtime Translations Cache
+  const runtimeDict = getAllStoredTranslations(language);
+  for (const [english, target] of Object.entries(runtimeDict)) {
+    const norm = normalize(english);
+    if (target && !map.has(norm)) {
+      map.set(norm, target);
+    }
   }
 
   return map;
@@ -376,6 +397,8 @@ function translateTextNodes(root: Node, map: TextMap, language: Language) {
 
   let current: Node | null;
   while ((current = walker.nextNode())) nodes.push(current as Text);
+
+  const untranslatedToQueue: string[] = [];
 
   for (const node of nodes) {
     const parent = node.parentElement;
@@ -400,16 +423,32 @@ function translateTextNodes(root: Node, map: TextMap, language: Language) {
     const dynamic = translateDynamicText(source, language);
     const translated = dynamic ?? map.get(normalize(source));
 
-    if (!translated || normalize(translated) === currentNormalized) continue;
+    if (translated && normalize(translated) !== currentNormalized) {
+      const leading = currentText.match(/^\s*/)?.[0] ?? '';
+      const trailing = currentText.match(/\s*$/)?.[0] ?? '';
+      node.nodeValue = `${leading}${translated}${trailing}`;
+    } else if (!translated && language === 'en' && source && normalize(source) !== currentNormalized) {
+      const leading = currentText.match(/^\s*/)?.[0] ?? '';
+      const trailing = currentText.match(/\s*$/)?.[0] ?? '';
+      node.nodeValue = `${leading}${source}${trailing}`;
+    } else if (!translated && language !== 'en') {
+      // Collect eligible UI phrases for batched, deduplicated Sarvam translation
+      if (shouldTranslate(source)) {
+        untranslatedToQueue.push(source);
+      }
+    }
+  }
 
-    const leading = currentText.match(/^\s*/)?.[0] ?? '';
-    const trailing = currentText.match(/\s*$/)?.[0] ?? '';
-    node.nodeValue = `${leading}${translated}${trailing}`;
+  // Enqueue unmapped phrases for background Sarvam batch translation
+  if (untranslatedToQueue.length > 0 && language !== 'en') {
+    queuePhrasesForTranslation(untranslatedToQueue, language);
   }
 }
 
-function translateAttributes(root: Node, map: TextMap) {
+function translateAttributes(root: Node, map: TextMap, language: Language) {
   const elements = (root as Element).querySelectorAll?.('*') ?? [];
+  const untranslatedToQueue: string[] = [];
+
   elements.forEach((element) => {
     for (const attr of ['placeholder', 'title', 'aria-label']) {
       const value = element.getAttribute(attr);
@@ -419,22 +458,34 @@ function translateAttributes(root: Node, map: TextMap) {
       const translated = map.get(normalize(source));
       if (translated && normalize(translated) !== normalize(value)) {
         element.setAttribute(attr, translated);
+      } else if (!translated && language === 'en' && source && normalize(source) !== normalize(value)) {
+        element.setAttribute(attr, source);
+      } else if (!translated && language !== 'en' && shouldTranslate(source)) {
+        untranslatedToQueue.push(source);
       }
     }
   });
+
+  if (untranslatedToQueue.length > 0 && language !== 'en') {
+    queuePhrasesForTranslation(untranslatedToQueue, language);
+  }
 }
 
 export const LanguageAutoTranslator: React.FC<{ language: Language }> = ({ language }) => {
   useEffect(() => {
     if (typeof document === 'undefined') return;
 
-    const map = buildMap(language);
+    // Set document language and text direction (RTL for Urdu, LTR for others)
+    document.documentElement.lang = language;
+    document.documentElement.dir = LANGUAGE_METADATA[language]?.direction || 'ltr';
+
+    let map = buildMap(language);
     let scheduled = false;
 
     const run = () => {
       scheduled = false;
       translateTextNodes(document.body, map, language);
-      translateAttributes(document.body, map);
+      translateAttributes(document.body, map, language);
     };
 
     const schedule = () => {
@@ -447,6 +498,14 @@ export const LanguageAutoTranslator: React.FC<{ language: Language }> = ({ langu
     // with their canonical source before another language is selected.
     schedule();
 
+    // Subscribe to background hybrid runtime translation arrivals from Firebase Sarvam function
+    const unsubscribeTranslations = subscribeToTranslations((updatedLang) => {
+      if (updatedLang === language) {
+        map = buildMap(language);
+        schedule();
+      }
+    });
+
     const observer = new MutationObserver(() => schedule());
     observer.observe(document.body, {
       subtree: true,
@@ -456,7 +515,10 @@ export const LanguageAutoTranslator: React.FC<{ language: Language }> = ({ langu
       attributeFilter: ['placeholder', 'title', 'aria-label'],
     });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      unsubscribeTranslations();
+    };
   }, [language]);
 
   return null;

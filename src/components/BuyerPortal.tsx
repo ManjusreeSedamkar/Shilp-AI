@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Search, Award, ShieldCheck, MessageSquare, Building2, CheckCircle2, Send, X, Sparkles } from 'lucide-react';
 import { ProductListing, Language } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
+import { translate } from '../services/translations';
+import { getProductTitle, getProductDescription, getCategoryTranslation, getCraftTechniqueTranslation } from '../services/displayTranslation';
 
 interface BuyerPortalProps {
   products: ProductListing[];
@@ -207,7 +209,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                   : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
               }`}
             >
-              {cat === 'all' ? 'All Craft Categories' : cat}
+              {cat === 'all' ? (translate(language, 'buyer.allCategories') || 'All Craft Categories') : getCategoryTranslation(cat, language)}
             </button>
           ))}
         </div>
@@ -355,13 +357,13 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
               <div className="p-4 space-y-2.5">
                 <div>
                   <span className="text-[10px] font-bold text-saffron-700 uppercase tracking-wider">
-                    {product.category}
+                    {getCategoryTranslation(product.category, language)}
                   </span>
                   <h3 className="font-bold text-sm text-stone-900 line-clamp-1 group-hover:text-saffron-700 transition-colors mt-0.5">
-                    {product.titleEn}
+                    {getProductTitle(product, language)}
                   </h3>
                   <p className="text-xs text-stone-500 line-clamp-2 mt-1 leading-relaxed">
-                    {product.descriptionEn}
+                    {getProductDescription(product, language)}
                   </p>
                 </div>
 
@@ -469,10 +471,10 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                     B2B Wholesale RFQ
                   </span>
                   <h3 className="font-bold text-lg text-stone-900 leading-tight">
-                    {activeRFQProduct.titleEn}
+                    {getProductTitle(activeRFQProduct, language)}
                   </h3>
                   <p className="text-xs text-stone-500">
-                    Artisan: {activeRFQProduct.artisanName} • {activeRFQProduct.craftTechnique}
+                    Artisan: {activeRFQProduct.artisanName} • {getCraftTechniqueTranslation(activeRFQProduct.craftTechnique, language)}
                   </p>
                 </div>
 

@@ -1,19 +1,43 @@
-export type Language =
-  | 'en' | 'hi' | 'te' | 'ta' | 'bn' | 'mr' | 'gu'
-  | 'kn' | 'ml' | 'or' | 'pa' | 'as' | 'mai' | 'sa'
-  | 'ur' | 'ne' | 'sd' | 'kok' | 'doi' | 'sat' | 'ks' | (string & {});
+// ============================================================
+// Supported Languages
+// ============================================================
 
+export type Language =
+  | 'en'  // English
+  | 'hi'  // Hindi
+  | 'te'  // Telugu
+  | 'ta'  // Tamil
+  | 'bn'  // Bengali
+  | 'mr'  // Marathi
+  | 'gu'  // Gujarati
+  | 'kn'  // Kannada
+  | 'ml'  // Malayalam
+  | 'pa'  // Punjabi
+  | 'or'  // Odia
+  | 'as'  // Assamese
+  | 'ur'  // Urdu
+  | 'sa'  // Sanskrit
+  | 'mai' // Maithili
+  | 'kok' // Konkani
+  | 'ne'  // Nepali
+  | 'sd'  // Sindhi
+  | 'doi' // Dogri
+  | 'brx' // Bodo
+  | 'sat' // Santali
+  | 'ks'  // Kashmiri
+  | (string & {});
 
 export type UserRole = 'artisan' | 'buyer';
 
-export type CraftCategory = 
+export type CraftCategory =
   | 'Textiles & Handloom'
   | 'Clay & Terracotta'
   | 'Metalcraft & Dhokra'
   | 'Traditional Painting'
   | 'Woodcraft & Carving'
   | 'Leather & Footwear'
-  | 'Handmade Jewelry';
+  | 'Handmade Jewelry'
+  | 'Other Heritage Craft';
 
 /**
  * Artisan verification tier.
@@ -73,10 +97,17 @@ export interface PricingBreakdown {
   marketBenchmarkMin: number;
   marketBenchmarkMax: number;
   recommendedPrice?: number;
-  fairPriceRange?: { min: number; max: number };
+  fairPriceRange?: {
+    min: number;
+    max: number;
+  };
   modelType?: 'xgboost_regressor' | 'heuristic_ml';
   xgboostConfidence?: number;
-  featureContributions?: { feature: string; impact: string; weight: number }[];
+  featureContributions?: {
+    feature: string;
+    impact: string;
+    weight: number;
+  }[];
   wholesaleTiers: {
     tier: string;
     minUnits: number;
@@ -90,31 +121,56 @@ export interface ProductListing {
   artisanId: string;
   artisanName: string;
   state: string;
+
   titleEn: string;
   titleHi: string;
+
   category: CraftCategory;
   craftTechnique: string;
   primaryMaterial: string;
   color: string;
+
   productionDays: number;
   rawMaterialCost: number;
+
   originalImage: string;
   enhancedImage: string;
   originalImageUrl?: string;
   enhancedImageUrl?: string;
+
   hasBackgroundRemoved: boolean;
   hasLightingEnhanced: boolean;
+
   descriptionEn: string;
   descriptionHi: string;
+  culturalContext?: string;
   seoKeywords: string[];
+  searchTags?: string[];
+  metaDescription?: string;
   pricing: PricingBreakdown;
   targetBuyers: string[];
   stockQuantity: number;
   giCertified: boolean;
   createdAt: string;
+
   featured?: boolean;
+
   productSize?: 'Small' | 'Medium' | 'Large' | 'Extra-Large';
+
   qualityTier?: 'Standard' | 'Premium Heritage' | 'Masterpiece';
+  // Rich artisan-provided attributes — optional, backward-compatible with existing Firestore records
+  productType?: string;       // e.g. "Shawl", "Saree", "Sculpture"
+  style?: string;             // e.g. "Kashmiri", "Pochampally", "Banarasi"
+  subject?: string;           // e.g. "Nandi", "Horse", "Tree of Life"
+  weavingMethod?: string;     // e.g. "Handwoven", "Hand-spun"
+  constructionMethod?: string;// e.g. "Hand-embroidered", "Block Printed"
+  pattern?: string;           // e.g. "Floral", "Geometric"
+  motif?: string;             // e.g. "Pink & Gold Floral"
+  borderColor?: string;       // e.g. "Pink & Gold"
+  dyeType?: string;           // e.g. "Natural Dye", "Vegetable Dye"
+  zariType?: string;          // e.g. "100% Zari", "Gold Zari"
+  fabricType?: string;        // e.g. "Mulberry Silk", "Pure Cotton"
+  artisanClaims?: string[];   // explicitly stated claims: ["100% handmade", "natural dye"]
 }
 
 export interface CopilotMessage {
@@ -123,8 +179,12 @@ export interface CopilotMessage {
   text: string;
   audioText?: string;
   timestamp: string;
+
   actionCard?: {
-    type: 'product_extracted' | 'pricing_suggested' | 'listing_ready';
+    type:
+      | 'product_extracted'
+      | 'pricing_suggested'
+      | 'listing_ready';
     data: any;
   };
 }
@@ -141,7 +201,13 @@ export interface BulkRFQInquiry {
   offeredUnitPrice: number;
   deliveryDateNeeded: string;
   customizationNotes?: string;
-  status: 'pending' | 'accepted' | 'negotiating' | 'declined';
+
+  status:
+    | 'pending'
+    | 'accepted'
+    | 'negotiating'
+    | 'declined';
+
   createdAt: string;
 }
 
@@ -167,7 +233,9 @@ export interface ChatMessage {
   senderName: string;
   text: string;
   timestamp: string;
+
   customizationRequest?: CustomizationRequest;
+
   isRead: boolean;
   /** Optional image attachment URL (stored in Supabase chat-attachments bucket) */
   imageUrl?: string;
@@ -179,9 +247,12 @@ export interface Conversation {
   buyerName: string;
   artisanId: string;
   artisanName: string;
+
   productId?: string;
   productTitle?: string;
+
   messages: ChatMessage[];
+
   lastMessageAt: string;
   unreadCount: number;
 }
@@ -191,14 +262,19 @@ export interface ProductReview {
   productId: string;
   buyerId: string;
   buyerName: string;
+
   rating: number; // 1-5
   comment: string;
   createdAt: string;
+
   verifiedPurchase?: boolean;
   /** Optional review photo URL (stored in Supabase product-images bucket) */
   imageUrl?: string;
 }
 
+// ============================================================
+// Translation Types
+// ============================================================
 
 export type TranslationKey = string;
 export type TranslationDictionary = Record<TranslationKey, string>;

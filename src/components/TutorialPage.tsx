@@ -6,6 +6,7 @@ import {
   Volume2, 
   Square, 
   Video, 
+  Upload,
   FileText, 
   Copy, 
   Check, 
@@ -17,7 +18,8 @@ import {
   Bot, 
   CheckCircle2, 
   Info, 
-  X
+  X,
+  ExternalLink
 } from 'lucide-react';
 import { Language } from '../types';
 import { translate, getSpeechLangCode } from '../services/translations';
@@ -50,12 +52,16 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
   language = 'en'
 }) => {
   const [selectedLang, setSelectedLang] = useState<'hi' | 'en'>(language === 'hi' ? 'hi' : 'en');
+  const [customVideoSrc, setCustomVideoSrc] = useState<{ [key: string]: string }>({});
   const [videoError, setVideoError] = useState<{ [key: string]: boolean }>({});
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [spokenTranscript, setSpokenTranscript] = useState<string | null>(null);
   const [isCopiedTranscript, setIsCopiedTranscript] = useState(false);
+  const [customUrlInput, setCustomUrlInput] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync selectedLang with language prop so English gets English video and Hindi gets Hindi video
   useEffect(() => {
@@ -161,7 +167,39 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
   };
 
   const currentTutorial = tutorials[selectedLang];
-  const activeVideoUrl = currentTutorial.defaultVideoSrc;
+  const activeVideoUrl = customVideoSrc[selectedLang] || currentTutorial.defaultVideoSrc;
+
+  // Handle local video file upload from user's computer
+  const handleLocalVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      setCustomVideoSrc((prev) => ({
+        ...prev,
+        [selectedLang]: objectUrl
+      }));
+      setVideoError((prev) => ({
+        ...prev,
+        [selectedLang]: false
+      }));
+    }
+  };
+
+  // Handle custom URL input
+  const handleApplyCustomUrl = () => {
+    if (customUrlInput.trim()) {
+      setCustomVideoSrc((prev) => ({
+        ...prev,
+        [selectedLang]: customUrlInput.trim()
+      }));
+      setVideoError((prev) => ({
+        ...prev,
+        [selectedLang]: false
+      }));
+      setCustomUrlInput('');
+      setShowUrlInput(false);
+    }
+  };
 
   // Toggle voice playback of the tutorial summary notes
   const handleToggleSpeak = async () => {
@@ -205,7 +243,7 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
             title="Back to Dashboard"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">{isHindi ? 'डैशबोर्ड पर वापस जाएं' : 'Back to Dashboard'}</span>
+            <span className="hidden sm:inline">{translate(language, 'auto.back_to_dashboard.138')}</span>
           </button>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -213,13 +251,11 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
                 <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
               <h1 className="text-base sm:text-xl font-black text-stone-900 truncate">
-                {isHindi ? 'SHILP-AI वीडियो ट्यूटोरियल' : 'SHILP-AI Video Tutorials'}
+                {translate(language, 'auto.shilp_ai_video_tutor.139')}
               </h1>
             </div>
             <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5 truncate">
-              {isHindi 
-                ? 'ऐप के सभी फीचर्स को आसान भाषा में वीडियो द्वारा समझें' 
-                : 'Step-by-step visual guides for Artisans, Weavers & Craftspersons'}
+              {translate(language, 'auto.step_by_step_visual_.140')}
             </p>
           </div>
         </div>
@@ -282,7 +318,61 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
               {currentTutorial.description}
             </p>
           </div>
+
+          {/* Video Sourcing Actions */}
+          <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="video/mp4,video/webm,video/ogg,video/*"
+              onChange={handleLocalVideoUpload}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 md:flex-initial px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              title="Select local video file from your computer"
+            >
+              <Upload className="w-3.5 h-3.5 text-saffron-300" />
+              <span>{translate(language, 'auto.choose_video_file.141')}</span>
+            </button>
+            <button
+              onClick={() => setShowUrlInput(!showUrlInput)}
+              className="flex-1 md:flex-initial px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              title="Add video URL"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-blue-300" />
+              <span>{translate(language, 'auto.video_url.142')}</span>
+            </button>
+          </div>
         </div>
+
+        {/* Custom URL Input Bar if toggled */}
+        {showUrlInput && (
+          <div className="p-3 bg-stone-100 border-b border-stone-200 flex items-center gap-2">
+            <input
+              type="url"
+              value={customUrlInput}
+              onChange={(e) => setCustomUrlInput(e.target.value)}
+              placeholder={translate(language, 'auto.paste_video_url_e_g_.143')}
+              className="flex-1 px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-saffron-500"
+            />
+            <button
+              onClick={handleApplyCustomUrl}
+              disabled={!customUrlInput.trim()}
+              className="px-4 py-2 bg-saffron-600 text-white rounded-xl text-xs font-bold hover:bg-saffron-700 transition-colors disabled:opacity-40"
+            >
+              {translate(language, 'auto.apply_url.144')}
+            </button>
+            <button
+              onClick={() => setShowUrlInput(false)}
+              className="p-2 text-stone-500 hover:text-stone-800"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
 
         {/* Video Player Area */}
         <div className="relative bg-black aspect-video max-h-[520px] w-full flex items-center justify-center overflow-hidden">
@@ -293,13 +383,22 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
                 <Video className="w-8 h-8" />
               </div>
               <h3 className="font-bold text-base text-white">
-                {isHindi ? 'वीडियो फ़ाइल तैयार की जा रही है' : 'Video File Ready for Placement'}
+                {translate(language, 'auto.video_file_ready_for.145')}
               </h3>
               <p className="text-xs text-stone-400 leading-relaxed">
                 {isHindi
                   ? `अपनी हिन्दी वीडियो फ़ाइल को public/videos/tutorial-hi.mp4 के रूप में रखें।`
                   : `Place your video file in 'public/videos/${selectedLang === 'hi' ? 'tutorial-hi.mp4' : 'tutorial-en.mp4'}'.`}
               </p>
+              <div className="pt-2 flex justify-center gap-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 rounded-xl bg-saffron-600 hover:bg-saffron-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>{translate(language, 'auto.choose_local_video.146')}</span>
+                </button>
+              </div>
             </div>
           ) : (
             <video
@@ -322,7 +421,7 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
                 <source src="/videos/WhatsApp Video 2026-09-09 at 00.13.12(2).mp4" type="video/mp4" />
               )}
               <source src={activeVideoUrl} type="video/webm" />
-              {isHindi ? 'आपका ब्राउज़र वीडियो टैग का समर्थन नहीं करता।' : 'Your browser does not support the video tag.'}
+              {translate(language, 'auto.your_browser_does_no.147')}
             </video>
           )}
         </div>
@@ -336,12 +435,10 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
               </span>
               <div>
                 <h4 className="font-bold text-xs text-stone-900">
-                  {isHindi ? 'ऑडियो ट्यूटोरियल सारांश (Voice Narration)' : 'Audio Tutorial Narration & Summary'}
+                  {translate(language, 'auto.audio_tutorial_narra.148')}
                 </h4>
                 <p className="text-[11px] text-stone-500">
-                  {isHindi 
-                    ? 'यदि आप पढ़ना नहीं चाहते, तो AI आवाज़ में पूरा गाइड ध्यान से सुनें' 
-                    : 'Listen to the full spoken audio guide or read the live transcription'}
+                  {translate(language, 'auto.listen_to_the_full_s.149')}
                 </p>
               </div>
             </div>
@@ -358,12 +455,12 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
               {isSpeaking ? (
                 <>
                   <Square className="w-3.5 h-3.5 fill-white text-white" />
-                  <span>{isHindi ? 'रुकें (Stop Speech)' : 'Stop Speech'}</span>
+                  <span>{translate(language, 'auto.stop_speech.150')}</span>
                 </>
               ) : (
                 <>
                   <Volume2 className="w-3.5 h-3.5" />
-                  <span>{isHindi ? 'सुनें (Listen Summary)' : 'Listen Summary'}</span>
+                  <span>{translate(language, 'auto.listen_summary.151')}</span>
                 </>
               )}
             </button>
@@ -375,7 +472,7 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
               <div className="flex items-center justify-between text-xs font-bold border-b border-amber-200/80 pb-1.5">
                 <span className="flex items-center gap-1.5 text-amber-900">
                   <FileText className="w-4 h-4 text-amber-700" />
-                  {isHindi ? 'AI ऑडियो ट्रांसक्रिप्शन (बोलने की प्रतिलिपि):' : 'AI Spoken Audio Transcription:'}
+                  {translate(language, 'auto.ai_spoken_audio_tran.152')}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
@@ -384,7 +481,7 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
                       : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${isSpeaking ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
-                    {isSpeaking ? (isHindi ? 'AI बोल रहा है...' : 'Speaking...') : (isHindi ? 'रोका गया / पढ़ने के लिए तैयार' : 'Stopped / Ready to Read')}
+                    {isSpeaking ? (translate(language, 'auto.speaking.153')) : (translate(language, 'auto.stopped_ready_to_rea.154'))}
                   </span>
                   <button
                     onClick={handleCopyTranscript}
@@ -412,8 +509,8 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
                 "{spokenTranscript}"
               </p>
               <div className="flex items-center justify-between text-[10px] text-stone-500 pt-0.5">
-                <span>{isHindi ? '💡 ध्यान से सुनने या पढ़ने के लिए प्ले/स्टॉप का उपयोग करें।' : '💡 Listen carefully or read the exact transcript word-for-word.'}</span>
-                {isCopiedTranscript && <span className="text-emerald-700 font-semibold">{isHindi ? 'कॉपी कर लिया गया!' : 'Copied to clipboard!'}</span>}
+                <span>{translate(language, 'auto.listen_carefully_or_.155')}</span>
+                {isCopiedTranscript && <span className="text-emerald-700 font-semibold">{translate(language, 'auto.copied_to_clipboard.156')}</span>}
               </div>
             </div>
           )}
@@ -429,17 +526,15 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
             </span>
             <div>
               <h3 className="font-black text-sm text-stone-900">
-                {isHindi ? 'वीडियो अध्याय व विषय (Video Chapters)' : 'Video Chapters & Topics Covered'}
+                {translate(language, 'auto.video_chapters_topic.157')}
               </h3>
               <p className="text-[11px] text-stone-500">
-                {isHindi 
-                  ? 'वीडियो में कवर किए गए सभी मुख्य विषयों की समय-सारणी' 
-                  : 'Quick navigation breakdown of features explained in this tutorial'}
+                {translate(language, 'auto.quick_navigation_bre.158')}
               </p>
             </div>
           </div>
           <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-full">
-            {currentTutorial.chapters.length} {isHindi ? 'अध्याय' : 'Chapters'}
+            {currentTutorial.chapters.length} {translate(language, 'auto.chapters.159')}
           </span>
         </div>
 
@@ -474,12 +569,10 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
           </div>
           <div>
             <h4 className="font-bold text-xs text-emerald-950">
-              {isHindi ? 'ट्यूटोरियल देखने के बाद अभ्यास करें' : 'Ready to Practice After Watching?'}
+              {translate(language, 'auto.ready_to_practice_af.160')}
             </h4>
             <p className="text-[11px] text-emerald-800 mt-0.5">
-              {isHindi
-                ? 'सीखे गए चरणों का उपयोग करके अभी AI स्टूडियो से उत्पाद बनाएं या बोलकर कैटलॉग जोड़ें।'
-                : 'Put your learning into action by enhancing photos in AI Studio or dictating your first product listing.'}
+              {translate(language, 'auto.put_your_learning_in.161')}
             </p>
           </div>
         </div>
@@ -488,7 +581,7 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
           onClick={onBack}
           className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition-all whitespace-nowrap self-stretch sm:self-auto text-center"
         >
-          {isHindi ? 'डैशबोर्ड पर जाएं' : 'Go to Dashboard'}
+          {translate(language, 'auto.go_to_dashboard.162')}
         </button>
       </div>
     </div>

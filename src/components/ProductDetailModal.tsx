@@ -273,7 +273,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     {product.artisanName} ({product.state})
                   </span>
                   <span>•</span>
-                  <span>{product.productionDays} {isHindi ? 'दिन की कारीगरी' : 'days crafting time'}</span>
+                  <span>{product.productionDays > 0 ? `${product.productionDays} ${isHindi ? 'दिन की कारीगरी' : 'days crafting time'}` : (isHindi ? 'निर्माण समय: उल्लेख नहीं' : 'Crafting time: not stated')}</span>
                 </div>
               </div>
 
@@ -378,24 +378,36 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </div>
 
             {/* Key Specifications Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-                <span className="text-stone-500 text-[10px]">Craft Technique</span>
-                <p className="font-bold text-stone-900 mt-0.5">{product.craftTechnique}</p>
-              </div>
-              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-                <span className="text-stone-500 text-[10px]">Primary Material</span>
-                <p className="font-bold text-stone-900 mt-0.5">{product.primaryMaterial}</p>
-              </div>
-              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-                <span className="text-stone-500 text-[10px]">Fair Artisan Wage</span>
-                <p className="font-bold text-blue-700 mt-0.5">₹{product.pricing.totalLaborWage.toLocaleString('en-IN')}</p>
-              </div>
-              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60">
-                <span className="text-stone-500 text-[10px]">In Stock / Capacity</span>
-                <p className="font-bold text-emerald-700 mt-0.5">{product.stockQuantity} units available</p>
-              </div>
-            </div>
+            {(() => {
+              const specs = [
+                { label: 'Product Type', value: product.productType },
+                { label: 'Style', value: product.style },
+                { label: 'Subject', value: product.subject },
+                { label: 'Craft Technique', value: product.craftTechnique },
+                { label: 'Primary Material', value: product.fabricType || product.primaryMaterial },
+                { label: 'Weaving Method', value: product.weavingMethod },
+                { label: 'Construction', value: product.constructionMethod },
+                { label: 'Color', value: product.color !== 'Natural Finish' ? product.color : null },
+                { label: 'Pattern', value: product.pattern },
+                { label: 'Motif', value: product.motif },
+                { label: 'Border', value: product.borderColor },
+                { label: 'Dye Type', value: product.dyeType },
+                { label: 'Zari Type', value: product.zariType },
+                { label: 'Fair Artisan Wage', value: `₹${product.pricing.totalLaborWage.toLocaleString('en-IN')}` },
+                { label: 'In Stock / Capacity', value: `${product.stockQuantity} units available` },
+              ].filter((s): s is { label: string; value: string } => Boolean(s.value));
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                  {specs.map((item, idx) => (
+                    <div key={idx} className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/60 flex flex-col justify-between">
+                      <span className="text-stone-500 text-[10px] font-semibold">{item.label}</span>
+                      <p className="font-bold text-stone-900 mt-0.5">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* B2B Wholesale Tiers Table */}
             <div className="border border-stone-200 rounded-2xl overflow-hidden">
