@@ -11,10 +11,12 @@ interface ProductDetailModalProps {
   onRequestQuote: (product: ProductListing) => void;
   onBuyNow?: (product: ProductListing) => void;
   onStartConversation?: (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => void;
+  onOpenArtisanProfile?: () => void;
   language?: Language;
   reviews?: ProductReview[];
   onAddReview?: (review: ProductReview) => void;
   currentBuyerName?: string;
+  currentBuyerId?: string;
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -23,10 +25,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onRequestQuote,
   onBuyNow,
   onStartConversation,
+  onOpenArtisanProfile,
   language = 'en',
   reviews = [],
   onAddReview,
-  currentBuyerName = 'Vikram Mehta'
+  currentBuyerName = 'Vikram Mehta',
+  currentBuyerId,
 }) => {
   const [activeLang, setActiveLang] = useState<'hi' | 'en'>(language === 'hi' ? 'hi' : 'en');
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -435,40 +439,49 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
             {/* Artisan Verification Card */}
             <div className="p-3.5 bg-saffron-50/50 rounded-2xl border border-saffron-200 flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center space-x-3">
+              <div
+                className="flex items-center space-x-3 cursor-pointer group"
+                onClick={onOpenArtisanProfile}
+                title="View Verified Artisan Digital Smart ID"
+              >
                 <img
                   src={CURRENT_ARTISAN.avatarUrl}
-                  alt={CURRENT_ARTISAN.name}
-                  className="w-11 h-11 rounded-full object-cover border-2 border-saffron-500 shadow-sm"
+                  alt={product.artisanName}
+                  className="w-11 h-11 rounded-full object-cover border-2 border-saffron-500 shadow-sm group-hover:scale-105 transition-transform"
                 />
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <h4 className="font-bold text-xs text-stone-900">{CURRENT_ARTISAN.name}</h4>
+                    <h4 className="font-bold text-xs text-stone-900 group-hover:text-saffron-700 transition-colors">{product.artisanName}</h4>
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   </div>
                   <p className="text-[11px] text-stone-600">
-                    {CURRENT_ARTISAN.craftCluster}, {CURRENT_ARTISAN.state}
+                    {product.craftTechnique} • {product.state}
                   </p>
                   <span className="text-[10px] font-mono text-saffron-800">
-                    ID: {CURRENT_ARTISAN.beneficiaryId}
+                    Verified MoSJE Beneficiary
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2">
+                {onOpenArtisanProfile && (
+                  <button
+                    onClick={onOpenArtisanProfile}
+                    className="px-3 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Smart ID Profile</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => onStartConversation?.(product.artisanId, product.artisanName, product.id, product.titleEn)}
+                  onClick={() => {
+                    onClose();
+                    onStartConversation?.(product.artisanId, product.artisanName, product.id, product.titleEn);
+                  }}
                   className="px-3 py-2 rounded-xl bg-white hover:bg-stone-50 border border-stone-300 text-stone-700 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
                   <span>Chat & Discuss</span>
-                </button>
-                <button
-                  onClick={() => onStartConversation?.(product.artisanId, product.artisanName, product.id, product.titleEn)}
-                  className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
-                >
-                  <Palette className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Customization</span>
                 </button>
               </div>
             </div>
@@ -506,6 +519,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               reviews={reviews}
               language={language}
               currentBuyerName={currentBuyerName}
+              currentBuyerId={currentBuyerId}
               onAddReview={onAddReview || (() => {})}
             />
           </div>

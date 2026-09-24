@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   Camera,
@@ -21,11 +21,11 @@ import {
   Play
 } from 'lucide-react';
 
-import { ProductListing, Language } from '../types';
-import { CURRENT_ARTISAN } from '../data/craftPresets';
+import { ProductListing, Language, Conversation, ProductReview } from '../types';
 import { VoiceCatalogerEngine } from '../services/voiceCataloger';
 import { translate, getSpeechLangCode } from '../services/translations';
-import { getProductTitle, getCategoryTranslation as getCategoryDisplayTranslation, getCraftTechniqueTranslation } from '../services/displayTranslation';
+import { fetchArtisanAnalytics, ArtisanAnalytics, isSupabaseConfigured } from '../services/supabase';
+import { getProductTitle, getCraftTechniqueTranslation } from '../services/displayTranslation';
 
 interface ArtisanDashboardProps {
   products: ProductListing[];
@@ -36,6 +36,27 @@ interface ArtisanDashboardProps {
   onOpenTutorials?: () => void;
   onSelectProduct: (product: ProductListing) => void;
   language?: Language;
+  artisanId?: string;
+  /** Name of the currently logged-in artisan */
+  artisanName?: string;
+  /** Regional/local language name of the artisan */
+  artisanRegionalName?: string;
+  /** Avatar URL for the artisan profile photo */
+  artisanAvatarUrl?: string;
+  /** Craft cluster/speciality of the artisan */
+  artisanCraftCluster?: string;
+  /** State of the artisan */
+  artisanState?: string;
+  /** MoSJE Beneficiary ID */
+  artisanBeneficiaryId?: string;
+  /** GI Tag craft string */
+  artisanGiTagCraft?: string;
+  /** Shilp Card Number */
+  artisanShilpCardNumber?: string;
+  /** Exhibitions list */
+  artisanExhibitions?: string[];
+  conversations?: Conversation[];
+  reviews?: ProductReview[];
 }
 
 export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
@@ -46,15 +67,64 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
   onOpenPricing,
   onOpenTutorials,
   onSelectProduct,
-  language = 'en'
+  language = 'en',
+  artisanId,
+  artisanName = 'Artisan',
+  artisanRegionalName,
+  artisanAvatarUrl = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=256&q=80',
+  artisanCraftCluster = 'Traditional Handicraft',
+  artisanState = 'India',
+  artisanBeneficiaryId = 'MoSJE-NBCFDC',
+  artisanGiTagCraft = 'Indian Handcraft',
+  artisanShilpCardNumber = 'IND-SHILP-TEL-04921',
+  artisanExhibitions = ['Shilp Samagam New Delhi', 'Dilli Haat INA Pavilion'],
+  conversations = [],
+  reviews = [],
 }) => {
   const [isSpeakingAnalytics, setIsSpeakingAnalytics] = useState(false);
   const [analyticsTranscript, setAnalyticsTranscript] = useState<string | null>(null);
   const [isCopiedTranscript, setIsCopiedTranscript] = useState(false);
   const [showIdCard, setShowIdCard] = useState(false);
+  const [remoteAnalytics, setRemoteAnalytics] = useState<ArtisanAnalytics | null>(null);
 
   // Central translation helper
   const t = (key: string) => translate(language, key);
+
+  // Fetch real analytics from Supabase if configured
+  useEffect(() => {
+    if (!artisanId || !isSupabaseConfigured()) return;
+    fetchArtisanAnalytics(artisanId).then((data) => {
+      if (data) setRemoteAnalytics(data);
+    });
+  }, [artisanId, products.length]);
+
+  // Derived real business metrics (strictly 0 when no data; NO fake numbers)
+  const totalEarnings = remoteAnalytics ? remoteAnalytics.totalEarnings : 0;
+  const activeProducts = remoteAnalytics ? remoteAnalytics.activeProducts : products.length;
+  const giCount = products.filter(p => p.giCertified).length;
+  const inquiriesCount = conversations.length;
+
+  const reviewsCount = remoteAnalytics ? remoteAnalytics.reviewCount : reviews.length;
+  const avgRating = remoteAnalytics
+    ? remoteAnalytics.averageRating
+    : (reviews.length > 0 ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10 : 0);
+
+  // Dynamic ShilpSaathi business recommendation based on REAL data
+  const getShilpSaathiRecommendation = () => {
+    if (products.length === 0) {
+      return language === 'hi'
+        ? 'आपके पास कोई सक्रिय उत्पाद नहीं है। B2B खरीदारों तक पहुँचने के लिए AI स्टूडियो या वॉइस कैटलॉग का उपयोग करके अपना पहला शिल्प उत्पाद प्रकाशित करें।'
+        : 'You have no active products. Use AI Studio or Voice Catalog to publish your first craft item and start reaching B2B buyers.';
+    }
+    if (inquiriesCount === 0) {
+      return language === 'hi'
+        ? `आपके कैटलॉग में ${products.length} उत्पाद सक्रिय हैं। अपनी डिजिटल आईडी साझा करें या थोक खरीदारों को आकर्षित करने के लिए खोज शब्द जोड़ें।`
+        : `Your catalog has ${products.length} active craft item(s). Share your Digital Artisan ID or refine SEO keywords to attract bulk buyers.`;
+    }
+    return language === 'hi'
+      ? `आपके पास ${inquiriesCount} खरीदार संदेश हैं। थोक ऑर्डर प्राप्त करने के लिए शीघ्र उत्तर दें।`
+      : `You have ${inquiriesCount} active buyer inquiry conversation(s). Respond promptly to convert inquiries into bulk B2B orders.`;
+  };
 
   // Translate product category names
   const getCategoryTranslation = (category: ProductListing['category']) => {
@@ -79,36 +149,10 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
       return;
     }
 
-    let speechText = '';
-
-    switch (language) {
-      case 'hi':
-        speechText = `नमस्ते ${CURRENT_ARTISAN.regionalName} जी। आपके कैटलॉग में ${products.length} उत्पाद सक्रिय हैं। इस सप्ताह आपको 2 नए थोक ऑर्डर मिले हैं। आगामी त्योहारी सीजन के कारण पोचमपल्ली साड़ियों की मांग 35% अधिक है। अपनी इन्वेंट्री में 5 और साड़ियां जोड़ने की सिफारिश की जाती है।`;
-        break;
-
-      case 'te':
-        speechText = `నమస్కారం ${CURRENT_ARTISAN.name} గారు. మీ కేటలాగ్‌లో ${products.length} ఉత్పత్తులు యాక్టివ్‌గా ఉన్నాయి. ఈ వారం మీకు 2 కొత్త బల్క్ ఆర్డర్లు వచ్చాయి. పండుగ మరియు వివాహ సీజన్ కారణంగా పోచంపల్లి చీరలకు డిమాండ్ 35 శాతం పెరిగింది. మీ ఇన్వెంటరీలో మరో 5 చీరలను జోడించాలని సిఫార్సు చేస్తున్నాము.`;
-        break;
-
-      case 'ta':
-        speechText = `வணக்கம் ${CURRENT_ARTISAN.name}. உங்கள் பட்டியலில் ${products.length} தயாரிப்புகள் செயலில் உள்ளன. இந்த வாரம் உங்களுக்கு 2 புதிய மொத்த ஆர்டர் விசாரணைகள் வந்துள்ளன. பண்டிகை மற்றும் திருமண காலம் காரணமாக போச்சம்பள்ளி புடவைகளுக்கான தேவை 35 சதவீதம் அதிகரித்துள்ளது. உங்கள் கையிருப்பில் மேலும் 5 புடவைகளை சேர்க்க பரிந்துரைக்கப்படுகிறது.`;
-        break;
-
-      case 'bn':
-        speechText = `নমস্কার ${CURRENT_ARTISAN.name}। আপনার ক্যাটালগে ${products.length}টি পণ্য সক্রিয় রয়েছে। এই সপ্তাহে আপনি 2টি নতুন পাইকারি অর্ডার পেয়েছেন। উৎসব ও বিয়ের মরসুমের কারণে পোচমপল্লি শাড়ির চাহিদা 35 শতাংশ বেড়েছে। আপনার ইনভেন্টরিতে আরও 5টি শাড়ি যোগ করার পরামর্শ দেওয়া হচ্ছে।`;
-        break;
-
-      case 'mr':
-        speechText = `नमस्कार ${CURRENT_ARTISAN.name}. तुमच्या कॅटलॉगमध्ये ${products.length} उत्पादने सक्रिय आहेत. या आठवड्यात तुम्हाला 2 नवीन घाऊक ऑर्डर मिळाल्या आहेत. सण आणि लग्नाच्या हंगामामुळे पोचमपल्ली साड्यांची मागणी 35 टक्क्यांनी वाढली आहे. तुमच्या इन्व्हेंटरीमध्ये आणखी 5 साड्या जोडण्याची शिफारस केली जाते.`;
-        break;
-
-      case 'gu':
-        speechText = `નમસ્તે ${CURRENT_ARTISAN.name}. તમારા કેટલોગમાં ${products.length} ઉત્પાદનો સક્રિય છે. આ અઠવાડિયે તમને 2 નવા જથ્થાબંધ ઓર્ડર મળ્યા છે. તહેવાર અને લગ્નની સીઝનને કારણે પોચમપલ્લી સાડીઓની માંગ 35 ટકા વધી છે. તમારી ઇન્વેન્ટરીમાં વધુ 5 સાડીઓ ઉમેરવાની ભલામણ કરવામાં આવે છે.`;
-        break;
-
-      default:
-        speechText = `Namaste ${CURRENT_ARTISAN.name} ji. You have ${products.length} active listings on the MoSJE marketplace. You received 2 bulk B2B inquiry requests this week. Demand for Pochampally silk sarees is 35% higher ahead of the festive wedding season. Stocking 5 additional units is recommended.`;
-    }
+    const name = language === 'hi' ? (artisanRegionalName || artisanName) : artisanName;
+    const speechText = language === 'hi'
+      ? `नमस्ते ${name} जी। आपके कैटलॉग में ${activeProducts} उत्पाद सक्रिय हैं। आपकी कुल कमाई ₹${totalEarnings.toLocaleString('en-IN')} है, आपके पास ${inquiriesCount} खरीदार संदेश हैं, और ${reviewsCount} समीक्षाओं में आपकी औसत रेटिंग ${avgRating > 0 ? avgRating : 'शून्य'} है।`
+      : `Namaste ${name} ji. You have ${activeProducts} active listing(s). Your total earnings are ₹${totalEarnings.toLocaleString('en-IN')}, you have ${inquiriesCount} active buyer inquiry conversation(s), and an average rating of ${avgRating > 0 ? avgRating : '0'} across ${reviewsCount} review(s).`;
 
     setAnalyticsTranscript(speechText);
     setIsSpeakingAnalytics(true);
@@ -149,8 +193,8 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
 
             <div className="relative">
               <img
-                src={CURRENT_ARTISAN.avatarUrl}
-                alt={CURRENT_ARTISAN.name}
+                src={artisanAvatarUrl}
+                alt={artisanName}
                 className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-2 ring-amber-400/80 ring-offset-2 ring-offset-[#1C1815] shadow-lg"
               />
 
@@ -167,24 +211,24 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
               <div className="flex items-center gap-2 flex-wrap">
 
                 <h1 className="text-lg sm:text-xl font-black">
-                  {language !== 'en' && CURRENT_ARTISAN.regionalName
-                    ? CURRENT_ARTISAN.regionalName
-                    : CURRENT_ARTISAN.name}
+                  {language !== 'en'
+                    ? (artisanRegionalName || artisanName)
+                    : artisanName}
                 </h1>
 
                 <span className="text-[10px] bg-saffron-500/30 text-saffron-200 border border-saffron-400/40 px-2 py-0.5 rounded-full font-bold">
-                  {CURRENT_ARTISAN.giTagCraft.split('(')[0]}
+                  {artisanGiTagCraft.split('(')[0]}
                 </span>
 
               </div>
 
               <p className="text-xs text-stone-300 mt-0.5">
-                {CURRENT_ARTISAN.craftCluster}, {CURRENT_ARTISAN.state}
+                {artisanCraftCluster}, {artisanState}
               </p>
 
               <div className="flex items-center gap-2 text-[11px] text-amber-300 font-mono mt-1">
 
-                <span>{CURRENT_ARTISAN.beneficiaryId}</span>
+                <span>{artisanBeneficiaryId}</span>
 
                 <span>•</span>
 
@@ -295,13 +339,13 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
               <p>
                 {t('dashboard.cardNo')}:{' '}
                 <span className="font-mono text-saffron-200">
-                  {CURRENT_ARTISAN.shilpCardNumber}
+                  {artisanShilpCardNumber}
                 </span>
               </p>
 
               <p>
                 {t('dashboard.exhibitions')}:{' '}
-                {CURRENT_ARTISAN.exhibitions.join(' • ')}
+                {artisanExhibitions.join(' • ')}
               </p>
 
               <p className="text-[10px] text-emerald-400">
@@ -313,7 +357,7 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
             <div className="p-2 bg-white rounded-xl text-stone-900 text-center shadow-md">
 
               <div className="w-20 h-20 bg-stone-900 text-white flex items-center justify-center rounded font-mono text-[9px] p-1">
-                [QR: {CURRENT_ARTISAN.beneficiaryId}]
+                [QR: {artisanBeneficiaryId}]
               </div>
 
               <span className="text-[9px] font-bold text-stone-600 block mt-1">
@@ -424,7 +468,7 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
             </div>
           </button>
 
-          {/* Copilot */}
+          {/* ShilpSaathi */}
           <button
             onClick={onOpenCopilot}
             className="p-3.5 sm:p-4 rounded-2xl bg-white hover:bg-[#FAF8F5] border border-stone-200 hover:border-stone-400 text-left transition-all shadow-2xs hover:shadow-xs hover:-translate-y-0.5 group flex flex-col justify-between w-full"
@@ -435,11 +479,11 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
 
             <div>
               <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 uppercase tracking-wider block truncate">
-                {t('dashboard.copilotLabel')}
+                AI Business Assistant
               </span>
 
               <h4 className="font-bold text-stone-900 text-xs sm:text-sm truncate mt-0.5">
-                {t('dashboard.copilot')}
+                ShilpSaathi
               </h4>
 
               <p className="text-[10px] sm:text-[11px] text-stone-500 mt-0.5 leading-tight line-clamp-2">
@@ -589,95 +633,100 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
           </div>
         )}
 
-        {/* Analytics Cards */}
+        {/* Analytics Cards — Driven strictly by real data */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
 
           {/* Revenue */}
           <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:border-stone-300 transition-all">
-
             <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">
               {t('dashboard.totalRevenue')}
             </span>
 
             <p className="text-xl font-black text-stone-900 mt-1">
-              ₹{CURRENT_ARTISAN.totalEarnings.toLocaleString('en-IN')}
+              ₹{totalEarnings.toLocaleString('en-IN')}
             </p>
 
-            <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-0.5 mt-1">
-              <ArrowUpRight className="w-3 h-3 text-emerald-600" />
-              {t('dashboard.physicalFairComparison')}
-            </span>
-
+            {totalEarnings > 0 ? (
+              <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-0.5 mt-1">
+                <ArrowUpRight className="w-3 h-3 text-emerald-600" />
+                Real sales revenue
+              </span>
+            ) : (
+              <span className="text-[10px] text-stone-400 font-medium block mt-1">
+                No completed orders yet
+              </span>
+            )}
           </div>
 
           {/* Active Listings */}
           <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:border-stone-300 transition-all">
-
             <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">
               {t('dashboard.activeListings')}
             </span>
 
             <p className="text-xl font-black text-stone-900 mt-1">
-              {products.length} {t('dashboard.items')}
+              {activeProducts} {t('dashboard.items')}
             </p>
 
-            <span className="text-[10px] text-stone-600 font-semibold">
-              {t('dashboard.allGICertified')}
+            <span className="text-[10px] text-stone-600 font-semibold block mt-1">
+              {giCount > 0 ? `${giCount} GI Certified` : '0 GI Certified'}
             </span>
-
           </div>
 
-          {/* Bulk Inquiries */}
+          {/* Bulk Inquiries / Buyer Interest */}
           <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:border-stone-300 transition-all">
-
             <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">
               {t('dashboard.bulkInquiries')}
             </span>
 
             <p className="text-xl font-black text-stone-900 mt-1">
-              2 {t('dashboard.pendingRFQs')}
+              {inquiriesCount} {inquiriesCount === 1 ? 'inquiry' : 'inquiries'}
             </p>
 
-            <span className="text-[10px] text-amber-700 font-semibold">
-              {t('dashboard.gemTrifedBuyers')}
-            </span>
-
+            {inquiriesCount > 0 ? (
+              <span className="text-[10px] text-amber-700 font-semibold block mt-1">
+                Active buyer conversations
+              </span>
+            ) : (
+              <span className="text-[10px] text-stone-400 font-medium block mt-1">
+                No pending B2B inquiries
+              </span>
+            )}
           </div>
 
           {/* Rating */}
           <div className="p-4 bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:border-stone-300 transition-all">
-
             <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wide">
               {t('dashboard.artisanRating')}
             </span>
 
             <p className="text-xl font-black text-stone-900 mt-1">
-              ★ {CURRENT_ARTISAN.rating} / 5.0
+              {reviewsCount > 0 ? `★ ${avgRating} / 5.0` : 'No ratings'}
             </p>
 
-            <span className="text-[10px] text-emerald-700 font-semibold">
-              {CURRENT_ARTISAN.totalSalesCount} {t('dashboard.verifiedOrders')}
-            </span>
-
+            {reviewsCount > 0 ? (
+              <span className="text-[10px] text-emerald-700 font-semibold block mt-1">
+                {reviewsCount} {reviewsCount === 1 ? 'verified review' : 'verified reviews'}
+              </span>
+            ) : (
+              <span className="text-[10px] text-stone-400 font-medium block mt-1">
+                0 customer reviews
+              </span>
+            )}
           </div>
 
         </div>
 
-        {/* AI Market Insight */}
+        {/* ShilpSaathi Recommendation based on REAL data */}
         <div className="p-4 bg-[#FAF8F5] rounded-2xl border border-stone-200 text-xs flex items-start space-x-3">
-
           <span className="text-2xl">💡</span>
-
           <div>
-
             <span className="font-bold text-stone-900">
-              {t('dashboard.marketTrendInsight')}
+              ShilpSaathi Market Recommendation
             </span>
-
             <p className="text-stone-600 mt-0.5 leading-relaxed">
-              {t('dashboard.marketInsightText')}
+              {getShilpSaathiRecommendation()}
             </p>
-
           </div>
         </div>
 
@@ -717,106 +766,99 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
 
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+        {products.length === 0 ? (
+          <div className="p-8 text-center bg-white rounded-3xl border border-stone-200/90 space-y-3">
+            <div className="text-4xl">🏺</div>
+            <h4 className="font-bold text-sm text-stone-800">
+              {language === 'hi' ? 'कैटलॉग में कोई उत्पाद नहीं है' : 'No Products in Catalog'}
+            </h4>
+            <p className="text-xs text-stone-500 max-w-sm mx-auto leading-relaxed">
+              {language === 'hi'
+                ? 'शिल्प उत्पाद जोड़ने और खरीदारों को बेचने के लिए वॉइस कैटलॉग या AI स्टूडियो का उपयोग करें।'
+                : 'Use Voice Catalog or AI Studio to publish your craft products and start selling to B2B buyers.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                onClick={() => onSelectProduct(product)}
+                className="bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
+              >
+                {/* Product Image */}
+                <div className="relative aspect-square bg-[#FAF7F2] overflow-hidden flex items-center justify-center">
+                  <img
+                    src={product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage}
+                    alt={product.titleEn}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
 
-          {products.map((product) => (
-
-            <div
-              key={product.id}
-              onClick={() => onSelectProduct(product)}
-              className="bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
-            >
-
-              {/* Product Image */}
-              <div className="relative aspect-square bg-[#FAF7F2] overflow-hidden flex items-center justify-center">
-
-                <img
-                  src={product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage}
-                  alt={product.titleEn}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-
-                {/* AI Enhanced / Studio Photo Badge */}
-                <span className="absolute top-3 right-3 bg-emerald-700/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 border border-emerald-500/40">
-                  <Sparkles className="w-2.5 h-2.5 text-amber-300" />
-                  {product.enhancedImageUrl || product.enhancedImage ? (translate(language, 'auto.ai_enhanced.50')) : t('dashboard.originalPhoto')}
-                </span>
-
-                {/* GI Badge */}
-                {product.giCertified && (
-                  <span className="absolute top-3 left-3 bg-[#1C1815]/90 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs shadow-xs border border-amber-400/30 flex items-center gap-1">
-                    <Award className="w-3 h-3 text-amber-300" />
-                    {t('dashboard.giTagged')}
-                  </span>
-                )}
-
-                {/* Bottom Peek Pill */}
-                <div className="absolute bottom-2.5 inset-x-3 bg-black/65 backdrop-blur-xs text-white text-[9px] font-medium py-1 px-2.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                  <span>{translate(language, 'auto.tap_to_view_details_.51')}</span>
-                </div>
-
-              </div>
-
-              {/* Card Body */}
-              <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2">
-
-                <div>
-
-                  {/* Category */}
-                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                    {getCategoryTranslation(product.category)}
+                  {/* AI Enhanced / Studio Photo Badge */}
+                  <span className="absolute top-3 right-3 bg-emerald-700/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 border border-emerald-500/40">
+                    <Sparkles className="w-2.5 h-2.5 text-amber-300" />
+                    {product.enhancedImageUrl || product.enhancedImage ? (translate(language, 'auto.ai_enhanced.50')) : t('dashboard.originalPhoto')}
                   </span>
 
-                  {/* Product Title */}
-                  <h4 className="font-bold text-xs text-stone-900 line-clamp-1 group-hover:text-saffron-700 transition-colors">
-                    {getProductTitle(product, language)}
-                  </h4>
+                  {/* GI Badge */}
+                  {product.giCertified && (
+                    <span className="absolute top-3 left-3 bg-[#1C1815]/90 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs shadow-xs border border-amber-400/30 flex items-center gap-1">
+                      <Award className="w-3 h-3 text-amber-300" />
+                      {t('dashboard.giTagged')}
+                    </span>
+                  )}
 
-                  {/* Technique + Days */}
-                  <p className="text-[11px] text-stone-500 line-clamp-1 mt-0.5">
-                    {getCraftTechniqueTranslation(product.craftTechnique, language)} • {product.productionDays}{' '}
-                    {t('dashboard.days')}
-                  </p>
-
+                  {/* Bottom Peek Pill */}
+                  <div className="absolute bottom-2.5 inset-x-3 bg-black/65 backdrop-blur-xs text-white text-[9px] font-medium py-1 px-2.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                    <span>{translate(language, 'auto.tap_to_view_details_.51')}</span>
+                  </div>
                 </div>
 
-                {/* Price Section */}
-                <div className="pt-2 border-t border-stone-100 flex items-baseline justify-between">
-
+                {/* Card Body */}
+                <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2">
                   <div>
-
-                    <span className="text-[10px] text-stone-400 block">
-                      {t('dashboard.price')}
+                    {/* Category */}
+                    <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                      {getCategoryTranslation(product.category)}
                     </span>
 
-                    <span className="text-sm font-black text-stone-900">
-                      ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
-                    </span>
+                    {/* Product Title */}
+                    <h4 className="font-bold text-xs text-stone-900 line-clamp-1 group-hover:text-saffron-700 transition-colors">
+                      {getProductTitle(product, language)}
+                    </h4>
 
+                    {/* Technique + Days */}
+                    <p className="text-[11px] text-stone-500 line-clamp-1 mt-0.5">
+                      {getCraftTechniqueTranslation(product.craftTechnique, language)} • {product.productionDays}{' '}
+                      {t('dashboard.days')}
+                    </p>
                   </div>
 
-                  <div className="text-right">
-
-                    <span className="text-[10px] text-emerald-600 font-bold block">
-                      {product.stockQuantity} {t('dashboard.inStock')}
-                    </span>
-
-                    <span className="text-[10px] text-stone-400">
-                      {t('dashboard.wholesale')} ₹
-                      {product.pricing.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')}
-                    </span>
-
+                  {/* Price Section */}
+                  <div className="pt-2 border-t border-stone-100 flex items-baseline justify-between">
+                    <div>
+                      <span className="text-[10px] text-stone-400 block">
+                        {t('dashboard.price')}
+                      </span>
+                      <span className="text-sm font-black text-stone-900">
+                        ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-emerald-600 font-bold block">
+                        {product.stockQuantity} {t('dashboard.inStock')}
+                      </span>
+                      <span className="text-[10px] text-stone-400">
+                        {t('dashboard.wholesale')} ₹
+                        {product.pricing.wholesaleTiers?.[1]?.unitPrice?.toLocaleString('en-IN') ?? product.pricing.wholesaleTiers?.[0]?.unitPrice?.toLocaleString('en-IN') ?? 0}
+                      </span>
+                    </div>
                   </div>
-
                 </div>
-
               </div>
-
-            </div>
-
-          ))}
-
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
     </div>

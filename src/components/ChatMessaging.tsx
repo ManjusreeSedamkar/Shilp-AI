@@ -1,7 +1,16 @@
-import React, { useState } from 'react';
-import { MessageSquare, Send, ArrowLeft, Palette, Ruler, Layers, PenTool, Hash, FileText, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  MessageSquare, Send, ArrowLeft, Palette, Ruler, Layers,
+  PenTool, Hash, FileText, CheckCircle2, Image as ImageIcon, X, Loader2
+} from 'lucide-react';
 import { Conversation, ChatMessage, CustomizationRequest, Language, UserRole } from '../types';
 import { translate } from '../services/translations';
+import {
+  subscribeToMessages,
+  fetchMessages,
+  mapSupabaseMessageToChatMessage,
+  uploadImageToSupabase
+} from '../services/supabase';
 
 interface ChatMessagingProps {
   conversations: Conversation[];
@@ -9,7 +18,12 @@ interface ChatMessagingProps {
   currentUserRole: UserRole;
   currentUserName: string;
   language: Language;
-  onSendMessage: (conversationId: string, text: string, customizationRequest?: CustomizationRequest) => void;
+  onSendMessage: (
+    conversationId: string,
+    text: string,
+    customizationRequest?: CustomizationRequest,
+    imageUrl?: string
+  ) => void;
   onStartConversation: (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => void;
 }
 
@@ -26,14 +40,108 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
   const [messageText, setMessageText] = useState('');
   const [showCustomizationForm, setShowCustomizationForm] = useState(false);
   const [customization, setCustomization] = useState<CustomizationRequest>({});
+
+  // Image attachment state
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const t = (key: string) => translate(language, key);
 
-  const activeConversation = conversations.find(c => c.id === activeConversationId);
+  // Secure participant filtering: show conversations relevant to current user or default demo conversations
+  const participantConversations = conversations.filter(c =>
+    c.buyerId === currentUserId ||
+    c.artisanId === currentUserId ||
+    c.id.startsWith('conv-') ||
+    !currentUserId
+  );
 
-  const handleSend = () => {
-    if (!activeConversationId || !messageText.trim()) return;
-    onSendMessage(activeConversationId, messageText.trim());
+  const activeConversation = participantConversations.find(c => c.id === activeConversationId);
+
+  // Realtime subscription & initial messages fetch for active conversation
+  useEffect(() => {
+    if (!activeConversationId) return;
+
+    // 1. Initial fetch from Supabase
+    fetchMessages(activeConversationId).then((fetchedSupabaseMsgs) => {
+      if (fetchedSupabaseMsgs && fetchedSupabaseMsgs.length > 0) {
+        const mappedMsgs = fetchedSupabaseMsgs.map(mapSupabaseMessageToChatMessage);
+        const targetConv = conversations.find(c => c.id === activeConversationId);
+        if (targetConv) {
+          const existingIds = new Set(targetConv.messages.map(m => m.id));
+          const newFromSupabase = mappedMsgs.filter(m => !existingIds.has(m.id));
+          if (newFromSupabase.length > 0) {
+            targetConv.messages = [...targetConv.messages, ...newFromSupabase];
+            setActiveConversationId(id => id); // trigger render
+          }
+        }
+      }
+    });
+
+    // 2. Realtime subscription for incoming messages
+    const unsubscribe = subscribeToMessages(activeConversationId, (incomingRow) => {
+      const incomingMsg = mapSupabaseMessageToChatMessage(incomingRow);
+      const targetConv = conversations.find(c => c.id === activeConversationId);
+      if (targetConv) {
+        if (!targetConv.messages.some(m => m.id === incomingMsg.id)) {
+          targetConv.messages.push(incomingMsg);
+          setActiveConversationId(id => id); // trigger render
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [activeConversationId, conversations]);
+
+  // Scroll to bottom on new message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeConversation?.messages.length, activeConversationId]);
+
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => setImagePreviewUrl(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleClearImage = () => {
+    setSelectedImageFile(null);
+    setImagePreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleSend = async () => {
+    if (!activeConversationId || (!messageText.trim() && !selectedImageFile)) return;
+
+    let uploadedUrl: string | undefined = undefined;
+
+    if (selectedImageFile) {
+      setUploadingImage(true);
+      try {
+        const path = `chat/${activeConversationId}/${Date.now()}_${selectedImageFile.name}`;
+        uploadedUrl = await uploadImageToSupabase(selectedImageFile, 'chat-attachments', path);
+        if (!uploadedUrl && imagePreviewUrl) {
+          uploadedUrl = imagePreviewUrl; // fallback data URL if unconfigured
+        }
+      } catch (err) {
+        console.warn('[Chat] Image upload fallback:', err);
+        uploadedUrl = imagePreviewUrl || undefined;
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
+    const textToSend = messageText.trim() || (uploadedUrl ? '📷 Image attachment' : '');
+    onSendMessage(activeConversationId, textToSend, undefined, uploadedUrl);
+
     setMessageText('');
+    handleClearImage();
   };
 
   const handleSendCustomization = () => {
@@ -63,12 +171,12 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
           </div>
           <div>
             <h3 className="font-bold text-sm text-white">{t('chat.title')}</h3>
-            <p className="text-[11px] text-stone-400">{t('chat.conversations')}</p>
+            <p className="text-[11px] text-stone-400">Supabase Realtime Messaging</p>
           </div>
         </div>
         <span className="text-[11px] bg-white/10 text-stone-200 px-2.5 py-0.5 rounded-full border border-white/15 flex items-center gap-1.5 font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-          {conversations.length} {t('chat.conversations')}
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          {participantConversations.length} {t('chat.conversations')}
         </span>
       </div>
 
@@ -76,14 +184,14 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
       <div className="flex-1 flex flex-col sm:flex-row overflow-hidden">
         {/* Conversation List (Left Side) */}
         <div className={`${activeConversation ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-64 bg-stone-50/50 border-r border-stone-200 overflow-y-auto`}>
-          {conversations.length === 0 ? (
+          {participantConversations.length === 0 ? (
             <div className="p-6 text-center space-y-2">
               <div className="text-4xl">💬</div>
               <p className="text-xs font-semibold text-stone-700">{t('chat.noConversations')}</p>
               <p className="text-[11px] text-stone-500">{t('chat.startConversation')}</p>
             </div>
           ) : (
-            conversations.map((conv) => {
+            participantConversations.map((conv) => {
               const otherName = currentUserRole === 'buyer' ? conv.artisanName : conv.buyerName;
               const lastMsg = conv.messages[conv.messages.length - 1];
               return (
@@ -144,7 +252,7 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
               </div>
               <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                Online
+                Realtime Connected
               </span>
             </div>
 
@@ -163,6 +271,18 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                         <span className="font-bold">{msg.senderName}</span>
                         <span>{msg.timestamp}</span>
                       </div>
+
+                      {/* Image Attachment Rendering */}
+                      {msg.imageUrl && (
+                        <div className="mb-2">
+                          <img
+                            src={msg.imageUrl}
+                            alt="Attachment"
+                            className="max-h-48 rounded-xl object-cover border border-stone-200/50"
+                          />
+                        </div>
+                      )}
+
                       <p className="leading-relaxed whitespace-pre-line">{msg.text}</p>
 
                       {/* Customization Request Card */}
@@ -200,6 +320,7 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                   </div>
                 );
               })}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Customization Form */}
@@ -271,6 +392,30 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
               </div>
             )}
 
+            {/* Image Preview Pill before Send */}
+            {imagePreviewUrl && (
+              <div className="px-3 py-2 bg-stone-100 border-t border-stone-200 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <img src={imagePreviewUrl} alt="Preview" className="w-8 h-8 rounded-lg object-cover border border-stone-300" />
+                  <span className="text-xs text-stone-700 font-medium truncate max-w-[200px]">
+                    {selectedImageFile?.name}
+                  </span>
+                </div>
+                <button onClick={handleClearImage} className="p-1 rounded-full text-stone-500 hover:bg-stone-200">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Hidden File Input for Image Attachment */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageFileChange}
+            />
+
             {/* Input Area */}
             <div className="p-2.5 bg-white border-t border-stone-200">
               <div className="flex items-center space-x-2">
@@ -285,6 +430,20 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                 >
                   <FileText className="w-4 h-4" />
                 </button>
+
+                {/* Image Attachment Button */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`p-2 rounded-xl transition-all ${
+                    selectedImageFile
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                  }`}
+                  title="Attach Photo"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </button>
+
                 <input
                   type="text"
                   value={messageText}
@@ -293,12 +452,17 @@ export const ChatMessaging: React.FC<ChatMessagingProps> = ({
                   placeholder={t('chat.typeMessage')}
                   className="flex-1 px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-400"
                 />
+
                 <button
                   onClick={handleSend}
-                  disabled={!messageText.trim()}
-                  className="p-2 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-white transition-colors shadow-xs"
+                  disabled={(!messageText.trim() && !selectedImageFile) || uploadingImage}
+                  className="p-2 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:opacity-40 text-white transition-colors shadow-xs flex items-center justify-center"
                 >
-                  <Send className="w-4 h-4" />
+                  {uploadingImage ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>

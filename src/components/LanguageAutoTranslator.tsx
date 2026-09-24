@@ -321,14 +321,16 @@ function toEnglish(value: string): string {
     }
   }
 
+  const enDict = translations.en || {};
+
   // Existing application dictionary.
-  for (const key of Object.keys(translations.en)) {
-    const english = translations.en[key];
+  for (const key of Object.keys(enDict)) {
+    const english = enDict[key];
     if (typeof english !== 'string' || !english.trim()) continue;
     if (normalize(english) === v) return english;
 
     for (const lang of Object.keys(translations) as Language[]) {
-      const candidate = translations[lang][key];
+      const candidate = (translations[lang] || {})[key];
       if (typeof candidate === 'string' && normalize(candidate) === v) return english;
     }
   }
@@ -351,11 +353,12 @@ function buildMap(language: Language): TextMap {
   const map: TextMap = new Map();
   if (language === 'en') return map;
 
-  const targetDict = translations[language] || translations.en;
+  const enDict = translations.en || {};
+  const targetDict = translations[language] || enDict;
 
   // 1. Static dictionary (first priority)
-  for (const key of Object.keys(translations.en)) {
-    const english = translations.en[key];
+  for (const key of Object.keys(enDict)) {
+    const english = enDict[key];
     const target = targetDict[key];
 
     if (

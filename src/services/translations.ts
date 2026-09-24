@@ -2173,24 +2173,28 @@ export const LANGUAGE_METADATA: Record<Language, LanguageMetadata> = {
   doi: { code: 'doi', name: 'Dogri', nativeName: 'डोगरी', direction: 'ltr' },
   brx: { code: 'brx', name: 'Bodo', nativeName: 'बड़ो', direction: 'ltr' },
   sat: { code: 'sat', name: 'Santali', nativeName: 'ᱥᱟᱱᱛᱟᱲᱤ', direction: 'ltr' },
+  ks: { code: 'ks', name: 'Kashmiri', nativeName: 'کٲشُر', direction: 'rtl' },
 };
 
 // Translation helper function (Static priority -> Hybrid Runtime cache -> English fallback)
 export function translate(lang: Language, key: string): string {
-  const dict = translations[lang] || translations.en;
+  const dict = translations[lang];
   if (dict && dict[key]) {
     return dict[key];
   }
 
-  // Check hybrid runtime translation cache if static translation is missing
-  const englishText = translations.en?.[key];
-  if (englishText && lang !== 'en') {
-    const runtime = getStoredTranslation(lang, englishText);
-    if (runtime) return runtime;
-    queuePhrasesForTranslation([englishText], lang);
+  const enDict = translations.en || {};
+  if (enDict[key]) {
+    const englishText = enDict[key];
+    if (lang !== 'en') {
+      const runtime = getStoredTranslation(lang, englishText);
+      if (runtime) return runtime;
+      queuePhrasesForTranslation([englishText], lang);
+    }
+    return englishText;
   }
 
-  return englishText || key;
+  return key;
 }
 
 // Get language name in its own language
@@ -2200,7 +2204,7 @@ export function getLanguageName(lang: Language): string {
 
 // Get speech synthesis language code
 export function getSpeechLangCode(lang: Language): string {
-  const codes: Record<Language, string> = {
+  const codes: Partial<Record<Language, string>> = {
     en: 'en-IN',
     hi: 'hi-IN',
     te: 'te-IN',
@@ -2254,6 +2258,7 @@ const SCRIPT_MATCHERS: Record<Language, RegExp> = {
   doi: /[\u0900-\u097F]/, // Dogri (Devanagari)
   brx: /[\u0900-\u097F]/, // Bodo (Devanagari)
   sat: /[\u1C50-\u1C7F\u0980-\u09FF\u0900-\u097F]/, // Santali (Ol Chiki/Bengali/Devanagari)
+  ks: /[\u0600-\u06FF\u0900-\u097F]/, // Kashmiri (Nastaliq/Devanagari)
 };
 
 // Translate AI-generated descriptions to selected language

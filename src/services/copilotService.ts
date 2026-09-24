@@ -316,7 +316,7 @@ ${offeredPrice > 0 ? `• **खरीदार के प्रस्ताव (
 
       const draftProduct: Partial<ProductListing> = {
         id: `prod-${Date.now()}`,
-        artisanId: CURRENT_ARTISAN.id,
+        artisanId: CURRENT_ARTISAN.id, // UUID: '00000000-0000-0000-0000-000000000101' (demo), overridden by signed-in user
         artisanName: CURRENT_ARTISAN.name,
         state: CURRENT_ARTISAN.state,
         titleEn: attributes.titleEn,

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, ShoppingBag, UserCheck, Smartphone, Monitor, Globe, Award, Cpu, ShieldCheck, LogIn, LogOut, HelpCircle, User } from 'lucide-react';
+import { Sparkles, ShoppingBag, UserCheck, Smartphone, Monitor, Globe, Award, ShieldCheck, LogIn, LogOut, HelpCircle, User } from 'lucide-react';
 import { UserRole, Language } from '../types';
 import { AppLogo } from './AppLogo';
-import { ApiSettingsModal } from './ApiSettingsModal';
 import { AuthUser } from './AuthModal';
 import { translate } from '../services/translations';
 
@@ -33,7 +32,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCardModal,
   onOpenTutorial,
 }) => {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const t = (key: string) => translate(language, key);
 
@@ -168,16 +166,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </button>
 
-          {/* AI Settings Button */}
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            title="Configure Gemini API Key & AI Settings"
-            className="hidden sm:flex p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition-colors items-center gap-1"
-          >
-            <Cpu className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden lg:inline">AI Settings</span>
-          </button>
-
           {/* User Auth Profile / Login Button */}
           {currentUser ? (
             <div className="relative">
@@ -229,17 +217,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>How to Use Shilp-AI</span>
                   </button>
 
-                  <button
-                    onClick={() => {
-                      setShowUserDropdown(false);
-                      setIsSettingsOpen(true);
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-stone-50 text-stone-700 flex items-center gap-2 font-medium"
-                  >
-                    <Cpu className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>AI Engine Settings</span>
-                  </button>
-
                   <div className="border-t border-stone-100 my-1"></div>
 
                   <button
@@ -266,9 +243,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
       </div>
-
-      {/* API Settings Modal */}
-      <ApiSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </header>
   );
 };

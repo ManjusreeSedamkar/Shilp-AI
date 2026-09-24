@@ -6,7 +6,7 @@ import {
   Volume2, 
   Square, 
   Video, 
-  Upload, 
+  Upload,
   FileText, 
   Copy, 
   Check, 
@@ -196,8 +196,8 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
         ...prev,
         [selectedLang]: false
       }));
-      setShowUrlInput(false);
       setCustomUrlInput('');
+      setShowUrlInput(false);
     }
   };
 
@@ -373,10 +373,11 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
           </div>
         )}
 
+
         {/* Video Player Area */}
         <div className="relative bg-black aspect-video max-h-[520px] w-full flex items-center justify-center overflow-hidden">
           {videoError[selectedLang] ? (
-            /* Fallback display if video file is missing or still being added */
+            /* Fallback display if video file is missing */
             <div className="p-8 text-center text-stone-300 space-y-3 max-w-md">
               <div className="w-16 h-16 rounded-2xl bg-stone-800 text-saffron-400 mx-auto flex items-center justify-center border border-stone-700">
                 <Video className="w-8 h-8" />
@@ -386,8 +387,8 @@ export const TutorialPage: React.FC<TutorialPageProps> = ({
               </h3>
               <p className="text-xs text-stone-400 leading-relaxed">
                 {isHindi
-                  ? `अपनी हिन्दी वीडियो फ़ाइल को public/videos/tutorial-hi.mp4 के रूप में रखें, या ऊपर दिए गए 'लोकल वीडियो फ़ाइल चुनें' बटन से सीधे सेलेक्ट करें।`
-                  : `Place your video file in 'public/videos/${selectedLang === 'hi' ? 'tutorial-hi.mp4' : 'tutorial-en.mp4'}', or click 'Choose Video File' above to play any local video instantly.`}
+                  ? `अपनी हिन्दी वीडियो फ़ाइल को public/videos/tutorial-hi.mp4 के रूप में रखें।`
+                  : `Place your video file in 'public/videos/${selectedLang === 'hi' ? 'tutorial-hi.mp4' : 'tutorial-en.mp4'}'.`}
               </p>
               <div className="pt-2 flex justify-center gap-2">
                 <button

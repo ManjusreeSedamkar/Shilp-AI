@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ShoppingBag, ShieldCheck, Truck, CheckCircle2, CreditCard, ArrowRight, IndianRupee, Sparkles, Building2, User, Phone, MapPin } from 'lucide-react';
 import { ProductListing, Language } from '../types';
 import { translate } from '../services/translations';
+import { saveOrderToSupabase, isSupabaseConfigured } from '../services/supabase';
 import { getProductTitle, getProductDescription, getCategoryTranslation } from '../services/displayTranslation';
 
 interface CheckoutModalProps {
@@ -10,6 +11,7 @@ interface CheckoutModalProps {
   product: ProductListing;
   language?: Language;
   onOrderSuccess: (order: PlacedOrder) => void;
+  buyerId?: string;
 }
 
 export interface PlacedOrder {
@@ -36,6 +38,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   product,
   language = 'en',
   onOrderSuccess,
+  buyerId = '00000000-0000-0000-0000-000000000201',
 }) => {
   const [quantity, setQuantity] = useState<number>(1);
   const [orderType, setOrderType] = useState<'retail' | 'bulk'>('retail');
@@ -66,7 +69,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     e.preventDefault();
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const newOrder: PlacedOrder = {
         id: `ORD-${Date.now().toString().slice(-6)}`,
         productId: product.id,
@@ -91,6 +94,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         localStorage.setItem('shilp_ai_orders', JSON.stringify([newOrder, ...existing]));
       } catch (err) {
         console.warn('Could not save order to storage:', err);
+      }
+
+      // Save to Supabase (primary database)
+      if (isSupabaseConfigured()) {
+        await saveOrderToSupabase({
+          id: newOrder.id,
+          productId: newOrder.productId,
+          buyerId,
+          buyerName: newOrder.buyerName,
+          artisanId: newOrder.artisanId,
+          quantity: newOrder.quantity,
+          totalAmount: newOrder.totalAmount,
+          status: 'placed',
+        });
       }
 
       setPlacedOrder(newOrder);
