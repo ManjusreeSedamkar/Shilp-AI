@@ -4,6 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -25,11 +26,20 @@ export default {
           950: '#090d18',
         },
         craft: {
+          cream: '#FAF7F2',
+          sand: '#F4EFE6',
           terracotta: '#c85a32',
-          indigo: '#2b4c7e',
+          terracottaHover: '#b84e28',
+          terracottaDark: '#963717',
+          terracottaLight: '#fdf5ef',
+          terracottaBorder: '#edd5c8',
           turmeric: '#e59a1e',
+          turmericLight: '#fef7ea',
+          indigo: '#1a2744',
+          zari: '#dda73a',
+          brass: '#c29b38',
           silk: '#b33951',
-          brass: '#c29b38'
+          charcoal: '#241e1c',
         }
       },
       fontFamily: {

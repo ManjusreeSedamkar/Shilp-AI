@@ -295,7 +295,9 @@ export const ArtisanCopilot: React.FC<ArtisanCopilotProps> = ({
                 <div className="flex items-center justify-between mb-1.5 text-[10px] opacity-80 border-b border-stone-100/50 pb-1">
                   <span className="font-bold flex items-center gap-1">
                     {isUser ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3 text-stone-700" />}
-                    {isUser ? (translate(language, 'auto.you_artisan.7')) : 'ShilpSaathi'}
+                    {isUser
+                      ? translate(language, 'auto.you_artisan.7')
+                      : (isHindi ? 'शिल्प साथी (SHILP Saathi)' : 'SHILP Saathi AI')}
                   </span>
 
                   {/* Play / Stop Voice Button for Every AI Response */}
