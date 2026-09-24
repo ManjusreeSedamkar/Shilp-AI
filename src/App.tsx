@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { MobileFrame } from './components/MobileFrame';
+import { MobileNativeApp } from './components/MobileNativeApp';
 import { ArtisanDashboard } from './components/ArtisanDashboard';
 import { ArtisanStudio } from './components/ArtisanStudio';
 import { VoiceCatalogerModal } from './components/VoiceCatalogerModal';
@@ -91,10 +92,53 @@ const INITIAL_REVIEWS: ProductReview[] = [
 ];
 
 export function App() {
-  const [role, setRole] = useState<UserRole>('artisan');
+  const [role, setRole] = useState<UserRole>('buyer');
   const [language, setLanguage] = useState<Language>('en');
   const [isMobileFrame, setIsMobileFrame] = useState<boolean>(false);
+  const [isMobileScreen, setIsMobileScreen] = useState<boolean>(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [artisanTab, setArtisanTab] = useState<'dashboard' | 'studio' | 'voice' | 'copilot' | 'pricing' | 'chat' | 'reviews' | 'tutorials'>('dashboard');
+  
+  // Light Mode State (when true -> Light Mode ON; when false -> Dark Mode ON)
+  const [isLightOn, setIsLightOn] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('shilp_light_mode');
+      if (saved !== null) return saved === 'true';
+      return true; // Default to Light Mode ON!
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isLightOn) {
+      root.classList.remove('dark');
+      root.classList.add('light');
+    } else {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    }
+    try {
+      localStorage.setItem('shilp_light_mode', String(isLightOn));
+    } catch {
+      // ignore
+    }
+  }, [isLightOn]);
+
+  const toggleLightMode = () => {
+    setIsLightOn((prev) => !prev);
+  };
   
   // Persistent Products State
   const [products, setProducts] = useState<ProductListing[]>(() => {
@@ -282,7 +326,7 @@ export function App() {
     );
   };
 
-  const handleStartConversation = (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => {
+  const handleStartConversation = (artisanId: string, artisanName: string, productId?: string, productTitle?: string): string => {
     const currentBuyerId = currentUser?.id || 'buyer-201';
     const currentBuyerName = currentUser?.name || 'Vikram Mehta';
 
@@ -294,11 +338,12 @@ export function App() {
       if (role === 'artisan') {
         setArtisanTab('chat');
       }
-      return;
+      return existing.id;
     }
 
+    const newConvId = `conv-${Date.now()}`;
     const newConversation: Conversation = {
-      id: `conv-${Date.now()}`,
+      id: newConvId,
       buyerId: currentBuyerId,
       buyerName: currentBuyerName,
       artisanId,
@@ -308,7 +353,7 @@ export function App() {
       messages: [
         {
           id: `msg-${Date.now()}`,
-          conversationId: `conv-${Date.now()}`,
+          conversationId: newConvId,
           senderId: currentBuyerId,
           senderRole: 'buyer',
           senderName: currentBuyerName,
@@ -326,6 +371,7 @@ export function App() {
       setArtisanTab('chat');
     }
     showToast('Conversation started with artisan!');
+    return newConvId;
   };
 
   // Reviews System
@@ -346,29 +392,33 @@ export function App() {
   return (
     <>
       <LanguageAutoTranslator language={language} />
-    <div className="min-h-screen min-h-[100dvh] bg-stone-100 text-stone-900 font-sans flex flex-col w-full max-w-full overflow-x-hidden">
-      {/* Universal Government & Application Navbar */}
-      <Navbar
-        role={role}
-        setRole={(newRole) => {
-          setRole(newRole);
-          if (currentUser) {
-            setCurrentUser({ ...currentUser, role: newRole });
-          }
-        }}
-        language={language}
-        setLanguage={setLanguage}
-        isMobileFrame={isMobileFrame}
-        setIsMobileFrame={setIsMobileFrame}
-        currentUser={currentUser}
-        onOpenAuth={() => setShowAuthModal(true)}
-        onLogout={() => {
-          setCurrentUser(null);
-          showToast('Signed out successfully.');
-        }}
-        onOpenCardModal={() => setShowCardModal(true)}
-        onOpenTutorial={() => setShowOnboarding(true)}
-      />
+    <div className="min-h-screen min-h-[100dvh] bg-[#FAF8F5] dark:bg-[#070B14] text-stone-900 dark:text-stone-100 font-sans flex flex-col w-full max-w-full overflow-x-hidden transition-colors duration-250">
+      {/* Universal Government & Application Navbar (Shown on desktop) */}
+      {!isMobileScreen && (
+        <Navbar
+          role={role}
+          setRole={(newRole) => {
+            setRole(newRole);
+            if (currentUser) {
+              setCurrentUser({ ...currentUser, role: newRole });
+            }
+          }}
+          language={language}
+          setLanguage={setLanguage}
+          isMobileFrame={isMobileFrame}
+          setIsMobileFrame={setIsMobileFrame}
+          currentUser={currentUser}
+          onOpenAuth={() => setShowAuthModal(true)}
+          onLogout={() => {
+            setCurrentUser(null);
+            showToast('Signed out successfully.');
+          }}
+          onOpenCardModal={() => setShowCardModal(true)}
+          onOpenTutorial={() => setShowOnboarding(true)}
+          isLightOn={isLightOn}
+          onToggleLightMode={toggleLightMode}
+        />
+      )}
 
       {/* Floating Success Toast */}
       {toastMessage && (
@@ -416,27 +466,76 @@ export function App() {
 
       {/* Main Content Area wrapped in optional Mobile Smartphone Simulator Frame */}
       <main className="flex-1 w-full max-w-full overflow-x-hidden flex flex-col justify-start">
-        <MobileFrame isMobileFrame={isMobileFrame}>
-          <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-5 w-full max-w-full overflow-x-hidden flex-1 flex flex-col">
-            {role === 'buyer' ? (
-              /* Buyer / Government Portal View */
+        <MobileFrame isMobileFrame={isMobileFrame} setIsMobileFrame={setIsMobileFrame}>
+          {isMobileFrame || isMobileScreen ? (
+            /* Dedicated Native Mobile Application (Matching the 5-screen UI Kit from User Reference Image) */
+            <MobileNativeApp
+              products={products}
+              currentUser={currentUser}
+              role={role}
+              setRole={(newRole) => {
+                setRole(newRole);
+                if (currentUser) {
+                  setCurrentUser({ ...currentUser, role: newRole });
+                }
+              }}
+              language={language}
+              setLanguage={setLanguage}
+              conversations={conversations}
+              onSendMessage={handleSendMessage}
+              reviews={reviews}
+              onSelectProduct={(prod) => setSelectedProduct(prod)}
+              onStartConversation={handleStartConversation}
+              onBuyNow={(prod) => {
+                setSelectedProduct(null);
+                setProductToCheckout(prod);
+              }}
+              onOpenAuth={() => setShowAuthModal(true)}
+              onLogout={() => {
+                setCurrentUser(null);
+                showToast('Signed out successfully.');
+              }}
+              onOpenCardModal={() => setShowCardModal(true)}
+              onOpenTutorial={() => setShowOnboarding(true)}
+              isLightOn={isLightOn}
+              onToggleLightMode={toggleLightMode}
+              onListingCreated={handleListingCreated}
+            />
+          ) : role === 'buyer' ? (
+            /* Buyer / Government Portal View: Edge-to-edge layout with zero padding on Hero */
+            <div className="w-full max-w-full overflow-x-hidden flex-1 flex flex-col p-0 m-0">
               <BuyerPortal
                 products={products}
                 onSelectProduct={(prod) => setSelectedProduct(prod)}
                 onStartConversation={handleStartConversation}
                 language={language}
+                onLaunchStudio={() => {
+                  setRole('artisan');
+                  setArtisanTab('studio');
+                }}
               />
-            ) : (
-              /* Artisan App View with Navigation */
+            </div>
+          ) : (
+            /* Artisan App View with Navigation - contained within standard padding */
+            <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-5 w-full max-w-full overflow-x-hidden flex-1 flex flex-col">
               <div className="space-y-3 sm:space-y-4 flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
                 {/* Mobile / Low-Literacy Quick Switcher Bar */}
-                <div className="bg-white p-1.5 rounded-2xl border border-stone-200/90 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex items-center gap-1 overflow-x-auto no-scrollbar w-full max-w-full touch-pan-x">
+                <div className="bg-white dark:bg-[#0F172A] p-1.5 rounded-2xl border-2 border-[#EADCD5] dark:border-stone-800 shadow-[0_2px_8px_rgba(200,90,50,0.06)] flex items-center gap-1 overflow-x-auto no-scrollbar w-full max-w-full touch-pan-x">
+                  <button
+                    onClick={() => setRole('buyer')}
+                    className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 shadow-xs hover:opacity-90"
+                    title="View Heritage Hero & Craft Showcase"
+                  >
+                    <Sparkles className="w-4 h-4 text-stone-950" />
+                    <span>Heritage Showcase 🏛️</span>
+                  </button>
+
                   <button
                     onClick={() => setArtisanTab('dashboard')}
                     className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'dashboard'
-                        ? 'bg-stone-900 text-white shadow-xs font-semibold'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        ? 'bg-[#C85A32] text-white shadow-xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-[#C85A32] dark:hover:text-amber-300 hover:bg-[#FAF0EB] dark:hover:bg-[#1A2644]'
                     }`}
                   >
                     <Home className="w-4 h-4" />
@@ -447,8 +546,8 @@ export function App() {
                     onClick={() => setArtisanTab('studio')}
                     className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'studio'
-                        ? 'bg-stone-900 text-white shadow-xs font-semibold'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        ? 'bg-[#C85A32] text-white shadow-xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-[#C85A32] dark:hover:text-amber-300 hover:bg-[#FAF0EB] dark:hover:bg-[#1A2644]'
                     }`}
                   >
                     <Camera className="w-4 h-4" />
@@ -459,8 +558,8 @@ export function App() {
                     onClick={() => setArtisanTab('voice')}
                     className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'voice'
-                        ? 'bg-stone-900 text-white shadow-xs font-semibold'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        ? 'bg-[#C85A32] text-white shadow-xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-[#C85A32] dark:hover:text-amber-300 hover:bg-[#FAF0EB] dark:hover:bg-[#1A2644]'
                     }`}
                   >
                     <Mic className="w-4 h-4" />
@@ -471,8 +570,8 @@ export function App() {
                     onClick={() => setArtisanTab('copilot')}
                     className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'copilot'
-                        ? 'bg-stone-900 text-white shadow-xs font-semibold'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        ? 'bg-[#C85A32] text-white shadow-xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-[#C85A32] dark:hover:text-amber-300 hover:bg-[#FAF0EB] dark:hover:bg-[#1A2644]'
                     }`}
                   >
                     <Bot className="w-4 h-4" />
@@ -483,8 +582,8 @@ export function App() {
                     onClick={() => setArtisanTab('pricing')}
                     className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'pricing'
-                        ? 'bg-stone-900 text-white shadow-xs font-semibold'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        ? 'bg-[#C85A32] text-white shadow-xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-[#C85A32] dark:hover:text-amber-300 hover:bg-[#FAF0EB] dark:hover:bg-[#1A2644]'
                     }`}
                   >
                     <IndianRupee className="w-4 h-4" />
@@ -496,14 +595,14 @@ export function App() {
                     onClick={() => setArtisanTab('chat')}
                     className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'chat'
-                        ? 'bg-stone-900 text-white shadow-xs font-semibold'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        ? 'bg-[#C85A32] text-white shadow-xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-[#C85A32] dark:hover:text-amber-300 hover:bg-[#FAF0EB] dark:hover:bg-[#1A2644]'
                     }`}
                   >
                     <MessageSquare className="w-4 h-4" />
                     <span>{t('chat.title')}</span>
                     {conversations.length > 0 && (
-                      <span className="bg-stone-200 text-stone-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      <span className="bg-[#FAF0EB] dark:bg-stone-800 text-[#A33F1B] dark:text-amber-300 border border-[#E8CEBF] dark:border-stone-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                         {conversations.length}
                       </span>
                     )}
@@ -514,8 +613,8 @@ export function App() {
                     onClick={() => setArtisanTab('reviews')}
                     className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'reviews'
-                        ? 'bg-stone-900 text-white shadow-xs font-semibold'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        ? 'bg-[#C85A32] text-white shadow-xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-[#C85A32] dark:hover:text-amber-300 hover:bg-[#FAF0EB] dark:hover:bg-[#1A2644]'
                     }`}
                   >
                     <Star className="w-4 h-4" />
@@ -527,13 +626,13 @@ export function App() {
                     onClick={() => setArtisanTab('tutorials')}
                     className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                       artisanTab === 'tutorials'
-                        ? 'bg-stone-900 text-white shadow-xs font-semibold'
-                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        ? 'bg-[#C85A32] text-white shadow-xs font-bold'
+                        : 'text-stone-600 dark:text-stone-300 hover:text-[#C85A32] dark:hover:text-amber-300 hover:bg-[#FAF0EB] dark:hover:bg-[#1A2644]'
                     }`}
                   >
                     <Video className="w-4 h-4" />
                     <span>{language === 'hi' ? 'ट्यूटोरियल' : 'Tutorials'}</span>
-                    <span className="bg-stone-100 text-stone-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full border border-stone-200">
+                    <span className="bg-[#FAF0EB] dark:bg-stone-800 text-[#A33F1B] dark:text-amber-300 border border-[#E8CEBF] dark:border-stone-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
                       2
                     </span>
                   </button>
@@ -619,8 +718,8 @@ export function App() {
                   )}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </MobileFrame>
       </main>
 
@@ -645,19 +744,21 @@ export function App() {
         />
       )}
 
-      {/* Bottom Footer */}
-      <footer className="bg-stone-900 text-stone-400 py-6 text-center text-xs border-t border-stone-800">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2">
-            <span className="font-extrabold text-white">SHILP-AI</span>
-            <span>•</span>
-            <span>Ministry of Social Justice and Empowerment (MoSJE), Government of India</span>
+      {/* Bottom Footer (Shown on desktop) */}
+      {!isMobileScreen && !isMobileFrame && (
+        <footer className="bg-stone-900 text-stone-400 py-6 text-center text-xs border-t border-stone-800">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center space-x-2">
+              <span className="font-extrabold text-white">SHILP-AI</span>
+              <span>•</span>
+              <span>Ministry of Social Justice and Empowerment (MoSJE), Government of India</span>
+            </div>
+            <div className="text-[11px] text-stone-500">
+              Heritage & Culture • AI-Driven Market Linkage for Marginalized Artisans
+            </div>
           </div>
-          <div className="text-[11px] text-stone-500">
-            Heritage & Culture • AI-Driven Market Linkage for Marginalized Artisans
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
     </>
   );

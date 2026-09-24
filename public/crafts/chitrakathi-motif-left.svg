@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320" fill="none" stroke="currentColor">
+  <!-- Authentic Pinguli Chitrakathi Folk Art Motif (Maharashtra Thakar Tradition) -->
+  <g stroke="#C85A32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Ornate Traditional Arch Border -->
+    <path d="M20 300 V70 Q120 10 220 70 V300" stroke-width="3" stroke-dasharray="2 4"/>
+    <path d="M30 290 V75 Q120 25 210 75 V290" stroke-width="1.5"/>
+    
+    <!-- Sun / Mandala Medallion -->
+    <circle cx="120" cy="55" r="18" stroke-width="2" fill="#F59E0B" fill-opacity="0.15"/>
+    <circle cx="120" cy="55" r="8" fill="#C85A32" fill-opacity="0.25"/>
+    <path d="M120 30 V24 M120 80 V86 M95 55 H89 M145 55 H151 M102 37 L98 33 M138 73 L142 77 M102 73 L98 77 M138 37 L142 33"/>
+
+    <!-- Chitrakathi Mythological Warrior / Bard Figure -->
+    <!-- Traditional Crown (Mukuta) -->
+    <polygon points="120,95 105,115 135,115" stroke-width="2" fill="#DDA73A" fill-opacity="0.2"/>
+    <circle cx="120" cy="92" r="3" fill="#C85A32"/>
+    
+    <!-- Face (Profile View - Iconic Chitrakathi Feature: Large Almond Eye) -->
+    <path d="M110 115 Q120 120 128 128 Q125 135 118 138 Q112 142 108 140" stroke-width="2"/>
+    <ellipse cx="122" cy="125" rx="5" ry="3" fill="#241E1C"/>
+    <path d="M116 120 Q124 117 128 121" stroke-width="1.5"/>
+    <!-- Traditional Ear Ornament (Kundal) -->
+    <circle cx="108" cy="130" r="5" stroke-width="1.5" fill="#F59E0B" fill-opacity="0.3"/>
+
+    <!-- Torso and Royal Costume (Angarkha) -->
+    <path d="M108 140 L90 195 H150 L128 140 Z" stroke-width="2" fill="#C85A32" fill-opacity="0.1"/>
+    <path d="M100 160 Q120 170 140 160" stroke-width="1.5"/>
+    <path d="M95 180 Q120 190 145 180" stroke-width="1.5"/>
+
+    <!-- Arms & Weapon / Musical Prop (Ektara / Bow) -->
+    <path d="M92 145 Q70 165 75 190 Q90 185 100 175" stroke-width="2"/>
+    <path d="M125 145 Q155 160 165 185" stroke-width="2"/>
+    <!-- Traditional Chitrakathi Staff / Ektara -->
+    <line x1="65" y1="120" x2="80" y2="250" stroke-width="2.5" stroke="#DDA73A"/>
+    <circle cx="65" cy="120" r="6" fill="#F59E0B" fill-opacity="0.4"/>
+
+    <!-- Dhoti / Lower Garment with Dynamic Folds -->
+    <path d="M90 195 L80 255 Q95 265 115 255 L120 210 L125 255 Q145 265 160 255 L150 195 Z" stroke-width="2" fill="#DDA73A" fill-opacity="0.15"/>
+    <line x1="120" y1="195" x2="120" y2="250" stroke-width="1.5"/>
+    <path d="M85 220 Q100 230 115 220 M125 220 Q140 230 155 220" stroke-width="1.2"/>
+
+    <!-- Traditional Decorative Floral Base Motif -->
+    <path d="M40 290 Q120 265 200 290" stroke-width="2"/>
+    <circle cx="80" cy="285" r="4" fill="#C85A32" fill-opacity="0.3"/>
+    <circle cx="120" cy="280" r="5" fill="#DDA73A" fill-opacity="0.4"/>
+    <circle cx="160" cy="285" r="4" fill="#C85A32" fill-opacity="0.3"/>
+  </g>
+</svg>

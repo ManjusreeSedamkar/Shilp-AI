@@ -89,18 +89,18 @@ export const AppLogo: React.FC<AppLogoProps> = ({
       {/* Typography */}
       <div className="flex flex-col">
         <div className="flex items-center gap-1.5 leading-none">
-          <span className={`font-black tracking-tight text-stone-900 ${textSizes[size]}`}>
+          <span className={`font-black tracking-tight text-stone-900 dark:text-white drop-shadow-[0_1px_4px_rgba(255,255,255,0.15)] ${textSizes[size]}`}>
             SHILP
           </span>
-          <span className={`font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-saffron-600 to-amber-500 ${textSizes[size]}`}>
+          <span className={`font-black tracking-tight text-amber-600 dark:text-amber-400 drop-shadow-[0_1px_6px_rgba(245,158,11,0.3)] ${textSizes[size]}`}>
             AI
           </span>
-          <span className="text-[10px] font-semibold text-stone-400 font-sans tracking-wide ml-0.5">
+          <span className="text-[10px] font-bold text-stone-400 dark:text-stone-300 font-sans tracking-wide ml-0.5">
             शिल्प
           </span>
         </div>
         {showTagline && (
-          <span className="text-[10.5px] font-medium text-stone-500 tracking-tight leading-tight mt-0.5">
+          <span className="text-[10.5px] font-medium text-stone-500 dark:text-stone-300 tracking-tight leading-tight mt-0.5">
             Craft to Commerce
           </span>
         )}

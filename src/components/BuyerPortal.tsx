@@ -1,27 +1,116 @@
-import React, { useState } from 'react';
-import { Search, Award, ShieldCheck, MessageSquare, Building2, CheckCircle2, Send, X, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { 
+  Search, 
+  Award, 
+  ShieldCheck, 
+  MessageSquare, 
+  Building2, 
+  CheckCircle2, 
+  Send, 
+  X, 
+  Sparkles, 
+  Loader2, 
+  ArrowDown,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal,
+  RotateCcw,
+  Camera,
+  Layers,
+  Image as ImageIcon
+} from 'lucide-react';
 import { ProductListing, Language } from '../types';
 import { CURRENT_ARTISAN } from '../data/craftPresets';
+import { HeritageHeroSection } from './HeritageHeroSection';
+import { CraftAtlasExplorer } from './CraftAtlasExplorer';
+import { useMobileMode } from './MobileFrame';
 
 interface BuyerPortalProps {
   products: ProductListing[];
   onSelectProduct: (product: ProductListing) => void;
   onStartConversation?: (artisanId: string, artisanName: string, productId?: string, productTitle?: string) => void;
   language?: Language;
+  onLaunchStudio?: () => void;
 }
+
+/**
+ * Museum-Style Lazy Image with loading shimmer and fallback
+ */
+const LazyProductImage: React.FC<{
+  src: string;
+  alt: string;
+  className?: string;
+}> = ({ src, alt, className = '' }) => {
+  const [loaded, setLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-[#FAF7F2] dark:bg-[#131B2E] flex items-center justify-center">
+      {!loaded && !hasError && (
+        <div className="absolute inset-0 bg-gradient-to-r from-stone-200 via-stone-100 to-stone-200 dark:from-stone-800 dark:via-stone-700 dark:to-stone-800 animate-pulse flex items-center justify-center">
+          <div className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 text-[11px] font-mono">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-spin" />
+            <span>Loading...</span>
+          </div>
+        </div>
+      )}
+      <img
+        src={hasError ? 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80' : src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          setHasError(true);
+          setLoaded(true);
+        }}
+        className={`${className} transition-opacity duration-500 ease-in-out ${
+          loaded ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+    </div>
+  );
+};
 
 export const BuyerPortal: React.FC<BuyerPortalProps> = ({
   products,
   onSelectProduct,
   onStartConversation,
-  language = 'en'
+  language = 'en',
+  onLaunchStudio
 }) => {
+  const { isMobileMode } = useMobileMode();
+  // Search & Faceted Filter States
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedState, setSelectedState] = useState<string>('all');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedWorkTypes, setSelectedWorkTypes] = useState<string[]>([]);
+  const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [onlyGICertified, setOnlyGICertified] = useState(false);
+  const [sortBy, setSortBy] = useState<'relevance' | 'price-asc' | 'price-desc' | 'days'>('relevance');
+
+  // Accordion Expand / Collapse States (Vastra Shilpa Kosh style)
+  const [expandedAccordions, setExpandedAccordions] = useState<Record<string, boolean>>({
+    mainCategory: true,
+    functionalCategory: true,
+    workType: true,
+    state: true,
+    material: false,
+    certification: true
+  });
+
+  // Mobile drawer state
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+
+  // RFQ Modal State
   const [activeRFQProduct, setActiveRFQProduct] = useState<ProductListing | null>(null);
   const [rfqSubmitted, setRfqSubmitted] = useState(false);
+
+  // Lazy Loading & Pagination State (8 items per batch for 4-col grid)
+  const BATCH_SIZE = 8;
+  const [visibleCount, setVisibleCount] = useState<number>(BATCH_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // RFQ Form State
   const [rfqForm, setRfqForm] = useState({
@@ -34,52 +123,238 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
     notes: 'Required for corporate festive gifting. Needs authentic MoSJE GI certification tag included.'
   });
 
-  const categories = [
-    'all',
-    'Textiles & Handloom',
-    'Metalcraft & Dhokra',
-    'Clay & Terracotta',
-    'Traditional Painting',
-  ];
+  const toggleAccordion = (key: string) => {
+    setExpandedAccordions(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
-  const states = [
-    { value: 'all', label: 'All States of India (सभी शिल्प राज्य)' },
-    { value: 'Andhra Pradesh', label: 'Andhra Pradesh (Kalamkari, Kondapalli, Dharmavaram)' },
-    { value: 'Assam', label: 'Assam (Muga Silk, Bamboo & Cane, Asharikandi Terracotta)' },
-    { value: 'Bihar', label: 'Bihar (Mithila Madhubani, Sikki Grass, Sujani)' },
-    { value: 'Chhattisgarh', label: 'Chhattisgarh (Bastar Dhokra, Kosa Silk, Wrought Iron)' },
-    { value: 'Gujarat', label: 'Gujarat (Ajrakh Block Print, Bandhani, Rogan Art, Patola)' },
-    { value: 'Himachal Pradesh', label: 'Himachal Pradesh (Kullu Shawls, Chamba Rumal, Woodcraft)' },
-    { value: 'Jammu & Kashmir', label: 'Jammu & Kashmir (Pashmina, Sozni, Walnut Wood, Kani)' },
-    { value: 'Karnataka', label: 'Karnataka (Channapatna Toys, Mysore Silk, Bidriware)' },
-    { value: 'Kerala', label: 'Kerala (Aranmula Mirror, Kasavu Handloom, Bell Metal)' },
-    { value: 'Madhya Pradesh', label: 'Madhya Pradesh (Chanderi, Maheshwari, Gond Art, Bagh Print)' },
-    { value: 'Maharashtra', label: 'Maharashtra (Paithani Sarees, Warli Art, Kolhapuri Leather)' },
-    { value: 'Manipur', label: 'Manipur (Kauna Reed Mats, Longpi Black Pottery)' },
-    { value: 'Nagaland', label: 'Nagaland (Naga Handloom, Cane & Bamboo Craft)' },
-    { value: 'Odisha', label: 'Odisha (Pattachitra, Sambalpuri Ikat, Silver Filigree)' },
-    { value: 'Punjab', label: 'Punjab (Phulkari Needlework, Traditional Jutti)' },
-    { value: 'Rajasthan', label: 'Rajasthan (Jaipur Blue Pottery, Sanganeri Print, Mojari)' },
-    { value: 'Tamil Nadu', label: 'Tamil Nadu (Kanchipuram Silk, Thanjavur Paintings, Swamimalai Bronze)' },
-    { value: 'Telangana', label: 'Telangana (Pochampally Ikat, Nirmal Toys, Pembarthi Brass)' },
-    { value: 'Uttar Pradesh', label: 'Uttar Pradesh (Banarasi Silk, Lucknow Chikankari, Moradabad Brass)' },
-    { value: 'West Bengal', label: 'West Bengal (Bankura Terracotta, Kantha Stitch, Baluchari, Dokra)' },
-  ];
+  // Distinct Categories with dynamic counts
+  const availableCategories = useMemo(() => {
+    const map = new Map<string, number>();
+    products.forEach(p => {
+      map.set(p.category, (map.get(p.category) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+  }, [products]);
 
-  // Filter products
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      p.titleEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.titleHi.includes(searchQuery) ||
-      p.craftTechnique.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.artisanName.toLowerCase().includes(searchQuery.toLowerCase());
+  // Distinct Work Types / Craft Techniques
+  const availableWorkTypes = useMemo(() => {
+    const list = [
+      { id: 'Weaving', label: 'Handloom & Tapestry Weaving', match: ['weaving', 'handloom', 'katan', 'ikat', 'shuttle'] },
+      { id: 'Brocade', label: 'Tested Zari Brocade & Kadhwa', match: ['zari', 'brocade', 'kadhwa', 'asawali'] },
+      { id: 'Embroidery', label: 'Sozni Needlework & Aari', match: ['sozni', 'needlework', 'embroidery', 'aari'] },
+      { id: 'BlockPrint', label: 'Resist Block Printing (Ajrakh)', match: ['block', 'ajrakh', 'print'] },
+      { id: 'LostWax', label: 'Lost-Wax Bronze Casting (Dhokra)', match: ['lost-wax', 'cire perdue', 'casting', 'dhokra'] },
+      { id: 'SilverInlay', label: 'Pure Silver Wire Inlay (Bidri)', match: ['inlay', 'bidri', 'damascening'] },
+      { id: 'Pottery', label: 'Wheel-Thrown & Stone Pottery', match: ['wheel-thrown', 'pottery', 'platter', 'serpentine', 'clay'] },
+      { id: 'FolkPainting', label: 'Palm Leaf & Nib Folk Art', match: ['painting', 'pattachitra', 'mithila', 'madhubani', 'tanjore'] },
+      { id: 'WoodTurning', label: 'Lacquer Wood Turning & Carving', match: ['turning', 'wood', 'lacquer', 'channapatna', 'kondapalli'] },
+      { id: 'LeatherCraft', label: 'Vegetable Tanning & Braiding', match: ['leather', 'tanning', 'chappal', 'sandal'] },
+    ];
 
-    const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
-    const matchesState = selectedState === 'all' || p.state === selectedState;
-    const matchesGI = !onlyGICertified || p.giCertified;
+    return list.map(item => {
+      const count = products.filter(p => {
+        const text = (p.craftTechnique + ' ' + p.titleEn + ' ' + p.category).toLowerCase();
+        return item.match.some(m => text.includes(m));
+      }).length;
+      return { ...item, count };
+    }).filter(item => item.count > 0);
+  }, [products]);
 
-    return matchesSearch && matchesCategory && matchesState && matchesGI;
-  });
+  // Distinct States
+  const availableStates = useMemo(() => {
+    const map = new Map<string, number>();
+    products.forEach(p => {
+      map.set(p.state, (map.get(p.state) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [products]);
+
+  // Distinct Materials
+  const availableMaterials = useMemo(() => {
+    const materialsList = [
+      { id: 'Silk', label: 'Pure Mulberry & Katan Silk', match: 'silk' },
+      { id: 'Wool', label: 'Cashmere & Himalayan Wool', match: 'wool' },
+      { id: 'Metal', label: 'Bell Metal & Silver Inlay', match: ['metal', 'brass', 'silver', 'zinc'] },
+      { id: 'Clay', label: 'Alluvial Clay & Quartz Glaze', match: ['clay', 'quartz', 'pottery', 'serpentine'] },
+      { id: 'Wood', label: 'Seasoned Teak & Aale Mara Wood', match: ['wood', 'teak', 'mara'] },
+      { id: 'Leather', label: 'Vegetable-Tanned Leather', match: 'leather' },
+      { id: 'NaturalPigments', label: 'Palm Leaf & Botanical Dyes', match: ['palm', 'pigment', 'botanical', 'dye'] },
+    ];
+
+    return materialsList.map(item => {
+      const count = products.filter(p => {
+        const mat = (p.primaryMaterial + ' ' + p.descriptionEn).toLowerCase();
+        if (Array.isArray(item.match)) {
+          return item.match.some(m => mat.includes(m));
+        }
+        return mat.includes(item.match);
+      }).length;
+      return { ...item, count };
+    }).filter(item => item.count > 0);
+  }, [products]);
+
+  // Filter products based on all faceted criteria
+  const filteredProducts = useMemo(() => {
+    let result = products.filter((p) => {
+      // 1. Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const searchable = (
+          p.titleEn + ' ' + 
+          p.titleHi + ' ' + 
+          p.craftTechnique + ' ' + 
+          p.artisanName + ' ' + 
+          p.state + ' ' + 
+          p.primaryMaterial + ' ' +
+          p.seoKeywords.join(' ')
+        ).toLowerCase();
+        if (!searchable.includes(q)) return false;
+      }
+
+      // 2. Main Category Filter (Multi-select)
+      if (selectedCategories.length > 0) {
+        if (!selectedCategories.includes(p.category)) return false;
+      }
+
+      // 3. Work Type Filter
+      if (selectedWorkTypes.length > 0) {
+        const text = (p.craftTechnique + ' ' + p.titleEn + ' ' + p.category).toLowerCase();
+        const matchesAny = selectedWorkTypes.some(wtId => {
+          const wt = availableWorkTypes.find(w => w.id === wtId);
+          return wt ? wt.match.some(m => text.includes(m)) : false;
+        });
+        if (!matchesAny) return false;
+      }
+
+      // 4. State Filter
+      if (selectedStates.length > 0) {
+        if (!selectedStates.includes(p.state)) return false;
+      }
+
+      // 5. Material Filter
+      if (selectedMaterials.length > 0) {
+        const mat = (p.primaryMaterial + ' ' + p.descriptionEn).toLowerCase();
+        const matchesAny = selectedMaterials.some(matId => {
+          const mObj = availableMaterials.find(m => m.id === matId);
+          if (!mObj) return false;
+          if (Array.isArray(mObj.match)) {
+            return mObj.match.some(m => mat.includes(m));
+          }
+          return mat.includes(mObj.match);
+        });
+        if (!matchesAny) return false;
+      }
+
+      // 6. GI Tagged Filter
+      if (onlyGICertified && !p.giCertified) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Sorting
+    if (sortBy === 'price-asc') {
+      result = [...result].sort((a, b) => a.pricing.suggestedRetailPrice - b.pricing.suggestedRetailPrice);
+    } else if (sortBy === 'price-desc') {
+      result = [...result].sort((a, b) => b.pricing.suggestedRetailPrice - a.pricing.suggestedRetailPrice);
+    } else if (sortBy === 'days') {
+      result = [...result].sort((a, b) => a.productionDays - b.productionDays);
+    }
+
+    return result;
+  }, [
+    products, 
+    searchQuery, 
+    selectedCategories, 
+    selectedWorkTypes, 
+    selectedStates, 
+    selectedMaterials, 
+    onlyGICertified, 
+    sortBy, 
+    availableWorkTypes, 
+    availableMaterials
+  ]);
+
+  // Reset pagination when any filter changes
+  useEffect(() => {
+    setVisibleCount(BATCH_SIZE);
+  }, [searchQuery, selectedCategories, selectedWorkTypes, selectedStates, selectedMaterials, onlyGICertified, sortBy]);
+
+  // Scroll Lazy Loading via Intersection Observer
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && !isLoadingMore && visibleCount < filteredProducts.length) {
+          setIsLoadingMore(true);
+          setTimeout(() => {
+            setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, filteredProducts.length));
+            setIsLoadingMore(false);
+          }, 450);
+        }
+      },
+      {
+        root: null,
+        rootMargin: '250px',
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [visibleCount, filteredProducts.length, isLoadingMore]);
+
+  // Helpers for multi-select toggles
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const toggleWorkType = (wtId: string) => {
+    setSelectedWorkTypes(prev => 
+      prev.includes(wtId) ? prev.filter(w => w !== wtId) : [...prev, wtId]
+    );
+  };
+
+  const toggleState = (st: string) => {
+    setSelectedStates(prev => 
+      prev.includes(st) ? prev.filter(s => s !== st) : [...prev, st]
+    );
+  };
+
+  const toggleMaterial = (matId: string) => {
+    setSelectedMaterials(prev => 
+      prev.includes(matId) ? prev.filter(m => m !== matId) : [...prev, matId]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setSelectedCategories([]);
+    setSelectedWorkTypes([]);
+    setSelectedStates([]);
+    setSelectedMaterials([]);
+    setOnlyGICertified(false);
+    setSortBy('relevance');
+  };
+
+  const activeFiltersCount = 
+    (searchQuery ? 1 : 0) + 
+    selectedCategories.length + 
+    selectedWorkTypes.length + 
+    selectedStates.length + 
+    selectedMaterials.length + 
+    (onlyGICertified ? 1 : 0);
 
   const handleOpenRFQ = (product: ProductListing, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -101,224 +376,637 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
     }, 2500);
   };
 
+  const handleExploreCraft = (categoryName: string) => {
+    setSelectedCategories([categoryName]);
+    const target = document.getElementById('procurement-catalog');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const visibleProducts = filteredProducts.slice(0, visibleCount);
+
   return (
-    <div className="space-y-6">
-      {/* Government & B2B Buyer Linkage Banner */}
-      <div className="bg-gradient-to-br from-[#1C1815] via-[#2A231D] to-[#181412] rounded-3xl p-6 sm:p-7 text-white border border-amber-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.18)] relative overflow-hidden">
-        {/* Top subtle golden shimmer line */}
-        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-500 via-saffron-400 to-amber-600"></div>
+    <div className="w-full p-0 m-0">
+      {/* ========================================================================= */}
+      {/* 1. REFINED HERITAGE HERO SECTION (100% FLUSH EDGE-TO-EDGE, ZERO PADDING) */}
+      {/* ========================================================================= */}
+      <HeritageHeroSection
+        language={language}
+        onExploreCraft={handleExploreCraft}
+        onLaunchStudio={onLaunchStudio}
+      />
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 backdrop-blur-xs">
-                <Building2 className="w-3.5 h-3.5" />
-                GeM & TRIFED Integrated
-              </span>
-              <span className="text-[11px] text-stone-300 font-medium">
-                MoSJE Verified Artisan Registry
-              </span>
-            </div>
-            <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white">
-              B2B Artisan Sourcing & Bulk Procurement
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
-              Direct market linkage for boutique retailers, export houses, interior designers, and corporate procurement. Purchase authentic GI-tagged handicrafts directly from master artisans with zero middleman commissions.
-            </p>
-          </div>
+      {/* ========================================================================= */}
+      {/* 2. INTERACTIVE CRAFT ATLAS & STATE HERITAGE EXPLORER                      */}
+      {/* ========================================================================= */}
+      <CraftAtlasExplorer
+        onSelectStateFromAtlas={(stateName) => {
+          setSelectedStates([stateName]);
+        }}
+        onExploreCraftCategory={(category) => {
+          setSelectedCategories([category]);
+        }}
+      />
 
-          <div className="bg-white/10 backdrop-blur border border-white/15 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-lg">
-            <span className="text-xs text-amber-200 uppercase font-bold tracking-wider">Fair Wage Impact</span>
-            <span className="text-2xl font-black text-amber-400 mt-0.5">100% Direct</span>
-            <span className="text-[10px] text-emerald-300 font-medium">DBT to Artisan Bank Accounts</span>
-          </div>
-        </div>
-      </div>
+      {/* ========================================================================= */}
+      {/* 3. REPOSITORY & B2B MARKETPLACE (VASTRA SHILPA KOSH TWO-COLUMN ARCHIVE)   */}
+      {/* ========================================================================= */}
+      <div id="procurement-catalog" className="max-w-[1440px] mx-auto px-3 sm:px-6 lg:px-8 py-6 space-y-6">
 
-      {/* Search & Filter Bar */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200 space-y-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by craft, GI tag, material, artisan name..."
-              className="w-full pl-9 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-400"
-            />
-          </div>
-
-          {/* State Dropdown */}
-          <select
-            value={selectedState}
-            onChange={(e) => setSelectedState(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-stone-400 max-w-xs truncate"
-          >
-            {states.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-
-          {/* GI Certified Toggle */}
-          <label className="flex items-center space-x-2 text-xs font-semibold text-stone-700 cursor-pointer whitespace-nowrap bg-stone-50 px-3 py-2.5 rounded-xl border border-stone-200">
-            <input
-              type="checkbox"
-              checked={onlyGICertified}
-              onChange={(e) => setOnlyGICertified(e.target.checked)}
-              className="rounded text-stone-900 accent-stone-900 focus:ring-stone-400"
-            />
-            <span className="flex items-center gap-1">
-              <Award className="w-3.5 h-3.5 text-amber-600" />
-              GI Tag Certified Only
+        {/* B2B Government Linkage Metric Strip */}
+        <div className={`bg-gradient-to-r from-[#1C1815] via-[#2A231D] to-[#181412] rounded-2xl ${isMobileMode ? 'p-3 gap-2.5' : 'p-4 sm:p-5 gap-4'} text-white border border-amber-500/25 shadow-lg flex flex-col md:flex-row items-center justify-between`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+            <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1.5 backdrop-blur-xs">
+              <Building2 className="w-3.5 h-3.5" />
+              GeM & TRIFED Integrated
             </span>
-          </label>
-        </div>
-
-        {/* Category Pills */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pt-1">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
-                selectedCategory === cat
-                  ? 'bg-stone-900 text-white shadow-xs'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
-            >
-              {cat === 'all' ? 'All Craft Categories' : cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Results Header */}
-      <div className="flex justify-between items-center text-xs text-stone-500 px-1">
-        <span>Showing <strong className="text-stone-900">{filteredProducts.length}</strong> verified artisan listings</span>
-        <span className="flex items-center gap-1">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          MoSJE Beneficiary Verified
-        </span>
-      </div>
-
-      {/* Product Catalog Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredProducts.map((product) => (
-          <div
-            key={product.id}
-            onClick={() => onSelectProduct(product)}
-            className="bg-white rounded-3xl border border-stone-200/90 overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
-          >
-            <div>
-              {/* Product Visual */}
-              <div className="relative aspect-[4/3] bg-[#FAF7F2] overflow-hidden flex items-center justify-center">
-                <img
-                  src={product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage}
-                  alt={product.titleEn}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-
-                <div className="absolute top-3 left-3 flex flex-col gap-1">
-                  {product.giCertified && (
-                    <span className="bg-[#1C1815]/90 text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-xs shadow-xs border border-amber-400/30 flex items-center gap-1">
-                      <Award className="w-3 h-3 text-amber-300" />
-                      GI Certified
-                    </span>
-                  )}
-                  <span className="bg-stone-900/85 text-saffron-300 text-[9px] font-mono px-2 py-0.5 rounded-md backdrop-blur">
-                    {product.state}
-                  </span>
-                </div>
-
-                <div className="absolute top-3 right-3">
-                  {(product.enhancedImageUrl || product.enhancedImage) && (
-                    <span className="bg-emerald-700/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs flex items-center gap-1 border border-emerald-500/40">
-                      <Sparkles className="w-2.5 h-2.5 text-amber-300" />
-                      AI Studio
-                    </span>
-                  )}
-                </div>
-
-                <div className="absolute bottom-3 right-3 bg-white/95 backdrop-blur text-stone-900 text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-stone-200/60">
-                  {product.stockQuantity} in stock
-                </div>
-              </div>
-
-              {/* Body */}
-              <div className="p-4 space-y-2.5">
-                <div>
-                  <span className="text-[10px] font-bold text-saffron-700 uppercase tracking-wider">
-                    {product.category}
-                  </span>
-                  <h3 className="font-bold text-sm text-stone-900 line-clamp-1 group-hover:text-saffron-700 transition-colors mt-0.5">
-                    {product.titleEn}
-                  </h3>
-                  <p className="text-xs text-stone-500 line-clamp-2 mt-1 leading-relaxed">
-                    {product.descriptionEn}
-                  </p>
-                </div>
-
-                {/* Artisan Info Line */}
-                <div className="flex items-center space-x-2 pt-1">
-                  <img
-                    src={CURRENT_ARTISAN.avatarUrl}
-                    alt={product.artisanName}
-                    className="w-5 h-5 rounded-full object-cover ring-1 ring-saffron-500"
-                  />
-                  <span className="text-xs font-semibold text-stone-700 truncate">
-                    {product.artisanName}
-                  </span>
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                </div>
-
-                {/* Pricing & Wholesale Tiers Pill */}
-                <div className="bg-gradient-to-b from-[#FAF8F5] to-[#F5EFEB] p-3.5 rounded-2xl border border-amber-100/90 space-y-1.5 shadow-2xs">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs text-stone-500">Retail MSRP:</span>
-                    <span className="text-sm font-black text-stone-900">
-                      ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between text-xs pt-1 border-t border-amber-200/60">
-                    <span className="font-semibold text-emerald-700">Bulk (10+ pcs):</span>
-                    <span className="font-bold text-emerald-700">
-                      ₹{product.pricing.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')} / pc
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between text-xs">
-                    <span className="font-semibold text-stone-800">Govt Bulk (50+ pcs):</span>
-                    <span className="font-bold text-stone-900">
-                      ₹{product.pricing.wholesaleTiers[2].unitPrice.toLocaleString('en-IN')} / pc
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card Footer Actions */}
-            <div className="p-4 pt-0 flex items-center justify-between gap-2">
-              <button
-                onClick={(e) => handleChatWithArtisan(product, e)}
-                className="p-2.5 rounded-xl border border-stone-200 hover:bg-emerald-50 text-stone-700 transition-colors shadow-2xs"
-                title="Chat with Artisan"
-              >
-                <MessageSquare className="w-4 h-4 text-emerald-600" />
-              </button>
-
-              <button
-                onClick={(e) => handleOpenRFQ(product, e)}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
-              >
-                <Building2 className="w-3.5 h-3.5 text-amber-300" />
-                <span>Request B2B Quote</span>
-              </button>
-            </div>
+            <span className="text-[11px] sm:text-xs text-stone-300 font-medium">
+              National Textile & Craft Repository (Vastra Shilpa Kosh Standard) • MoSJE Verified Beneficiary Direct Linkage
+            </span>
           </div>
-        ))}
+          <div className="flex items-center space-x-2 text-[11px] sm:text-xs text-emerald-400 font-bold bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-500/30">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>100% Direct DBT Payments • Fair Minimum Wage Protected</span>
+          </div>
+        </div>
+
+        {/* Mobile Filter Toggle Button */}
+        <div className={`${isMobileMode ? 'flex' : 'lg:hidden flex'} items-center justify-between bg-white dark:bg-[#0F172A] p-2.5 sm:p-3 rounded-xl border border-stone-200 dark:border-stone-800 shadow-xs`}>
+          <button
+            onClick={() => setIsMobileFiltersOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[#8B1D1D] text-white text-xs font-bold shadow-xs cursor-pointer"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Filter Repository</span>
+            {activeFiltersCount > 0 && (
+              <span className="bg-white text-[#8B1D1D] text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+          <span className="text-xs text-stone-500 dark:text-stone-400">
+            <strong>{filteredProducts.length}</strong> items found
+          </span>
+        </div>
+
+        {/* TWO-COLUMN REPOSITORY LAYOUT: Left Sidebar + Right Grid */}
+        <div className={`flex ${isMobileMode ? 'flex-col' : 'flex-col lg:flex-row'} items-start gap-4 sm:gap-6 w-full`}>
+          
+          {/* ===================================================================== */}
+          {/* LEFT COLUMN: VASTRA SHILPA KOSH FACETED FILTER SIDEBAR               */}
+          {/* ===================================================================== */}
+          <aside className={`
+            ${isMobileMode 
+              ? 'fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-[#0F172A] border-r border-stone-200 dark:border-stone-800 p-4 overflow-y-auto' 
+              : 'fixed lg:static inset-y-0 left-0 z-50 lg:z-0 w-80 sm:w-84 lg:w-72 xl:w-76 shrink-0 bg-white dark:bg-[#0F172A] lg:bg-transparent border-r lg:border-r-0 border-stone-200 dark:border-stone-800 p-5 lg:p-0 overflow-y-auto lg:overflow-visible'
+            }
+            transition-transform duration-300 ease-in-out
+            ${isMobileFiltersOpen ? 'translate-x-0 shadow-2xl' : (isMobileMode ? '-translate-x-full' : '-translate-x-full lg:translate-x-0')}
+          `}>
+            {/* Mobile Sidebar Close Header */}
+            <div className={`${isMobileMode ? 'flex' : 'lg:hidden flex'} items-center justify-between pb-3 mb-3 border-b border-stone-200 dark:border-stone-800`}>
+              <span className="font-bold text-[#8B1D1D] dark:text-red-400 text-sm">Faceted Repository Filters</span>
+              <button 
+                onClick={() => setIsMobileFiltersOpen(false)}
+                className="p-1 rounded-md text-stone-500 hover:text-stone-900"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-[#0F172A] rounded-2xl border border-stone-200/90 dark:border-stone-800 p-4 sm:p-5 shadow-xs space-y-5">
+              
+              {/* Vastra Shilpa Kosh Search Box with Red Search Button */}
+              <div>
+                <div className="flex items-stretch border border-stone-300 dark:border-stone-700 rounded-sm overflow-hidden bg-white dark:bg-stone-900 shadow-2xs focus-within:ring-2 focus-within:ring-[#8B1D1D]/30">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search repository..."
+                    className="w-full px-3 py-2 text-xs text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none bg-transparent"
+                  />
+                  <button
+                    onClick={() => {}}
+                    className="bg-[#8B1D1D] hover:bg-[#701616] text-white px-3.5 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                    title="Search"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {activeFiltersCount > 0 && (
+                  <div className="mt-2.5 flex items-center justify-between">
+                    <span className="text-[11px] font-mono text-stone-500">
+                      {activeFiltersCount} filter(s) active
+                    </span>
+                    <button
+                      onClick={clearAllFilters}
+                      className="text-[11px] font-bold text-[#8B1D1D] dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Clear All</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* ----------------------------------------------------------------- */}
+              {/* Accordion 1: Main Category (Vastra Shilpa Kosh)                   */}
+              {/* ----------------------------------------------------------------- */}
+              <div className="border-t border-stone-100 dark:border-stone-800/80 pt-3">
+                <button
+                  type="button"
+                  onClick={() => toggleAccordion('mainCategory')}
+                  className="w-full flex items-center justify-between text-left py-1 text-[#8B1D1D] dark:text-red-400 text-xs sm:text-sm font-bold tracking-tight hover:opacity-85 transition-opacity cursor-pointer"
+                >
+                  <span>Main Category</span>
+                  {expandedAccordions.mainCategory ? (
+                    <ChevronUp className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  )}
+                </button>
+
+                {expandedAccordions.mainCategory && (
+                  <div className="mt-2.5 space-y-1.5 pl-1 max-h-48 overflow-y-auto pr-1 no-scrollbar">
+                    {availableCategories.map(({ name, count }) => (
+                      <label
+                        key={name}
+                        className="flex items-center space-x-2 text-xs text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white cursor-pointer py-0.5 select-none"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(name)}
+                          onChange={() => toggleCategory(name)}
+                          className="rounded-xs text-[#8B1D1D] accent-[#8B1D1D] focus:ring-red-400 w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="truncate flex-1">{name}</span>
+                        <span className="text-[11px] text-stone-400 font-mono font-medium">[{count}]</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ----------------------------------------------------------------- */}
+              {/* Accordion 2: Functional Category / Work Type (Vastra Shilpa Kosh) */}
+              {/* ----------------------------------------------------------------- */}
+              <div className="border-t border-stone-100 dark:border-stone-800/80 pt-3">
+                <button
+                  type="button"
+                  onClick={() => toggleAccordion('workType')}
+                  className="w-full flex items-center justify-between text-left py-1 text-[#8B1D1D] dark:text-red-400 text-xs sm:text-sm font-bold tracking-tight hover:opacity-85 transition-opacity cursor-pointer"
+                >
+                  <span>Work Type / Craft Technique</span>
+                  {expandedAccordions.workType ? (
+                    <ChevronUp className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  )}
+                </button>
+
+                {expandedAccordions.workType && (
+                  <div className="mt-2.5 space-y-1.5 pl-1 max-h-52 overflow-y-auto pr-1 no-scrollbar">
+                    {availableWorkTypes.map(({ id, label, count }) => (
+                      <label
+                        key={id}
+                        className="flex items-center space-x-2 text-xs text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white cursor-pointer py-0.5 select-none"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedWorkTypes.includes(id)}
+                          onChange={() => toggleWorkType(id)}
+                          className="rounded-xs text-[#8B1D1D] accent-[#8B1D1D] focus:ring-red-400 w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="truncate flex-1">{label}</span>
+                        <span className="text-[11px] text-stone-400 font-mono font-medium">[{count}]</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ----------------------------------------------------------------- */}
+              {/* Accordion 3: State / Origin Region                                */}
+              {/* ----------------------------------------------------------------- */}
+              <div className="border-t border-stone-100 dark:border-stone-800/80 pt-3">
+                <button
+                  type="button"
+                  onClick={() => toggleAccordion('state')}
+                  className="w-full flex items-center justify-between text-left py-1 text-[#8B1D1D] dark:text-red-400 text-xs sm:text-sm font-bold tracking-tight hover:opacity-85 transition-opacity cursor-pointer"
+                >
+                  <span>State & Artisan Cluster</span>
+                  {expandedAccordions.state ? (
+                    <ChevronUp className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  )}
+                </button>
+
+                {expandedAccordions.state && (
+                  <div className="mt-2.5 space-y-1.5 pl-1 max-h-48 overflow-y-auto pr-1 no-scrollbar">
+                    {availableStates.map(({ name, count }) => (
+                      <label
+                        key={name}
+                        className="flex items-center space-x-2 text-xs text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white cursor-pointer py-0.5 select-none"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedStates.includes(name)}
+                          onChange={() => toggleState(name)}
+                          className="rounded-xs text-[#8B1D1D] accent-[#8B1D1D] focus:ring-red-400 w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="truncate flex-1">{name}</span>
+                        <span className="text-[11px] text-stone-400 font-mono font-medium">[{count}]</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ----------------------------------------------------------------- */}
+              {/* Accordion 4: Primary Material & Fibres                            */}
+              {/* ----------------------------------------------------------------- */}
+              <div className="border-t border-stone-100 dark:border-stone-800/80 pt-3">
+                <button
+                  type="button"
+                  onClick={() => toggleAccordion('material')}
+                  className="w-full flex items-center justify-between text-left py-1 text-[#8B1D1D] dark:text-red-400 text-xs sm:text-sm font-bold tracking-tight hover:opacity-85 transition-opacity cursor-pointer"
+                >
+                  <span>Material & Fabric</span>
+                  {expandedAccordions.material ? (
+                    <ChevronUp className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  )}
+                </button>
+
+                {expandedAccordions.material && (
+                  <div className="mt-2.5 space-y-1.5 pl-1 max-h-44 overflow-y-auto pr-1 no-scrollbar">
+                    {availableMaterials.map(({ id, label, count }) => (
+                      <label
+                        key={id}
+                        className="flex items-center space-x-2 text-xs text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white cursor-pointer py-0.5 select-none"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedMaterials.includes(id)}
+                          onChange={() => toggleMaterial(id)}
+                          className="rounded-xs text-[#8B1D1D] accent-[#8B1D1D] focus:ring-red-400 w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="truncate flex-1">{label}</span>
+                        <span className="text-[11px] text-stone-400 font-mono font-medium">[{count}]</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ----------------------------------------------------------------- */}
+              {/* Accordion 5: GI Tag Certification                                */}
+              {/* ----------------------------------------------------------------- */}
+              <div className="border-t border-stone-100 dark:border-stone-800/80 pt-3">
+                <button
+                  type="button"
+                  onClick={() => toggleAccordion('certification')}
+                  className="w-full flex items-center justify-between text-left py-1 text-[#8B1D1D] dark:text-red-400 text-xs sm:text-sm font-bold tracking-tight hover:opacity-85 transition-opacity cursor-pointer"
+                >
+                  <span>Verification & Tagging</span>
+                  {expandedAccordions.certification ? (
+                    <ChevronUp className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[#8B1D1D] dark:text-red-400" />
+                  )}
+                </button>
+
+                {expandedAccordions.certification && (
+                  <div className="mt-2.5 space-y-1.5 pl-1">
+                    <label className="flex items-center space-x-2 text-xs text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white cursor-pointer py-0.5 select-none">
+                      <input
+                        type="checkbox"
+                        checked={onlyGICertified}
+                        onChange={(e) => setOnlyGICertified(e.target.checked)}
+                        className="rounded-xs text-[#8B1D1D] accent-[#8B1D1D] focus:ring-red-400 w-3.5 h-3.5 cursor-pointer"
+                      />
+                      <span className="truncate flex-1 font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                        <Award className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                        GI Tag Certified Only
+                      </span>
+                      <span className="text-[11px] text-stone-400 font-mono font-medium">
+                        [{products.filter(p => p.giCertified).length}]
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </aside>
+
+          {/* Mobile backdrop */}
+          {isMobileFiltersOpen && (
+            <div 
+              onClick={() => setIsMobileFiltersOpen(false)}
+              className={`${isMobileMode ? 'fixed' : 'lg:hidden fixed'} inset-0 z-40 bg-black/60 backdrop-blur-xs`}
+            />
+          )}
+
+          {/* ===================================================================== */}
+          {/* RIGHT COLUMN: 4-COLUMN MUSEUM ARTIFACT GRID & CATALOG HEADER          */}
+          {/* ===================================================================== */}
+          <main className="flex-1 w-full min-w-0 space-y-4">
+            
+            {/* Top Toolbar: Result Count, Active Filter Chips, Sort By */}
+            <div className="bg-white dark:bg-[#0F172A] rounded-2xl p-4 border border-stone-200/90 dark:border-stone-800 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className="font-extrabold text-sm sm:text-base text-stone-900 dark:text-stone-100">
+                    Cultural Craft & Textile Archive
+                  </span>
+                  <span className="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                    {filteredProducts.length} artifacts
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                  National Repository standard catalog with direct artisan procurement linkage
+                </p>
+              </div>
+
+              {/* Sort Dropdown */}
+              <div className="flex items-center space-x-2 text-xs w-full md:w-auto justify-between md:justify-end">
+                <span className="text-stone-500 font-medium whitespace-nowrap">Sort by:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-3 py-1.5 bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-semibold text-stone-800 dark:text-stone-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#8B1D1D]/30"
+                >
+                  <option value="relevance">Relevance / Featured</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="days">Production Days (Fastest)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Active Filter Chips */}
+            {activeFiltersCount > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-xs text-stone-500 font-medium mr-1">Active Filters:</span>
+                {searchQuery && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-[#8B1D1D]/10 text-[#8B1D1D] dark:text-red-400 border border-[#8B1D1D]/20">
+                    Search: "{searchQuery}"
+                    <button onClick={() => setSearchQuery('')} className="hover:opacity-75">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {selectedCategories.map(cat => (
+                  <span key={cat} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                    {cat}
+                    <button onClick={() => toggleCategory(cat)} className="hover:opacity-75">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+                {selectedWorkTypes.map(wtId => {
+                  const wt = availableWorkTypes.find(w => w.id === wtId);
+                  return (
+                    <span key={wtId} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-stone-700">
+                      {wt ? wt.label : wtId}
+                      <button onClick={() => toggleWorkType(wtId)} className="hover:opacity-75">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+                {selectedStates.map(st => (
+                  <span key={st} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-stone-700">
+                    {st}
+                    <button onClick={() => toggleState(st)} className="hover:opacity-75">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+                {onlyGICertified && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                    GI Tagged Only
+                    <button onClick={() => setOnlyGICertified(false)} className="hover:opacity-75">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                <button
+                  onClick={clearAllFilters}
+                  className="text-xs text-[#8B1D1D] dark:text-amber-400 font-bold hover:underline ml-2"
+                >
+                  Reset all
+                </button>
+              </div>
+            )}
+
+            {/* Zero State if no matching filters */}
+            {filteredProducts.length === 0 && (
+              <div className="bg-white dark:bg-[#0F172A] rounded-3xl border border-stone-200 dark:border-stone-800 p-12 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-400 mx-auto flex items-center justify-center">
+                  <Search className="w-8 h-8" />
+                </div>
+                <h3 className="font-bold text-lg text-stone-900 dark:text-stone-100">
+                  No artifacts match your selected filter criteria
+                </h3>
+                <p className="text-xs text-stone-500 max-w-md mx-auto">
+                  Try unchecking some category boxes or clearing your search term to see more verified heritage items from the national repository.
+                </p>
+                <button
+                  onClick={clearAllFilters}
+                  className="px-5 py-2.5 rounded-xl bg-stone-900 dark:bg-amber-500 text-white dark:text-stone-950 font-bold text-xs shadow-xs"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            )}
+
+            {/* ================================================================= */}
+            {/* VASTRA SHILPA KOSH MUSEUM REPOSITORY CARD GRID (2-Col in Mobile)   */}
+            {/* ================================================================= */}
+            <div className={`grid ${isMobileMode ? 'grid-cols-2 gap-2.5' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-4.5'}`}>
+              {visibleProducts.map((product) => (
+                <div
+                  key={product.id}
+                  onClick={() => onSelectProduct(product)}
+                  className="bg-white dark:bg-[#0F172A] rounded-xl border border-stone-200/90 dark:border-stone-800 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Visual Card Top: Tall 4:5 Aspect Ratio with Watermark & Red Badge */}
+                    <div className="relative aspect-[4/5] bg-[#FAF8F5] dark:bg-[#111726] overflow-hidden flex items-center justify-center p-2 sm:p-2.5 border-b border-stone-100 dark:border-stone-800">
+                      
+                      {/* Product Photo */}
+                      <LazyProductImage
+                        src={product.enhancedImageUrl || product.enhancedImage || product.originalImageUrl || product.originalImage}
+                        alt={product.titleEn}
+                        className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal group-hover:scale-105 transition-transform duration-500"
+                      />
+
+                      {/* Top-Left: GI Badge & State */}
+                      <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                        {product.giCertified && (
+                          <span className="bg-[#1C1815]/90 text-amber-300 text-[8px] sm:text-[9px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md backdrop-blur-xs shadow-xs border border-amber-400/30 flex items-center gap-1">
+                            <Award className="w-2.5 h-2.5 text-amber-300" />
+                            GI Tagged
+                          </span>
+                        )}
+                        <span className="bg-stone-900/80 text-amber-200 text-[8px] sm:text-[9px] font-mono px-1 sm:px-1.5 py-0.5 rounded-md backdrop-blur">
+                          {product.state}
+                        </span>
+                      </div>
+
+                      {/* Center Watermark Outline Icon (Vastra Shilpa Kosh style) */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 dark:opacity-15">
+                        <ImageIcon className="w-8 sm:w-10 h-8 sm:h-10 text-stone-400" />
+                      </div>
+
+                      {/* Bottom-Right Circular MoSJE Watermark Seal */}
+                      <div className="absolute bottom-2 right-7 sm:right-8 pointer-events-none opacity-40 dark:opacity-30 select-none">
+                        <div className="w-6 sm:w-7 h-6 sm:h-7 rounded-full border border-stone-500/60 dark:border-amber-400/60 flex items-center justify-center p-0.5">
+                          <span className="text-[6px] sm:text-[7px] font-mono font-black text-stone-600 dark:text-amber-300 text-center leading-none">
+                            MoSJE
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Bottom-Right: Red Media / Gallery Badge (Vastra Shilpa Kosh Reference) */}
+                      <div className="absolute bottom-1.5 sm:bottom-2 right-1.5 sm:right-2 z-10">
+                        <div 
+                          className="bg-[#8B1D1D] text-white p-1 rounded-xs shadow-sm flex items-center justify-center"
+                          title="View High-Res Craft Visual"
+                        >
+                          <Camera className="w-2.5 sm:w-3 h-2.5 sm:h-3 text-white" />
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Body Typography: Clean Bold Title below image */}
+                    <div className={`${isMobileMode ? 'p-2 space-y-1.5' : 'p-3.5 space-y-2'}`}>
+                      <div>
+                        <h4 className={`font-bold ${isMobileMode ? 'text-[11px] leading-tight line-clamp-1' : 'text-xs sm:text-[13px] line-clamp-1 leading-snug'} text-stone-900 dark:text-stone-100 group-hover:text-[#8B1D1D] dark:group-hover:text-amber-400 transition-colors`}>
+                          {product.titleEn}
+                        </h4>
+                        <p className={`${isMobileMode ? 'text-[10px]' : 'text-[11px]'} text-stone-500 dark:text-stone-400 line-clamp-1 mt-0.5`}>
+                          {product.craftTechnique}
+                        </p>
+                      </div>
+
+                      {/* Artisan & MoSJE Beneficiary Tag */}
+                      <div className={`flex items-center justify-between ${isMobileMode ? 'text-[10px] pt-0.5' : 'text-[11px] pt-1'} text-stone-600 dark:text-stone-300`}>
+                        <span className="truncate font-medium">{product.artisanName}</span>
+                        <ShieldCheck className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      </div>
+
+                      {/* Pricing Row */}
+                      <div className={`bg-[#FAF8F5] dark:bg-stone-900/90 rounded-lg ${isMobileMode ? 'p-1.5 text-[10px]' : 'p-2 text-xs'} border border-stone-200/60 dark:border-stone-800 flex items-baseline justify-between`}>
+                        <div>
+                          <span className="text-[9px] text-stone-400 block leading-tight">MSRP</span>
+                          <span className="font-bold text-stone-900 dark:text-stone-100">
+                            ₹{product.pricing.suggestedRetailPrice.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[9px] text-emerald-700 dark:text-emerald-400 block leading-tight">Bulk Tier</span>
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                            ₹{product.pricing.wholesaleTiers[1].unitPrice.toLocaleString('en-IN')} / pc
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Bottom Quick Actions */}
+                  <div className={`${isMobileMode ? 'p-2 pt-0 gap-1' : 'p-3.5 pt-0 gap-1.5'} flex items-center`}>
+                    <button
+                      onClick={(e) => handleChatWithArtisan(product, e)}
+                      className={`${isMobileMode ? 'p-1.5' : 'p-2'} rounded-lg border border-stone-200 dark:border-stone-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-stone-600 dark:text-stone-300 transition-colors cursor-pointer`}
+                      title="Direct Chat with Artisan"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    </button>
+
+                    <button
+                      onClick={(e) => handleOpenRFQ(product, e)}
+                      className={`flex-1 ${isMobileMode ? 'py-1 px-1.5 text-[10px]' : 'py-1.5 px-2.5 text-[11px]'} rounded-lg bg-stone-900 dark:bg-[#8B1D1D] hover:bg-stone-800 dark:hover:bg-[#731717] text-white font-bold transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer`}
+                    >
+                      <Building2 className="w-3 h-3 text-amber-300" />
+                      <span>{isMobileMode ? 'Quote' : 'Request Quote'}</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ================================================================= */}
+            {/* SCROLL LAZY-LOADING SENTINEL & SHIMMER LOADING STATES             */}
+            {/* ================================================================= */}
+            <div ref={sentinelRef} className="h-6 w-full" />
+
+            {/* Shimmer Skeletons when fetching next batch on scroll */}
+            {isLoadingMore && (
+              <div className="w-full py-4 flex flex-col items-center justify-center gap-4">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#8B1D1D]/10 border border-[#8B1D1D]/30 text-[#8B1D1D] dark:text-red-400 text-xs font-bold shadow-xs">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Loading next repository artifacts from National Registry...</span>
+                </div>
+
+                {/* Card Skeleton Grid */}
+                <div className={`grid ${isMobileMode ? 'grid-cols-2 gap-2.5' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'} w-full`}>
+                  {[1, 2, 3, 4].map((n) => (
+                    <div
+                      key={n}
+                      className="bg-white dark:bg-[#0F172A] rounded-xl border border-stone-200 dark:border-stone-800 p-3 space-y-3 animate-pulse shadow-xs"
+                    >
+                      <div className="aspect-[4/5] rounded-lg bg-stone-200 dark:bg-stone-800 w-full" />
+                      <div className="h-3.5 bg-stone-200 dark:bg-stone-800 rounded-md w-3/4" />
+                      <div className="h-3 bg-stone-200 dark:bg-stone-800 rounded-md w-1/2" />
+                      <div className="h-9 bg-stone-100 dark:bg-stone-800/60 rounded-lg w-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Fallback load more button */}
+            {visibleCount < filteredProducts.length && !isLoadingMore && (
+              <div className="w-full flex flex-col items-center justify-center pt-2 pb-4 text-center">
+                <button
+                  onClick={() => {
+                    setIsLoadingMore(true);
+                    setTimeout(() => {
+                      setVisibleCount((prev) => Math.min(prev + BATCH_SIZE, filteredProducts.length));
+                      setIsLoadingMore(false);
+                    }, 400);
+                  }}
+                  className="px-6 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+                >
+                  <ArrowDown className="w-3.5 h-3.5 text-[#8B1D1D] dark:text-amber-400 animate-bounce" />
+                  <span>Load More Artifacts ({filteredProducts.length - visibleCount} remaining)</span>
+                  <span className="text-[10px] text-stone-400 font-normal hidden sm:inline">• or scroll down</span>
+                </button>
+              </div>
+            )}
+
+            {/* End of results indicator */}
+            {visibleCount >= filteredProducts.length && filteredProducts.length > 8 && (
+              <div className="w-full py-4 text-center">
+                <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800/80 text-stone-500 dark:text-stone-400 text-xs font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  All {filteredProducts.length} verified repository artifacts loaded
+                </span>
+              </div>
+            )}
+
+          </main>
+        </div>
+
       </div>
 
       {/* Bulk RFQ Modal */}
@@ -327,7 +1015,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
           <div className="bg-white rounded-3xl max-w-lg w-full max-h-[92dvh] overflow-y-auto p-4 sm:p-6 shadow-2xl border border-stone-200 relative animate-scaleIn my-auto">
             <button
               onClick={() => setActiveRFQProduct(null)}
-              className="absolute top-4 right-4 text-stone-400 hover:text-stone-700"
+              className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -348,7 +1036,7 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
             ) : (
               <form onSubmit={handleSendRFQ} className="space-y-4">
                 <div>
-                  <span className="text-[10px] font-bold text-saffron-700 uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-[#8B1D1D] uppercase tracking-wider">
                     B2B Wholesale RFQ
                   </span>
                   <h3 className="font-bold text-lg text-stone-900 leading-tight">
@@ -359,68 +1047,81 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">Company / Organization</label>
+                    <label className="block text-stone-600 font-semibold mb-1">Company / Organization</label>
                     <input
                       type="text"
+                      required
                       value={rfqForm.companyName}
                       onChange={(e) => setRfqForm({ ...rfqForm, companyName: e.target.value })}
-                      required
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-saffron-500"
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-[#8B1D1D]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">Buyer Name</label>
+                    <label className="block text-stone-600 font-semibold mb-1">Buyer Name</label>
                     <input
                       type="text"
+                      required
                       value={rfqForm.buyerName}
                       onChange={(e) => setRfqForm({ ...rfqForm, buyerName: e.target.value })}
-                      required
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-saffron-500"
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-[#8B1D1D]"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">Required Quantity (Units)</label>
+                    <label className="block text-stone-600 font-semibold mb-1">Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={rfqForm.email}
+                      onChange={(e) => setRfqForm({ ...rfqForm, email: e.target.value })}
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-[#8B1D1D]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-stone-600 font-semibold mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      required
+                      value={rfqForm.phone}
+                      onChange={(e) => setRfqForm({ ...rfqForm, phone: e.target.value })}
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-[#8B1D1D]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-stone-600 font-semibold mb-1">Target Quantity (Units)</label>
                     <input
                       type="number"
-                      min="5"
-                      max="1000"
+                      min="10"
                       value={rfqForm.quantity}
-                      onChange={(e) => setRfqForm({ ...rfqForm, quantity: Number(e.target.value) })}
-                      required
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 font-bold focus:ring-2 focus:ring-saffron-500"
+                      onChange={(e) => setRfqForm({ ...rfqForm, quantity: parseInt(e.target.value) || 10 })}
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-[#8B1D1D]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-stone-700 mb-1">Estimated Unit Price</label>
-                    <div className="px-3 py-2 bg-stone-100 rounded-xl text-xs font-mono font-bold text-emerald-800">
-                      ₹{activeRFQProduct.pricing.wholesaleTiers[rfqForm.quantity >= 50 ? 2 : 1].unitPrice.toLocaleString('en-IN')} / unit
-                    </div>
+                    <label className="block text-stone-600 font-semibold mb-1">Delivery Target Date</label>
+                    <input
+                      type="date"
+                      value={rfqForm.targetDate}
+                      onChange={(e) => setRfqForm({ ...rfqForm, targetDate: e.target.value })}
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-[#8B1D1D]"
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">Delivery Target Date</label>
-                  <input
-                    type="date"
-                    value={rfqForm.targetDate}
-                    onChange={(e) => setRfqForm({ ...rfqForm, targetDate: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-saffron-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">Customization / Packaging Notes</label>
+                  <label className="block text-stone-600 font-semibold text-xs mb-1">Specification / Customization Notes</label>
                   <textarea
                     rows={2}
                     value={rfqForm.notes}
                     onChange={(e) => setRfqForm({ ...rfqForm, notes: e.target.value })}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-saffron-500 resize-none"
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:ring-2 focus:ring-[#8B1D1D] resize-none"
                   />
                 </div>
 
@@ -428,13 +1129,13 @@ export const BuyerPortal: React.FC<BuyerPortalProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveRFQProduct(null)}
-                    className="px-4 py-2.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50"
+                    className="px-4 py-2.5 rounded-xl border border-stone-300 text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors"
+                    className="px-6 py-2.5 rounded-xl bg-[#8B1D1D] hover:bg-[#731717] text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>Submit Official RFQ</span>
