@@ -34,7 +34,8 @@ export type CraftCategory =
   | 'Traditional Painting'
   | 'Woodcraft & Carving'
   | 'Leather & Footwear'
-  | 'Handmade Jewelry';
+  | 'Handmade Jewelry'
+  | 'Other Heritage Craft';
 
 export interface ArtisanProfile {
   id: string;
@@ -116,8 +117,10 @@ export interface ProductListing {
 
   descriptionEn: string;
   descriptionHi: string;
-
+  culturalContext?: string;
   seoKeywords: string[];
+  searchTags?: string[];
+  metaDescription?: string;
   pricing: PricingBreakdown;
   targetBuyers: string[];
   stockQuantity: number;
@@ -129,6 +132,19 @@ export interface ProductListing {
   productSize?: 'Small' | 'Medium' | 'Large' | 'Extra-Large';
 
   qualityTier?: 'Standard' | 'Premium Heritage' | 'Masterpiece';
+  // Rich artisan-provided attributes — optional, backward-compatible with existing Firestore records
+  productType?: string;       // e.g. "Shawl", "Saree", "Sculpture"
+  style?: string;             // e.g. "Kashmiri", "Pochampally", "Banarasi"
+  subject?: string;           // e.g. "Nandi", "Horse", "Tree of Life"
+  weavingMethod?: string;     // e.g. "Handwoven", "Hand-spun"
+  constructionMethod?: string;// e.g. "Hand-embroidered", "Block Printed"
+  pattern?: string;           // e.g. "Floral", "Geometric"
+  motif?: string;             // e.g. "Pink & Gold Floral"
+  borderColor?: string;       // e.g. "Pink & Gold"
+  dyeType?: string;           // e.g. "Natural Dye", "Vegetable Dye"
+  zariType?: string;          // e.g. "100% Zari", "Gold Zari"
+  fabricType?: string;        // e.g. "Mulberry Silk", "Pure Cotton"
+  artisanClaims?: string[];   // explicitly stated claims: ["100% handmade", "natural dye"]
 }
 
 export interface CopilotMessage {

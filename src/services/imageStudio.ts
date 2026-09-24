@@ -52,6 +52,7 @@ function getImglyRemoveBackground(): Promise<any> {
     // Load ONNX runtime and configure threading before loading the background removal model
     imglyRemoveBackgroundPromise = (async () => {
       try {
+        // @ts-ignore
         const ort = await import('onnxruntime-web');
         // If the page is not cross‑origin isolated, restrict WebAssembly to a single thread
         if (!self.crossOriginIsolated) {

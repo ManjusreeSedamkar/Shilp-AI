@@ -65,10 +65,11 @@ export const ArtisanDashboard: React.FC<ArtisanDashboardProps> = ({
       'Traditional Painting': 'dashboard.categoryPainting',
       'Woodcraft & Carving': 'dashboard.categoryWood',
       'Leather & Footwear': 'dashboard.categoryLeather',
-      'Handmade Jewelry': 'dashboard.categoryJewelry'
+      'Handmade Jewelry': 'dashboard.categoryJewelry',
+      'Other Heritage Craft': 'dashboard.categoryOther'
     };
 
-    return t(categoryKeys[category]);
+    return categoryKeys[category] ? t(categoryKeys[category]) : category;
   };
 
   const handleSpeakAnalytics = async () => {

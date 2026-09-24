@@ -1,15 +1,16 @@
-import { Language } from '../types';
-import { getSpeechLangCode, LANGUAGE_METADATA } from './translations';
+import { Language, CraftCategory } from '../types';
+import { getSpeechLangCode } from './translations';
 
 /**
  * SHILP-AI Gemini API Service
  * 
- * Uses Google Gemini API for the Copilot chatbot and hybrid runtime translation.
+ * Uses Google Gemini API for the Copilot chatbot.
  * API key is read from environment variable VITE_GEMINI_API_KEY (secure, not in frontend code or GitHub).
  * Falls back to localStorage for user-provided key via the AI Engines settings modal.
  */
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent';
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 // Get API key from environment variable (Vite) or localStorage
 export function getGeminiApiKey(): string {
@@ -23,6 +24,17 @@ export function getGeminiApiKey(): string {
 
 export function hasGeminiApiKey(): boolean {
   return getGeminiApiKey().length > 0;
+}
+
+export function getOpenRouterApiKey(): string {
+  const envKey = (import.meta as any).env?.VITE_OPENROUTER_API_KEY || '';
+  if (envKey) return envKey;
+  
+  return localStorage.getItem('openrouter_api_key') || '';
+}
+
+export function hasOpenRouterApiKey(): boolean {
+  return getOpenRouterApiKey().length > 0;
 }
 
 interface GeminiRequest {
@@ -61,9 +73,8 @@ export async function askGemini(
   }
 
   const langName = getLanguageNameForPrompt(language);
-  const baseSystem = systemContext || `You are SHILP-AI Copilot, a helpful assistant for Indian artisans and buyers on the MoSJE (Ministry of Social Justice and Empowerment) handicraft marketplace. ` +
-    `You help with: app usage, Smart Catalog, publishing products, explaining features, translating content, pricing advice, government schemes (PM Vishwakarma, Shilp Samagam), GST rules, packaging, and business growth. `;
-  const systemPrompt = `${baseSystem}\n\nCRITICAL INSTRUCTION: You MUST write your entire response strictly and fluently in ${langName} (${language}) language. Use simple, supportive phrasing for artisans.`;
+  const systemPrompt = systemContext || 
+    `You are SHILP-AI Copilot, a helpful assistant for Indian artisans and buyers on the MoSJE (Ministry of Social Justice and Empowerment) handicraft marketplace. ` +
     `You help with: app usage, Smart Catalog, publishing products, explaining features, translating content, pricing advice, government schemes (PM Vishwakarma, Shilp Samagam), GST rules, packaging, and business growth. ` +
     `IMPORTANT: Always respond in ${langName} language. Keep responses clear, simple, and friendly for low-literacy users. Use emojis where helpful.`;
 
@@ -111,14 +122,19 @@ export async function askGemini(
 }
 
 /**
- * Get language name for prompt - supports all 21 languages
+ * Get language name for prompt
  */
-export function getLanguageNameForPrompt(lang: Language): string {
-  const meta = LANGUAGE_METADATA[lang];
-  if (meta) {
-    return `${meta.name} (${meta.nativeName})`;
-  }
-  return 'English';
+function getLanguageNameForPrompt(lang: Language): string {
+  const names: Partial<Record<Language, string>> = {
+    en: 'English',
+    hi: 'Hindi (हिन्दी)',
+    te: 'Telugu (తెలుగు)',
+    ta: 'Tamil (தமிழ்)',
+    bn: 'Bengali (বাংলা)',
+    mr: 'Marathi (मराठी)',
+    gu: 'Gujarati (ગુજરાતી)',
+  };
+  return names[lang] || 'English';
 }
 
 /**
@@ -130,53 +146,470 @@ export async function translateWithGemini(text: string, targetLang: Language): P
   return askGemini(prompt, targetLang);
 }
 
-/**
- * Translate a batch of UI labels to target language using Gemini in a single request.
- * Returns a JSON mapping of { originalEnglish: translatedText }.
- */
-export async function translateBatchWithGemini(
-  texts: string[],
-  targetLang: Language
-): Promise<Record<string, string>> {
-  if (!texts.length || targetLang === 'en') {
-    const res: Record<string, string> = {};
-    for (const t of texts) res[t] = t;
-    return res;
-  }
+export interface CulturallyGroundedDescriptionResponse {
+  titleEn?: string;
+  titleHi?: string;
+  descriptionEn: string;
+  descriptionHi: string;
+  culturalContext?: string;
+  seoKeywords?: string[];
+  searchTags?: string[];
+  metaDescription?: string;
+}
 
+/**
+ * Helper to convert a Data URL or HTTP/relative image URL into base64 object for Gemini inlineData
+ */
+export async function urlOrDataUrlToBase64(imageUrl: string): Promise<{ mimeType: string; data: string } | null> {
+  if (!imageUrl) return null;
+  
+  try {
+    // Already a base64 Data URL (e.g. data:image/jpeg;base64,/9j/4AAQSk...)
+    if (imageUrl.startsWith('data:image/')) {
+      const match = imageUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+      if (match) {
+        return {
+          mimeType: match[1],
+          data: match[2]
+        };
+      }
+    }
+
+    // Relative or HTTP URL
+    const response = await fetch(imageUrl);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const resultStr = reader.result as string;
+        const match = resultStr.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+        if (match) {
+          resolve({
+            mimeType: match[1],
+            data: match[2]
+          });
+        } else {
+          resolve(null);
+        }
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn('Failed to convert image for Gemini multimodal input:', err);
+    return null;
+  }
+}
+
+/**
+ * Internal: Gemini fetch with exponential backoff retry for transient errors (503, 429)
+ * Retries up to maxAttempts times; delays are 1s, 2s, 4s with ±200ms jitter.
+ */
+async function geminiRetryFetch(
+  url: string,
+  body: object,
+  maxAttempts: number = 3
+): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      // Retry on 503 (Service Unavailable) and 429 (Rate Limit)
+      if ((resp.status === 503 || resp.status === 429) && attempt < maxAttempts) {
+        const delay = (Math.pow(2, attempt - 1) * 1000) + (Math.random() * 400 - 200);
+        console.warn(`[Shilp-AI] Gemini ${resp.status} on attempt ${attempt}/${maxAttempts}. Retrying in ${Math.round(delay)}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      return resp;
+    } catch (networkErr) {
+      lastError = networkErr as Error;
+      if (attempt < maxAttempts) {
+        const delay = (Math.pow(2, attempt - 1) * 1000) + (Math.random() * 400 - 200);
+        console.warn(`[Shilp-AI] Gemini network error on attempt ${attempt}/${maxAttempts}. Retrying in ${Math.round(delay)}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError || new Error('Gemini request failed after all retry attempts');
+}
+
+/**
+ * Send a multimodal prompt (text + optional image) to Gemini REST API
+ */
+export async function askGeminiMultimodal(
+  prompt: string,
+  imageData?: { mimeType: string; data: string } | null
+): Promise<string> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
-    return {};
+    throw new Error('Gemini API key not configured.');
   }
 
-  const langName = getLanguageNameForPrompt(targetLang);
-  const prompt = `Translate the following user interface phrases from English into ${langName} for an Indian artisan craft e-commerce application.
+  const parts: any[] = [];
+  if (imageData && imageData.data) {
+    parts.push({
+      inlineData: {
+        mimeType: imageData.mimeType || 'image/jpeg',
+        data: imageData.data
+      }
+    });
+  }
+  parts.push({ text: prompt });
 
-STRICT RULES:
-1. Return ONLY a single raw JSON object mapping each English string to its translation.
-2. The JSON keys MUST be the exact English input strings.
-3. Keep brand names unchanged: "SHILP-AI", "MoSJE", "FabIndia", "TRIFED", "GeM", "XGBoost".
-4. Do NOT output markdown code fences (\`\`\`json or \`\`\`), do NOT output explanation, notes or markdown.
-5. Return raw parseable JSON only.
+  const requestBody = {
+    contents: [{ parts }],
+    generationConfig: {
+      temperature: 0.4,
+      maxOutputTokens: 1024,
+      topP: 0.9
+    }
+  };
 
-Input strings to translate:
-${JSON.stringify(texts)}`;
+  const response = await geminiRetryFetch(`${GEMINI_API_URL}?key=${apiKey}`, requestBody);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.error?.message || `Gemini API error: ${response.status}`);
+  }
+
+  const data: GeminiResponse = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error('No response from Gemini API');
+  }
+  return text.trim();
+}
+
+export interface VisualAnalysisResult {
+  visualObjectType: string;
+  craftCategorySuggestion: CraftCategory;
+  apparentMaterial: string;
+  visibleColors: string;
+  visiblePatternsMotifs: string;
+  visibleBorderColor?: string;  // supplement if not stated by artisan
+  confidence: 'high' | 'medium' | 'low';
+  keywords: string[];
+}
+
+/**
+ * Perform visual product understanding using Gemini Vision
+ */
+export async function analyzeImageVisuals(
+  imageInput: string
+): Promise<VisualAnalysisResult | null> {
+  if (!hasGeminiApiKey() || !imageInput) return null;
+
+  const imageData = await urlOrDataUrlToBase64(imageInput);
+  if (!imageData) return null;
+
+  const prompt = `Analyze this Indian handicraft product image and identify its visual attributes.
+
+Respond ONLY with a valid raw JSON object (no markdown, no backticks):
+{
+  "visualObjectType": "Specific product type (e.g. Nandi metal sculpture, Pochampally saree, Terracotta urn, Madhubani painting, Wooden carving, Kashmiri shawl)",
+  "craftCategorySuggestion": "One of: Textiles & Handloom, Clay & Terracotta, Metalcraft & Dhokra, Traditional Painting, Woodcraft & Carving, Leather & Footwear, Handmade Jewelry, Other Heritage Craft",
+  "apparentMaterial": "Apparent surface material (e.g. brass/bell metal, clay, silk, pashmina wool, paper/canvas, teakwood)",
+  "visibleColors": "Dominant visible colors (e.g. cream, antique golden bronze, crimson red and mustard, terracotta red)",
+  "visiblePatternsMotifs": "Visible patterns and motifs (e.g. tribal lost-wax ornamentations, geometric ikat grid, pink and gold floral motifs)",
+  "visibleBorderColor": "Visible border/edge colors if present, otherwise null (e.g. pink and gold, maroon gold, null)",
+  "confidence": "high or medium or low",
+  "keywords": ["keyword1", "keyword2", "keyword3"]
+}`;
 
   try {
-    const raw = await askGemini(
-      prompt,
-      targetLang,
-      `You are an expert multilingual translator specialized in Indian languages for government and artisan e-commerce platforms. You output ONLY valid raw JSON.`
-    );
-
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const rawResult = await askGeminiMultimodal(prompt, imageData);
+    const cleaned = rawResult.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
     const parsed = JSON.parse(cleaned);
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      return parsed as Record<string, string>;
+
+    if (parsed && parsed.visualObjectType) {
+      const validCategories: CraftCategory[] = [
+        'Textiles & Handloom',
+        'Clay & Terracotta',
+        'Metalcraft & Dhokra',
+        'Traditional Painting',
+        'Woodcraft & Carving',
+        'Leather & Footwear',
+        'Handmade Jewelry',
+        'Other Heritage Craft'
+      ];
+      const category: CraftCategory = validCategories.includes(parsed.craftCategorySuggestion)
+        ? parsed.craftCategorySuggestion
+        : 'Other Heritage Craft';
+
+      return {
+        visualObjectType: parsed.visualObjectType || 'Handicraft Product',
+        craftCategorySuggestion: category,
+        apparentMaterial: parsed.apparentMaterial || 'Authentic Artisan Material',
+        visibleColors: parsed.visibleColors || 'Natural Finish',
+        visiblePatternsMotifs: parsed.visiblePatternsMotifs || 'Traditional Motifs',
+        visibleBorderColor: (parsed.visibleBorderColor && parsed.visibleBorderColor !== 'null') ? parsed.visibleBorderColor : undefined,
+        confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'medium',
+        keywords: Array.isArray(parsed.keywords) ? parsed.keywords : []
+      };
     }
   } catch (err) {
-    console.warn(`Batch translation with Gemini failed for ${targetLang}:`, err);
+    console.warn('Gemini vision analysis notice:', err);
   }
 
-  return {};
+  return null;
 }
+
+/**
+ * Send a prompt to OpenRouter REST API (fallback for description generation)
+ */
+export async function askOpenRouter(prompt: string): Promise<string> {
+  const apiKey = getOpenRouterApiKey();
+  if (!apiKey) {
+    throw new Error('OpenRouter API key not configured.');
+  }
+
+  const response = await fetch(OPENROUTER_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'openrouter/free',
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.error?.message || `OpenRouter API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) {
+    throw new Error('No response content from OpenRouter API');
+  }
+  return text.trim();
+}
+
+/**
+ * Generate culturally grounded product descriptions using Gemini multimodal (Image + Voice + DIWALI context),
+ * with OpenRouter fallback if Gemini fails after retries.
+ */
+export async function generateCulturalDescription(
+  attributes: {
+    category: string;
+    craftTechnique: string;
+    primaryMaterial: string;
+    productionDays: number;
+    rawMaterialCost: number;
+    color: string;
+    titleEn: string;
+    titleHi: string;
+    // Rich artisan-provided attributes
+    productType?: string | null;
+    style?: string | null;
+    subject?: string | null;
+    weavingMethod?: string | null;
+    constructionMethod?: string | null;
+    pattern?: string | null;
+    motif?: string | null;
+    borderColor?: string | null;
+    dyeType?: string | null;
+    zariType?: string | null;
+    fabricType?: string | null;
+    artisanClaims?: string[];
+  },
+  diwaliContext: string,
+  imageInput?: string
+): Promise<CulturallyGroundedDescriptionResponse | null> {
+  const imageData = imageInput ? await urlOrDataUrlToBase64(imageInput) : null;
+
+  const GENERIC_PLACEHOLDERS = [
+    'Traditional Handcrafted Artistry',
+    'Authentic Artisan Material',
+    'Natural Finish',
+    'Handcrafted Heritage Artisan Product',
+    'हस्तनिर्मित कारीगर धरोहर उत्पाद',
+    'Other Heritage Craft',
+    'Generating catalog description…',
+    'कैटलॉग विवरण तैयार किया जा रहा है…',
+  ];
+  const isGeneric = (val: string | null | undefined) => !val || GENERIC_PLACEHOLDERS.includes(val.trim());
+
+  // Build artisan facts, marking generic values for image inference
+  const artisanFacts: string[] = [
+    `- Product Type: ${attributes.productType || 'Infer from image'}`,
+    `- Style: ${attributes.style || 'Infer from image or cultural context'}`,
+    `- Category: ${attributes.category}`,
+    `- Craft Technique: ${isGeneric(attributes.craftTechnique) ? 'Not stated — infer from image' : attributes.craftTechnique}`,
+    `- Primary Material: ${isGeneric(attributes.primaryMaterial) ? 'Not stated — infer from image' : attributes.primaryMaterial}`,
+    attributes.fabricType ? `- Fabric / Fiber Type: ${attributes.fabricType} (explicitly stated by artisan)` : '',
+    attributes.weavingMethod ? `- Weaving Method: ${attributes.weavingMethod} (explicitly stated by artisan)` : '',
+    attributes.constructionMethod ? `- Construction Method: ${attributes.constructionMethod} (explicitly stated by artisan)` : '',
+    `- Primary Color: ${isGeneric(attributes.color) ? 'Not stated — describe visually from image' : `${attributes.color} (explicitly stated by artisan)`}`,
+    attributes.pattern ? `- Pattern: ${attributes.pattern} (explicitly stated by artisan)` : '',
+    attributes.motif ? `- Motif / Design: ${attributes.motif} (explicitly stated by artisan)` : '',
+    attributes.borderColor ? `- Border Color: ${attributes.borderColor} (explicitly stated by artisan)` : '',
+    attributes.dyeType ? `- Dye Type: ${attributes.dyeType} (explicitly stated by artisan)` : '',
+    attributes.zariType ? `- Zari Type: ${attributes.zariType} (explicitly stated by artisan)` : '',
+    attributes.productionDays > 0
+      ? `- Production Time: ${attributes.productionDays} days (explicitly stated)`
+      : `- Production Time: Not stated — do NOT invent or guess a number`,
+    attributes.artisanClaims && attributes.artisanClaims.length > 0
+      ? `- Artisan Claims: ${attributes.artisanClaims.join(', ')} (explicitly stated)` : '',
+    `- Base Title: ${isGeneric(attributes.titleEn) ? 'Not specified — generate from image and context' : attributes.titleEn}`,
+  ].filter(Boolean);
+
+  const prompt = `You are an expert cultural handicraft cataloger and visual product analyst for the MoSJE Shilp-AI platform.
+Analyze the attached product image alongside artisan-provided facts and cultural heritage context.
+
+SOURCE PRIORITY:
+1. ARTISAN-PROVIDED FACTS (trust these absolutely — they override visual inference):
+${artisanFacts.join('\n')}
+
+2. VISUAL OBSERVATIONS from image (use to supplement any fact marked "Not stated" or "Infer from image"):
+   - Observe colors, pattern layout, motifs, shape, border details, surface texture, material.
+   - Where the artisan has stated an attribute (e.g., color = Cream), use that value even if image looks different.
+   - Only use image evidence for attributes NOT stated by the artisan.
+   - Phrase visual findings carefully: "The piece appears to be…"
+
+3. CULTURAL HERITAGE CONTEXT (use for cultural background and historical significance ONLY — never to classify product or invent attributes):
+${diwaliContext}
+
+STRICT RULES — VIOLATIONS WILL DISQUALIFY THE RESPONSE:
+- NEVER use any of these phrases: "certified artisan", "fair-wage certified", "eco-conscious", "ethically made", "100% Authentic indigenous method", "master heritage skill", "MoSJE certified", "GI certified", "GI tagged"
+- NEVER invent production days, price, stock quantity, or exact geographical origins
+- NEVER auto-insert region/state names unless explicitly stated by artisan or present in CULTURAL HERITAGE CONTEXT above
+- Descriptions must be specific to this product, not a generic template
+- The English title must reflect the actual product (e.g. "Kashmiri Handwoven Pashmina Shawl" — not "Heritage Artisan Product")
+
+Respond ONLY with a valid raw JSON object (no markdown, no backticks):
+{
+  "titleEn": "Specific, descriptive English title built from artisan facts + image (e.g. Kashmiri Handwoven Pashmina Shawl with Pink & Gold Floral Design)",
+  "titleHi": "उत्पाद-विशिष्ट हिंदी शीर्षक",
+  "descriptionEn": "2-3 sentences: what is visually observed + artisan-stated facts + relevant cultural heritage. No unsupported claims. Example: This cream-colored handwoven shawl combines the softness of Pashmina with delicate pink and gold floral detailing and a matching decorative border. Pashmina textiles are closely associated with the rich weaving traditions of Kashmir, known for their fine texture and warmth.",
+  "descriptionHi": "2-3 वाक्य: दृश्य अवलोकन + कारीगर के बताए तथ्य + सांस्कृतिक संदर्भ। कोई असत्यापित दावा नहीं।",
+  "culturalContext": "Verified heritage background and craft traditions from the knowledge base. Do not invent.",
+  "seoKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+  "searchTags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
+  "metaDescription": "SEO-friendly summary under 160 characters for buyer discovery."
+}`;
+
+  // 1. Primary provider: Gemini
+  if (hasGeminiApiKey()) {
+    try {
+      const rawResult = await askGeminiMultimodal(prompt, imageData);
+      const cleanedJsonStr = rawResult.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const parsed = JSON.parse(cleanedJsonStr);
+
+      if (parsed && (parsed.descriptionEn || parsed.descriptionHi)) {
+        return {
+          titleEn: parsed.titleEn || attributes.titleEn,
+          titleHi: parsed.titleHi || attributes.titleHi,
+          descriptionEn: parsed.descriptionEn || '',
+          descriptionHi: parsed.descriptionHi || '',
+          culturalContext: parsed.culturalContext || undefined,
+          seoKeywords: Array.isArray(parsed.seoKeywords) ? parsed.seoKeywords : undefined,
+          searchTags: Array.isArray(parsed.searchTags) ? parsed.searchTags : (Array.isArray(parsed.seoKeywords) ? parsed.seoKeywords : undefined),
+          metaDescription: parsed.metaDescription || parsed.descriptionEn || undefined
+        };
+      }
+    } catch (err) {
+      console.warn('[Shilp-AI] Gemini description generation failed after retries; trying OpenRouter.');
+    }
+  }
+
+  // 2. Secondary fallback provider: OpenRouter
+  if (hasOpenRouterApiKey()) {
+    try {
+      const rawResult = await askOpenRouter(prompt);
+      const cleanedJsonStr = rawResult.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const parsed = JSON.parse(cleanedJsonStr);
+
+      if (parsed && (parsed.descriptionEn || parsed.descriptionHi)) {
+        console.log('[Shilp-AI] OpenRouter description generation succeeded.');
+        return {
+          titleEn: parsed.titleEn || attributes.titleEn,
+          titleHi: parsed.titleHi || attributes.titleHi,
+          descriptionEn: parsed.descriptionEn || '',
+          descriptionHi: parsed.descriptionHi || '',
+          culturalContext: parsed.culturalContext || undefined,
+          seoKeywords: Array.isArray(parsed.seoKeywords) ? parsed.seoKeywords : undefined,
+          searchTags: Array.isArray(parsed.searchTags) ? parsed.searchTags : (Array.isArray(parsed.seoKeywords) ? parsed.seoKeywords : undefined),
+          metaDescription: parsed.metaDescription || parsed.descriptionEn || undefined
+        };
+      }
+    } catch (openRouterErr) {
+      console.warn('[Shilp-AI] OpenRouter failed; using structured fallback.');
+    }
+  }
+
+  // 3. Final fallback: structured deterministic description
+  return buildFallbackDescription(attributes);
+}
+
+/**
+ * Build a plain-language catalog description from structured artisan attributes.
+ * Used as a graceful fallback when Gemini is unavailable after retries.
+ * Contains ONLY facts explicitly extracted from artisan voice — no inventions.
+ */
+function buildFallbackDescription(
+  attributes: Parameters<typeof generateCulturalDescription>[0]
+): CulturallyGroundedDescriptionResponse {
+  const parts: string[] = [];
+
+  // Core identity
+  const productLabel = [
+    attributes.color && attributes.color !== 'Natural Finish' ? attributes.color : null,
+    attributes.style,
+    attributes.fabricType || (attributes.primaryMaterial !== 'Authentic Artisan Material' ? attributes.primaryMaterial : null),
+    attributes.productType,
+  ].filter(Boolean).join(' ');
+
+  if (productLabel) parts.push(productLabel + '.');
+
+  // Construction / weaving
+  if (attributes.weavingMethod) parts.push(`Crafted using ${attributes.weavingMethod} technique.`);
+  if (attributes.constructionMethod) parts.push(`${attributes.constructionMethod}.`);
+
+  // Pattern & motif
+  if (attributes.pattern) parts.push(`Features ${attributes.pattern}.`);
+
+  // Border
+  if (attributes.borderColor) parts.push(`Border: ${attributes.borderColor}.`);
+
+  // Zari / dye
+  if (attributes.zariType) parts.push(`${attributes.zariType}.`);
+  if (attributes.dyeType) parts.push(`Coloured using ${attributes.dyeType}.`);
+
+  // Final fallback if no facts at all
+  const descriptionEn = parts.length > 0
+    ? parts.join(' ')
+    : `A ${attributes.category} product, handcrafted by an Indian artisan.`;
+
+  // Simple Hindi variant (transliteration — acceptable fallback)
+  const descriptionHi = parts.length > 0
+    ? `यह ${productLabel || 'उत्पाद'} भारतीय कारीगरी का एक उत्कृष्ट उदाहरण है।`
+    : `यह एक हस्तनिर्मित भारतीय शिल्प है।`;
+
+  return {
+    titleEn: attributes.titleEn,
+    titleHi: attributes.titleHi,
+    descriptionEn,
+    descriptionHi,
+    culturalContext: undefined,
+    seoKeywords: undefined,
+    searchTags: undefined,
+    metaDescription: descriptionEn.slice(0, 160),
+  };
+}
+

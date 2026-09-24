@@ -1,16 +1,21 @@
-import { CraftCategory, ProductListing, Language } from '../types';
-import { DynamicPricingEngine } from './pricingEngine';
+import { CraftCategory, Language } from '../types';
 import { getSpeechLangCode } from './translations';
 
 /**
  * SHILP-AI Multilingual Voice Cataloger & NLP Engine
- * 
+ *
  * Supports Web Speech Recognition (Hindi, English, Telugu, Tamil, Bengali, Marathi, Gujarati)
- * Extracts structured product attributes from natural artisan spoken voice
- * Generates dual-language listings (Hindi narrative + English SEO-optimized)
+ * Extracts structured product attributes from natural artisan spoken voice.
+ *
+ * SOURCE PRIORITY (enforced here):
+ *   1. Explicit artisan voice/text (highest) — always preserved
+ *   2. Gemini Vision (supplements missing VISUAL attributes — applied in VoiceCatalogerModal)
+ *   3. DIWALI cultural retrieval (cultural context only — never classifies product)
+ *   4. null / 'Not specified' (fallback — never invent facts)
  */
 
 export interface ExtractedProductAttributes {
+  // ── Core catalog fields (flow into ProductListing) ────────────────────────
   titleEn: string;
   titleHi: string;
   category: CraftCategory;
@@ -21,109 +26,516 @@ export interface ExtractedProductAttributes {
   color: string;
   descriptionEn: string;
   descriptionHi: string;
+  culturalContext?: string;
   seoKeywords: string[];
+  searchTags?: string[];
+  metaDescription?: string;
   targetBuyers: string[];
+
+  // ── Rich artisan-provided attributes (flow into ProductListing optional fields) ──
+  productType: string | null;         // e.g. "Shawl", "Saree"
+  style: string | null;               // e.g. "Kashmiri", "Pochampally"
+  subject: string | null;             // e.g. "Nandi", "Horse"
+  weavingMethod: string | null;       // e.g. "Handwoven", "Hand-spun"
+  constructionMethod: string | null;  // e.g. "Hand-embroidered", "Block Printed"
+  pattern: string | null;             // e.g. "Floral", "Geometric"
+  motif: string | null;               // e.g. "Pink & Gold Floral"
+  borderColor: string | null;         // e.g. "Pink & Gold"
+  secondaryColors: string | null;     // e.g. "Pink, Gold"
+  dyeType: string | null;             // e.g. "Natural Dye"
+  zariType: string | null;            // e.g. "100% Zari"
+  fabricType: string | null;          // e.g. "Mulberry Silk"
+  finish: string | null;              // e.g. "Antique", "Polished"
+  artisanClaims: string[];            // verbatim claims from artisan
+
+  // ── Pipeline control ───────────────────────────────────────────────────────
+  isExplicitVoiceMatch: boolean;
 }
 
 export class VoiceCatalogerEngine {
   /**
-   * Parse spoken text in Hindi, English, or mixed Hinglish and extract structured attributes
+   * Parse spoken text in Hindi, English, or mixed Hinglish and extract structured attributes.
+   *
+   * RULE: Extract ONLY what the artisan explicitly stated.
+   *       Never invent product-specific facts.
+   *       Gemini Vision supplements missing VISUAL attributes in VoiceCatalogerModal.
    */
   static extractAttributesFromSpeech(transcript: string): ExtractedProductAttributes {
     const text = transcript.toLowerCase();
 
-    // 1. Detect Raw Material Cost
-    let rawMaterialCost = 1500; // Default
-    const costMatch = transcript.match(/(?:₹|rs\.?|rupees|रुपये|खर्च|लागत|cost|price)\s*[:=]?\s*(\d+[\d,]*)/i) 
-      || transcript.match(/(\d+[\d,]*)\s*(?:₹|rs\.?|rupees|रुपये)/i);
+    // ── 1. Raw Material Cost (only if explicitly stated) ──────────────────────
+    let rawMaterialCost = 1500;
+    const costMatch =
+      transcript.match(/(?:₹|rs\.?|rupees|रुपये|खर्च|लागत|cost|price)\s*[:=]?\s*(\d+[\d,]*)/i) ||
+      transcript.match(/(\d+[\d,]*)\s*(?:₹|rs\.?|rupees|रुपये)/i);
     if (costMatch && costMatch[1]) {
       const parsed = parseInt(costMatch[1].replace(/,/g, ''), 10);
       if (!isNaN(parsed) && parsed > 0) rawMaterialCost = parsed;
     }
 
-    // 2. Detect Production Days
-    let productionDays = 3;
-    const daysMatch = transcript.match(/(\d+)\s*(?:days?|दिन|दिस|దినాలు|రోజులు|நாட்கள்|দিন|दिवस|દિવસ|ದಿನಗಳು|ದಿನ|ദിവസങ്ങൾ|ദിവസം|ਦਿਨ|ଦିନ|দিন|دن|روز|दिनानि)/i);
+    // ── 2. Production Days (only if explicitly stated; 0 = not stated) ────────
+    let productionDays = 0;
+    const daysMatch = transcript.match(/(\d+)\s*(?:days?|दिन|దినాలు|நாட்கள்|দিন|दिवस|દિવસ)/i);
     if (daysMatch && daysMatch[1]) {
       const parsed = parseInt(daysMatch[1], 10);
       if (!isNaN(parsed) && parsed > 0) productionDays = parsed;
     }
 
-    // 3. Detect Craft Category, Technique & Material
-    let category: CraftCategory = 'Textiles & Handloom';
-    let craftTechnique = 'Traditional Handloom Weaving';
-    let primaryMaterial = 'Pure Handloom Silk & Natural Dyes';
-    let color = 'Crimson & Golden Ochre';
-    let titleEn = 'Handcrafted Artisan Heritage Product';
-    let titleHi = 'हस्तनिर्मित कारीगर धरोहर उत्पाद';
-
-    if (text.includes('saree') || text.includes('साड़ी') || text.includes('pochampally') || text.includes('పోచంపల్లి') || text.includes('போச்சம்பள்ளி') || text.includes('পোচামপল্লী') || text.includes('पोचमपल्ली') || text.includes('પોચમ્પલ્લી') || text.includes('ikat') || text.includes('silk') || text.includes('रेशम') || text.includes('రేషమ్') || text.includes('பட்டு') || text.includes('রেশম') || text.includes('रेशीम') || text.includes('રેશમ') || text.includes('handloom') || text.includes('हथकरघा') || text.includes('చేనేత') || text.includes('கைத்தறி') || text.includes('হাতে বোনা') || text.includes('हातमाग') || text.includes('હાથવણાટ') || text.includes('ಸೀರೆ') || text.includes('ರೇಷ್ಮೆ') || text.includes('ಕೈಮಗ್ಗ') || text.includes('സാരി') || text.includes('പട്ട്') || text.includes('കൈത്തറി') || text.includes('ਸਾੜੀ') || text.includes('ਖੱਡੀ') || text.includes('ଶାଢ଼ୀ') || text.includes('ହସ୍ତତନ୍ତ') || text.includes('ساڑھی') || text.includes('کھڈی')) {
-      category = 'Textiles & Handloom';
-      craftTechnique = 'Double Ikat Pit-Loom Weaving';
-      primaryMaterial = '100% Pure Mulberry Silk & Zari Thread';
-      color = 'Crimson Red & Mustard Gold';
-      titleEn = 'Handwoven Pochampally Double Ikat Pure Silk Saree';
-      titleHi = 'हस्तनिर्मित पोचमपल्ली डबल इकत शुद्ध रेशम साड़ी';
-    } else if (text.includes('dhokra') || text.includes('ढोकरा') || text.includes('brass') || text.includes('పిత్తల') || text.includes('பித்தளை') || text.includes('পিতল') || text.includes('पितळ') || text.includes('પિત્તળ') || text.includes('पीतल') || text.includes('metal') || text.includes('కాంస్య') || text.includes('வெண்கல') || text.includes('কাঁসা') || text.includes('कांस्य') || text.includes('કાંસ્ય') || text.includes('मूर्ति') || text.includes('మూర్తి') || text.includes('சிலை') || text.includes('মূর্তি') || text.includes('मूर्ती') || text.includes('મૂર્તિ') || text.includes('nandi') || text.includes('నంది') || text.includes('நந்தி') || text.includes('নন্দী') || text.includes('नंदी') || text.includes('નંદી') || text.includes('ಹಿತ್ತಾಳೆ') || text.includes('ಲೋಹ') || text.includes('ಪိတ်ଳ') || text.includes('പിച്ചള') || text.includes('ലോഹം') || text.includes('ਪਿੱਤਲ') || text.includes('ଧାତୁ') || text.includes('ପିତ୍ତଳ') || text.includes('پیتل') || text.includes('دھات')) {
-      category = 'Metalcraft & Dhokra';
-      craftTechnique = 'Ancient Lost-Wax Casting (Cire Perdue)';
-      primaryMaterial = 'Cast Bell-Metal & Brass Alloy';
-      color = 'Antique Golden Patina';
-      titleEn = 'Bastar Tribal Dhokra Lost-Wax Bell Metal Figurine';
-      titleHi = 'बस्तर जनजातीय ढोकरा लॉस्ट-वैक्स कांस्य मूर्ति';
-    } else if (text.includes('terracotta') || text.includes('టెర్రకోటా') || text.includes('டெரகோட்டா') || text.includes('টেরাকোটা') || text.includes('टेराकोटा') || text.includes('ટેરાકોટા') || text.includes('clay') || text.includes('మట్టి') || text.includes('களிமண்') || text.includes('মাটি') || text.includes('माती') || text.includes('માટી') || text.includes('मिट्टी') || text.includes('pottery') || text.includes('కుమ్మరి') || text.includes('குயவர்') || text.includes('কুম্ভকার') || text.includes('कुंभार') || text.includes('કુંભાર') || text.includes('कुम्हार') || text.includes('vase') || text.includes('కలశం') || text.includes('கலசம்') || text.includes('কলস') || text.includes('कलश') || text.includes('કળશ') || text.includes('ಜೇಡಿಮಣ್ಣು') || text.includes('ಮಣ್ಣು') || text.includes('കളിമണ്ണ്') || text.includes('ମାଟି') || text.includes('ਭਾਂਡੇ') || text.includes('برتن')) {
-      category = 'Clay & Terracotta';
-      craftTechnique = 'Wheel-Thrown & Hand-Etched Clay Firing';
-      primaryMaterial = 'River Alluvial Clay & Natural Ochre';
-      color = 'Rustic Terracotta Red';
-      titleEn = 'Traditional Bankura Terracotta Handcrafted Urn';
-      titleHi = 'पारंपरिक बांकुरा टेराकोटा नक्काशीदार कलश';
-    } else if (text.includes('madhubani') || text.includes('మధుబని') || text.includes('மதுபானி') || text.includes('মধুবনী') || text.includes('मधुबनी') || text.includes('મધુબની') || text.includes('mithila') || text.includes('మిథిలా') || text.includes('மிதிலா') || text.includes('মিথিলা') || text.includes('मिथिला') || text.includes('મિથિલા') || text.includes('painting') || text.includes('చిత్రం') || text.includes('ஓவியம்') || text.includes('চিত্র') || text.includes('चित्र') || text.includes('ચિત્ર') || text.includes('चित्रकला') || text.includes('చిత్రకళ') || text.includes('ஓவியக்கலை') || text.includes('চিত্রকলা') || text.includes('चित्रकला') || text.includes('ચિત્રકળા') || text.includes('ಚಿತ್ರ') || text.includes('ಚಿತ್ರಕಲೆ') || text.includes('ചിത്രം') || text.includes('ചിത്രകല') || text.includes('ਚਿੱਤਰਕਾਰੀ') || text.includes('ଚିତ୍ରକଳା') || text.includes('نقاشی')) {
-      category = 'Traditional Painting';
-      craftTechnique = 'Twig & Nib Hand-Painting with Botanical Dyes';
-      primaryMaterial = 'Handmade Khadi Sheet & Natural Herbal Pigments';
-      color = 'Multicolor Natural Indigo & Turmeric';
-      titleEn = 'Authentic Mithila Madhubani Tree of Life Folk Canvas';
-      titleHi = 'प्रामाणिक मिथिला मधुबनी जीवन वृक्ष लोक चित्रकला';
-    } else if (text.includes('pashmina') || text.includes('పశ్మినా') || text.includes('பஷ்மினா') || text.includes('পশমিনা') || text.includes('पश्मीना') || text.includes('પશ્મીના') || text.includes('shawl') || text.includes('శాలువా') || text.includes('சால்வை') || text.includes('শাল') || text.includes('शॉल') || text.includes('શાલ') || text.includes('wool') || text.includes('ఉన్ని') || text.includes('கம்பளி') || text.includes('পশম') || text.includes('ऊन') || text.includes('ઊન')) {
-      category = 'Textiles & Handloom';
-      craftTechnique = 'Hand-Spun Weaving & Sozni Needle Embroidery';
-      primaryMaterial = '100% Grade-A Changthangi Cashmere Wool';
-      color = 'Natural Cream & Kashmiri Sozni';
-      titleEn = 'Heritage Kashmiri Handwoven Pure Pashmina Shawl';
-      titleHi = 'विरासत कश्मीरी हस्तनिर्मित शुद्ध पश्मीना शॉल';
-    } else if (text.includes('wood') || text.includes('కలప') || text.includes('மரம்') || text.includes('কাঠ') || text.includes('लाकूड') || text.includes('લાકડું') || text.includes('लकड़ी') || text.includes('carving') || text.includes('చెక్కడం') || text.includes('செதுக்குதல்') || text.includes('খোদাই') || text.includes('कोरीव') || text.includes('કોતરણી') || text.includes('नक्काशी')) {
-      category = 'Woodcraft & Carving';
-      craftTechnique = 'Hand-Chiseled Relief Wood Carving';
-      primaryMaterial = 'Seasoned Teakwood & Sheesham';
-      color = 'Natural Warm Teak Finish';
-      titleEn = 'Hand-Carved Heritage Wooden Artisan Sculpture';
-      titleHi = 'हस्तनिर्मित पारंपरिक नक्काशीदार लकड़ी का शिल्प';
+    // NOTE: JavaScript \b (word boundary) only works for ASCII [A-Za-z0-9_].
+    // It does NOT work for Devanagari, Telugu, or other Unicode scripts.
+    // Solution: use \b only around ASCII tokens; let Unicode tokens match without it
+    // (they naturally don't appear inside other Unicode words when separated by spaces).
+    const colorMap: [RegExp, string][] = [
+      [/(?:\b(?:cream|malai)\b|(?:क्रीम|मलाई))/i, 'Cream'],
+      [/(?:\b(?:white|safed)\b|(?:सफ़ेद|सफेद|తెలుపు))/i, 'White'],
+      [/(?:\b(?:red|lal|laal)\b|(?:लाल|ఎరుపు))/i, 'Red'],
+      // Blue: neela/neeli = Roman Hindi; नीला/नीली = Devanagari (masc/fem); నీలం = Telugu
+      [/(?:\b(?:blue|nila|neela|neeli)\b|(?:नीला|नीली|నీలం))/i, 'Blue'],
+      [/(?:\b(?:green|hara|hari)\b|(?:हरा|హరిత))/i, 'Green'],
+      [/(?:\b(?:yellow|peela|peeli)\b|(?:पीला|పసుపు))/i, 'Yellow'],
+      [/(?:\b(?:black|kala|kali)\b|(?:काला|నల్ల))/i, 'Black'],
+      // Golden: sunhara/sunahre = Roman Hindi masc/obl; सुनहरा/सुनहरी/सुनहरे = Devanagari masc/fem/obl
+      [/(?:\b(?:gold|golden|sunhara|sunahre|sunhare|sona)\b|(?:सोना|सुनहरा|सुनहरी|సోనే|బంగారు))/i, 'Golden'],
+      [/(?:\b(?:orange)\b|(?:नारंगी|నారింజ))/i, 'Orange'],
+      [/(?:\b(?:pink|gulabi)\b|(?:गुलाबी|పింక్))/i, 'Pink'],
+      [/(?:\b(?:purple|violet|baingnee)\b|(?:बैंगनी|జాంబూ))/i, 'Purple'],
+      [/(?:\b(?:brown|bhura)\b|(?:भूरा|గోధుమ))/i, 'Brown'],
+      [/(?:\b(?:maroon|dark.?red)\b|(?:गहरा.?लाल|మారూన్))/i, 'Maroon'],
+      [/(?:\b(?:silver|chandi)\b|(?:चांदी|వెండి))/i, 'Silver'],
+    ];
+    let spokenColor: string | null = null;
+    for (const [re, colorName] of colorMap) {
+      if (re.test(transcript)) {
+        spokenColor = colorName;
+        break;
+      }
     }
 
-    // 4. Generate Professional Hindi Narrative Description
-    const descriptionHi = `सामाजिक न्याय और अधिकारिता मंत्रालय (MoSJE) के समर्थित कुशल कारीगर द्वारा निर्मित। यह ${titleHi} पारंपरिक ${craftTechnique} तकनीक द्वारा तैयार किया गया है। शुद्ध ${primaryMaterial} का उपयोग करते हुए इसे पूर्ण रूप से हाथ से तैयार करने में ${productionDays} दिन का समय लगा। यह उत्पाद भारत की समृद्ध सांस्कृतिक विरासत, प्रामाणिकता और सूक्ष्म शिल्प कौशल का प्रतीक है।`;
+    // ── 4. Secondary colors & border color ────────────────────────────────────
+    // Collect all mentioned colors for secondary / border detection
+    const allColors: string[] = [];
+    for (const [re, colorName] of colorMap) {
+      if (re.test(transcript)) allColors.push(colorName);
+    }
+    const secondaryColors = allColors.length > 1 ? allColors.slice(1).join(', ') : null;
 
-    // 5. Generate Professional SEO-Optimized English Description
-    const descriptionEn = `Handcrafted with master heritage skill by a certified artisan beneficiary under the Ministry of Social Justice and Empowerment (MoSJE). This authentic ${titleEn} is created using traditional ${craftTechnique}. 
-    
-Key Highlights:
-• Material: ${primaryMaterial}
-• Handcrafting Time: Dedicated ${productionDays} days of artisan craftsmanship
-• Color Palette: ${color}
-• Heritage Technique: 100% Authentic indigenous method
-• Sustainability: Eco-conscious, ethically made, fair-wage certified. Ideal for discerning art connoisseurs, ethical boutiques, and B2B wholesale orders.`;
+    // Border color: look for explicit border mention with adjacent colors or materials
+    // Supports Roman Hindi, Devanagari Hindi, Telugu:
+    //   "border sunahre Jari se bana hai"    → Golden zari
+    //   "बॉर्डर सुनहरी ज़री से बना है"      → Golden zari
+    //   "pink and gold border"               → Pink & Gold
+    let borderColor: string | null = null;
 
-    // 6. Generate Search Keywords & Target Buyers
-    const seoKeywords = [
-      titleEn.split(' ').slice(0, 3).join(' '),
-      category,
-      craftTechnique.split(' ')[0] + ' Craft',
-      'Handmade in India',
-      'MoSJE Artisan Product',
-      'Fair Trade Handicraft',
-      'Authentic ' + category.split(' ')[0]
-    ];
+    // ── Pass 1: golden/silver zari border (Kanchipuram, Banarasi pattern) ──
+    // NOTE: \b not used before any Devanagari/Telugu tokens — plain substring match.
+    if (
+      // Roman Hindi: sunhara/sunahre...zari...border (any order within ~20 chars)
+      /(?:sunhara|sunahre|sunhare|golden)[\s\S]{0,20}?(?:zari|jari)[\s\S]{0,20}?(?:border|kinara)/i.test(transcript) ||
+      // Roman Hindi: border...sunhara/golden...zari
+      /(?:border|kinara)[\s\S]{0,20}?(?:sunhara|sunahre|sunhare|golden)[\s\S]{0,15}?(?:zari|jari)/i.test(transcript) ||
+      // Roman Hindi: zari se bana border
+      /(?:zari|jari)[\s\S]{0,20}?(?:se bana|se banaa|se bani)[\s\S]{0,20}?(?:border|kinara)/i.test(transcript) ||
+      // Roman Hindi: border...zari...se bana
+      /(?:border|kinara)[\s\S]{0,20}?(?:zari|jari)[\s\S]{0,20}?(?:se bana|se banaa)/i.test(transcript) ||
+      // Devanagari: सुनहरा/सुनहरी/सुनहरे...ज़री...बॉर्डर (any order)
+      /(?:सुनहरा|सुनहरी|सुनहरे)[\s\S]{0,20}?(?:ज़री|जरी)[\s\S]{0,20}?(?:बॉर्डर|किनारा)/i.test(transcript) ||
+      // Devanagari: बॉर्डर...सुनहरा/री...ज़री
+      /(?:बॉर्डर|किनारा)[\s\S]{0,20}?(?:सुनहरा|सुनहरी|सुनहरे)[\s\S]{0,15}?(?:ज़री|जरी)/i.test(transcript) ||
+      // Devanagari: ज़री से बना/बनी...बॉर्डर
+      /(?:ज़री|जरी)[\s\S]{0,20}?(?:से बना|से बनी|से बना है|से बनी है)[\s\S]{0,20}?(?:बॉर्डर|किनारा)/i.test(transcript) ||
+      // Devanagari: बॉर्डर...ज़री से बना/बनी
+      /(?:बॉर्डर|किनारा)[\s\S]{0,20}?(?:ज़री|जरी)[\s\S]{0,20}?(?:से बना|से बनी)/i.test(transcript) ||
+      // Telugu: బంగారు జరీతో తయారు చేసిన బోర్డర్
+      /(?:బంగారు)[\s\S]{0,20}?(?:జరీ)[\s\S]{0,20}?(?:బోర్డర్|అంచు)/i.test(transcript)
+    ) {
+      // Determine golden vs silver
+      if (
+        /(?:sunhara|sunahre|sunhare|golden|sone)\b/i.test(transcript) ||
+        /(?:सुनहरा|सुनहरी|సోనే|బంగారు)/.test(transcript)
+      ) {
+        borderColor = 'Golden zari';
+      } else if (
+        /\b(?:silver|chandi|chande)\b/i.test(transcript) ||
+        /(?:चांदी|వెండి)/.test(transcript)
+      ) {
+        borderColor = 'Silver zari';
+      } else {
+        borderColor = 'Zari border';
+      }
+    }
+
+    // ── Pass 2: color-named borders ("pink and gold border", "sunahri border") ──
+    if (!borderColor) {
+      const borderMatch = transcript.match(
+        /(?:border|kinara|किनारा|kinare|बॉर्डर|bordar|బోర్డర్)\s+(?:mein\s+)?(?:ka\s+)?(?:ki\s+)?(?:hai\s+)?([^।.!?\n]{2,50})/i
+      ) || transcript.match(
+        /([^।.!?\n]{2,50})\s+(?:border|kinara|किनारा|बॉर्डर|bordar|బోర్డర్)/i
+      );
+      if (borderMatch) {
+        const borderCtx = borderMatch[1];
+        const borderColors: string[] = [];
+        for (const [re, colorName] of colorMap) {
+          if (re.test(borderCtx)) borderColors.push(colorName);
+        }
+        // Also detect sunhara/sunahre/सुनहरी as Golden in border context
+        if (
+          /(?:sunhara|sunahre|sunhare)\b/i.test(borderCtx) ||
+          /(?:सुनहरा|सुनहरी|सुनहरे)/.test(borderCtx)
+        ) {
+          if (!borderColors.includes('Golden')) borderColors.push('Golden');
+        }
+        if (borderColors.length > 0) borderColor = borderColors.join(' & ');
+      }
+    }
+
+    // ── Pass 3: fallback — two colors mentioned anywhere near "border" ──
+    if (!borderColor && allColors.length >= 2) {
+      const borderAny = /(?:border|kinara|किनारा|बॉर्डर)/i.test(transcript);
+      if (borderAny) {
+        borderColor = allColors.slice(0, 2).join(' & ');
+      }
+    }
+
+    // ── 5. Weaving / construction method ─────────────────────────────────────
+    let weavingMethod: string | null = null;
+    let constructionMethod: string | null = null;
+
+    // Handwoven (highest priority — check before general weave)
+    if (/\b(?:handwoven|hand.?woven|hand.?weave|haath\s+se\s+bun[ai]|हाथ\s+से\s+बुन|হাতে\s+বোনা)\b/i.test(transcript)) {
+      weavingMethod = 'Handwoven';
+    } else if (/\b(?:handspun|hand.?spun|hand.?spin|haath\s+se\s+kat[ai]|हाथ\s+से\s+काता)\b/i.test(transcript)) {
+      weavingMethod = 'Hand-spun';
+    } else if (/\b(?:handloom|हथकरघा|haathkargha)\b/i.test(transcript)) {
+      weavingMethod = 'Handloom Woven';
+    }
+
+    // Construction/surface method
+    if (/\b(?:hand.?embroidered|hand\s+embroidery|haath\s+se\s+kadh[ai]|हाथ\s+से\s+कढ़ाई|कढ़ाईदार)\b/i.test(transcript)) {
+      constructionMethod = 'Hand-embroidered';
+    } else if (/\b(?:hand.?painted|hand\s+paint|haath\s+se\s+chitra|हाथ\s+से\s+चित्र|हाथचित्रित)\b/i.test(transcript)) {
+      constructionMethod = 'Hand-painted';
+    } else if (/\b(?:hand.?carved|hand\s+carv|haath\s+se\s+nakkash|हाथ\s+से\s+नक्काशी)\b/i.test(transcript)) {
+      constructionMethod = 'Hand-carved';
+    } else if (/\b(?:block\s*print(?:ed)?|ब्लॉक\s*प्रिंट)\b/i.test(transcript)) {
+      constructionMethod = 'Block Printed';
+    } else if (/\b(?:resist\s*print|batik)\b/i.test(transcript)) {
+      constructionMethod = 'Batik / Resist Printed';
+    }
+
+    // ── 6. Pattern & Motif ────────────────────────────────────────────────────
+    let pattern: string | null = null;
+    let motif: string | null = null;
+
+    // Extended multilingual pattern matching:
+    // - English: floral, flower, floral design
+    // - Roman Hindi: phool, phoolon, phoolon ke design, paramparik phoolon, paramparik design
+    // - Hindi script: फूल, फूलों के डिजाइन, पारंपरिक फूलों
+    // - Telugu: పూల డిజైన్లు, పూల నమూనా
+    if (/(?:floral|flower|phool|फूल|phoolon|फूलों|పూల|گل|floral[\s\-]*design|phool[\s\-]*design|paramparik[\s\-]*phool|पारंपरिक[\s\-]*फूल)/i.test(transcript)) {
+      pattern = 'Traditional floral design';
+    } else if (/\b(?:geometric|geometry|ज्यामितीय|ज्यामिती|రేఖాగణిత)\b/i.test(transcript)) {
+      pattern = 'Geometric';
+    } else if (/\b(?:paisley|buta|बूटा|कलगी|పేస్లీ)\b/i.test(transcript)) {
+      pattern = 'Paisley / Buta';
+    } else if (/\b(?:abstract|अमूर्त|అబ్‌స్ట్రాక్ట్)\b/i.test(transcript)) {
+      pattern = 'Abstract';
+    } else if (/\b(?:tribal|आदिवासी|जनजातीय|గిరిజన)\b/i.test(transcript)) {
+      pattern = 'Tribal';
+    } else if (/\b(?:stripe|dhaariya|धारीदार|धारी|చారలు)\b/i.test(transcript)) {
+      pattern = 'Striped';
+    } else if (/\b(?:checkered|checked|jaali|जाली|चेक|జాలీ)\b/i.test(transcript)) {
+      pattern = 'Checkered';
+    } else if (/\b(?:paramparik|traditional)[\s\-]*(?:design|naksha|नक्शा|डिजाइन)/i.test(transcript)) {
+      // If only "paramparik design" is mentioned without specifying the motif type
+      pattern = 'Traditional design';
+    }
+
+    // Build motif from pattern + colors if we have both
+    if (pattern && allColors.length >= 2) {
+      const motifColors = allColors.slice(0, 2).join(' & ');
+      motif = `${motifColors} ${pattern}`;
+    } else if (pattern && spokenColor) {
+      motif = `${spokenColor} ${pattern}`;
+    }
+
+    // ── 7. Dye type ───────────────────────────────────────────────────────────
+    let dyeType: string | null = null;
+    if (/\b(?:natural[\s\-]*dy[eing]*|prakritik[\s\-]*rang|प्राकृतिक[\s\-]*रंग|neem|turmeric|haldi|సహజ[\s\-]*రంగు)\b/i.test(transcript)) {
+      dyeType = 'Natural Dye';
+    } else if (/\b(?:vegetable[\s\-]*dy[eing]*|sabji[\s\-]*rang|सब्जी[\s\-]*का[\s\-]*रंग)\b/i.test(transcript)) {
+      dyeType = 'Vegetable Dye';
+    } else if (/\b(?:azo.?free|eco.?dy[eing]*|herbal[\s\-]*dy[eing]*)\b/i.test(transcript)) {
+      dyeType = 'Eco / Herbal Dye';
+    }
+
+    // ── 8. Zari type ─────────────────────────────────────────────────────────
+    // NOTE: \b does not work for Devanagari/Telugu — use split patterns.
+    // Covers:
+    //   Roman Hindi: sunhara/sunahre/sunhare zari ka kam, sone ki zari
+    //   Devanagari:  सुनहरा/सुनहरी/सुनहरे ज़री, ज़री का काम, सोने की ज़री
+    //   Telugu:      బంగారు జరీ
+    let zariType: string | null = null;
+    if (
+      // 100% / pure / shudh zari — ASCII only, \b is fine
+      /\b(?:100\s*%\s*(?:zari|jari)|pure[\s\-]*(?:zari|jari)|shudh[\s\-]*(?:zari|jari))\b/i.test(transcript) ||
+      // Devanagari: शुद्ध ज़री — no \b
+      /शुद्ध[\s\-]*ज़री/.test(transcript)
+    ) {
+      zariType = '100% Zari';
+    } else if (
+      // ASCII golden zari patterns — \b safe on ASCII tokens
+      /\b(?:gold[\s\-]*(?:zari|jari)|sone[\s\-]*ki[\s\-]*(?:zari|jari)|sone[\s\-]*ka[\s\-]*(?:zari|jari))\b/i.test(transcript) ||
+      // Roman Hindi: sunhara/sunahre/sunhare + zari/jari  — \b safe on ASCII
+      /\b(?:sunhara|sunahre|sunhare|golden)[\s\-]*(?:zari|jari)\b/i.test(transcript) ||
+      // Devanagari: सुनहरा/सुनहरी/सुनहरे + ज़री/जरी — NO \b before Devanagari
+      /(?:सुनहरा|सुनहरी|सुनहरे)[\s\-]*(?:ज़री|जरी)/.test(transcript) ||
+      // Devanagari: सोने की ज़री
+      /सोने[\s\-]*की[\s\-]*(?:ज़री|जरी)/.test(transcript) ||
+      // Zari work: ज़री का काम (Devanagari 'का') or zari ka kaam (Roman Hindi)
+      /(?:ज़री|जरी)[\s\-]*(?:का|ka)[\s\-]*(?:काम|kam|kaam)/.test(transcript) ||
+      // Telugu: బంగారు జరీ
+      /బంగారు[\s\-]*జరీ/.test(transcript)
+    ) {
+      zariType = 'Golden zari';
+    } else if (
+      /\b(?:silver[\s\-]*(?:zari|jari)|chandi[\s\-]*ki[\s\-]*(?:zari|jari))\b/i.test(transcript) ||
+      /(?:चांदी[\s\-]*की[\s\-]*(?:ज़री|जरी)|వెండి[\s\-]*జరీ)/.test(transcript)
+    ) {
+      zariType = 'Silver Zari';
+    } else if (
+      /\b(?:zari|jari)\b/i.test(transcript) ||
+      /(?:ज़री|जरी|జరీ)/.test(transcript)
+    ) {
+      zariType = 'Zari Work';
+    }
+
+    // ── 9. Fabric / fiber type ────────────────────────────────────────────────
+    // NOTE: \b is safe for ASCII tokens only; Devanagari uses plain substring.
+    let fabricType: string | null = null;
+    if (
+      /\b(?:mulberry[\s\-]*silk|malbari[\s\-]*silk)\b/i.test(transcript) ||
+      /(?:मलबेरी[\s\-]*सिल्क)/.test(transcript)
+    ) {
+      fabricType = 'Mulberry Silk';
+    } else if (
+      /\b(?:pure[\s\-]*silk|shudh[\s\-]*resham)\b/i.test(transcript) ||
+      /(?:शुद्ध[\s\-]*रेशम)/.test(transcript)
+    ) {
+      fabricType = 'Pure Silk';
+    } else if (
+      /\b(?:pure[\s\-]*cotton|100\s*%\s*cotton)\b/i.test(transcript) ||
+      /(?:शुद्ध[\s\-]*सूत)/.test(transcript)
+    ) {
+      fabricType = 'Pure Cotton';
+    } else if (
+      /\bpashmina\b/i.test(transcript) ||
+      /पश्मीना/.test(transcript)
+    ) {
+      fabricType = 'Pashmina';
+    } else if (/\bcashmere\b/i.test(transcript)) {
+      fabricType = 'Cashmere';
+    } else if (/\blinen\b/i.test(transcript)) {
+      fabricType = 'Linen';
+    } else if (
+      /\bkhadi\b/i.test(transcript) ||
+      /खादी/.test(transcript)
+    ) {
+      fabricType = 'Khadi';
+    } else if (/\b(?:tussar|tassar|tasar)\b/i.test(transcript)) {
+      fabricType = 'Tussar Silk';
+    } else if (
+      // Plain "silk" / "रेशम" / "सिल्क" — only set if no more specific type above
+      /\bsilk\b/i.test(transcript) ||
+      /(?:रेशम|सिल्क)/.test(transcript)
+    ) {
+      fabricType = 'Silk';
+    }
+
+    // ── 10. Finish ────────────────────────────────────────────────────────────
+    let finish: string | null = null;
+    if (/\b(?:antique|antiqued|पुरातन|पुरानी\s*शैली)\b/i.test(transcript)) {
+      finish = 'Antique';
+    } else if (/\b(?:polished|polish|चमकदार)\b/i.test(transcript)) {
+      finish = 'Polished';
+    } else if (/\b(?:matte|mat\s*finish|बेरंग|धुंधला)\b/i.test(transcript)) {
+      finish = 'Matte';
+    }
+
+    // ── 11. Artisan claims (explicit verbatim) ────────────────────────────────
+    const artisanClaims: string[] = [];
+    if (/\b(?:100\s*%\s*handmade|fully\s*handmade|purna\s*hastakaari|पूर्ण\s*हस्तकारी)\b/i.test(transcript)) artisanClaims.push('100% Handmade');
+    if (dyeType) artisanClaims.push(dyeType);
+    if (zariType) artisanClaims.push(zariType);
+    if (/\b(?:no\s*machine|machine.?free|बिना\s*मशीन)\b/i.test(transcript)) artisanClaims.push('Machine-free');
+
+    // ── 12. Craft category detection ─────────────────────────────────────────
+    let category: CraftCategory = 'Other Heritage Craft';
+    let isExplicitVoiceMatch = false;
+    let spokenProductType: string | null = null;
+    let spokenStyle: string | null = null;
+    let spokenMaterial: string | null = null;
+    let spokenTechnique: string | null = null;
+    let spokenSubject: string | null = null;
+
+    const isTextile =
+      text.includes('saree') || text.includes('sari') || text.includes('साड़ी') ||
+      text.includes('silk') || text.includes('रेशम') || text.includes('सिल्क') ||
+      text.includes('రేషమ్') || text.includes('பட்டு') || text.includes('রেশম') ||
+      text.includes('रेशीम') || text.includes('રેશમ') ||
+      text.includes('ikat') || text.includes('ecat') ||
+      text.includes('pochampally') || text.includes('pochampalli') || text.includes('पोचमपल्ली') ||
+      text.includes('kanchipuram') || text.includes('kanjivaram') ||
+      text.includes('कांचीपुरम') || text.includes('कांजीवरम') ||  // Devanagari Kanchipuram
+      text.includes('handloom') || text.includes('हथकरघा') ||
+      text.includes('weave') || text.includes('woven') || text.includes('बुनाई') || text.includes('बुनी') ||
+      text.includes('handwoven') || text.includes('haath se buni') ||
+      text.includes('shawl') || text.includes('शॉल') ||
+      text.includes('dupatta') || text.includes('दुपट्टा') ||
+      text.includes('stole') ||
+      weavingMethod !== null;  // handwoven/hand-spun detected above → textile signal
+
+    const isMetalcraft =
+      text.includes('dhokra') || text.includes('dokra') || text.includes('ढोकरा') ||
+      text.includes('brass') || text.includes('पीतल') || text.includes('peetal') ||
+      text.includes('bell metal') || text.includes('bell-metal') ||
+      text.includes('cire perdue') || text.includes('lost-wax') || text.includes('lost wax') ||
+      text.includes('bastar') || text.includes('बस्तर');
+
+    const isTerracotta =
+      text.includes('terracotta') || text.includes('terra-cotta') || text.includes('टेराकोटा') ||
+      text.includes('pottery') || text.includes('कुम्हार') || text.includes('कुंभार') ||
+      text.includes('clay') || text.includes('मिट्टी') || text.includes('माटी') ||
+      text.includes('bankura') || text.includes('बांकुरा');
+
+    const isPainting =
+      text.includes('madhubani') || text.includes('मधुबनी') ||
+      text.includes('mithila') || text.includes('मिथिला') ||
+      text.includes('warli') || text.includes('pattachitra') || text.includes('patachitra') ||
+      text.includes('painting') || text.includes('चित्रकला') || text.includes('canvas');
+
+    const isPashmina =
+      text.includes('pashmina') || text.includes('पश्मीना') || text.includes('cashmere') ||
+      (text.includes('shawl') || text.includes('शॉल')) && (text.includes('kashmiri') || text.includes('कश्मीरी'));
+
+    const isWoodcraft =
+      text.includes('teakwood') || text.includes('sheesham') ||
+      text.includes('wood carving') || text.includes('wooden carving') ||
+      text.includes('नक्काशीदार लकड़ी') || text.includes('woodwork');
+
+    // ── Assign category + extract spoken style/technique/material ─────────────
+    if (isPashmina) {
+      // Pashmina check before generic textile so it takes precedence
+      category = 'Textiles & Handloom';
+      isExplicitVoiceMatch = true;
+      spokenProductType = text.includes('shawl') || text.includes('शॉल') ? 'Shawl' : 'Pashmina Textile';
+      spokenMaterial = fabricType || 'Pashmina';
+      spokenStyle = 'Kashmiri';
+
+    } else if (isTextile) {
+      category = 'Textiles & Handloom';
+      isExplicitVoiceMatch = true;
+
+      if (text.includes('saree') || text.includes('sari') || text.includes('साड़ी')) spokenProductType = 'Saree';
+      else if (text.includes('shawl') || text.includes('शॉल')) spokenProductType = 'Shawl';
+      else if (text.includes('dupatta') || text.includes('दुपट्टा')) spokenProductType = 'Dupatta';
+      else if (text.includes('stole')) spokenProductType = 'Stole';
+      else spokenProductType = 'Textile';
+
+      if (text.includes('pochampally') || text.includes('pochampalli') || text.includes('पोचमपल्ली')) spokenStyle = 'Pochampally';
+      // Kanchipuram: ASCII + Devanagari (कांचीपुरम)
+      else if (text.includes('kanchipuram') || text.includes('kanjivaram') || text.includes('कांजीवरम') || text.includes('कांचीपुरम')) spokenStyle = 'Kanchipuram';
+      else if (text.includes('banarasi') || text.includes('बनारसी')) spokenStyle = 'Banarasi';
+      else if (text.includes('patola') || text.includes('पटोला')) spokenStyle = 'Patola';
+      else if (text.includes('kashmiri') || text.includes('कश्मीरी')) spokenStyle = 'Kashmiri';
+      else if (text.includes('chanderi') || text.includes('चंदेरी')) spokenStyle = 'Chanderi';
+      else if (text.includes('maheshwari') || text.includes('माहेश्वरी')) spokenStyle = 'Maheshwari';
+
+      if (text.includes('ikat') || text.includes('ecat')) spokenTechnique = 'Ikat';
+      else if (weavingMethod) spokenTechnique = weavingMethod;
+      else if (text.includes('handloom') || text.includes('हथकरघा')) spokenTechnique = 'Handloom Weaving';
+
+      spokenMaterial = fabricType || (text.includes('silk') || text.includes('रेशम') ? 'Silk' : null)
+                       || (text.includes('cotton') || text.includes('सूती') ? 'Cotton' : null);
+
+    } else if (isMetalcraft) {
+      category = 'Metalcraft & Dhokra';
+      isExplicitVoiceMatch = true;
+      spokenProductType = 'Metal Craft';
+
+      if (text.includes('dhokra') || text.includes('dokra')) spokenTechnique = 'Dhokra (Lost-Wax Casting)';
+      else if (text.includes('lost-wax') || text.includes('lost wax') || text.includes('cire perdue')) spokenTechnique = 'Lost-Wax Casting';
+
+      if (text.includes('brass') || text.includes('पीतल')) spokenMaterial = 'Brass';
+      else if (text.includes('bell metal') || text.includes('bell-metal')) spokenMaterial = 'Bell Metal';
+      if (text.includes('bastar') || text.includes('बस्तर')) spokenStyle = 'Bastar';
+
+    } else if (isTerracotta) {
+      category = 'Clay & Terracotta';
+      isExplicitVoiceMatch = true;
+      spokenProductType = 'Terracotta';
+      spokenMaterial = 'Terracotta Clay';
+      if (text.includes('bankura') || text.includes('बांकुरा')) spokenStyle = 'Bankura';
+      if (text.includes('pottery') || text.includes('कुम्हार')) spokenTechnique = 'Hand-Thrown Pottery';
+
+    } else if (isPainting) {
+      category = 'Traditional Painting';
+      isExplicitVoiceMatch = true;
+      spokenProductType = 'Painting';
+      if (text.includes('madhubani') || text.includes('मधुबनी')) spokenStyle = 'Madhubani';
+      else if (text.includes('mithila') || text.includes('मिथिला')) spokenStyle = 'Mithila';
+      else if (text.includes('warli')) spokenStyle = 'Warli';
+      else if (text.includes('pattachitra') || text.includes('patachitra')) spokenStyle = 'Pattachitra';
+
+    } else if (isWoodcraft) {
+      category = 'Woodcraft & Carving';
+      isExplicitVoiceMatch = true;
+      spokenProductType = 'Wood Craft';
+      if (text.includes('teakwood')) spokenMaterial = 'Teakwood';
+      else if (text.includes('sheesham')) spokenMaterial = 'Sheesham';
+    }
+
+    // ── 13. Subject / Named figure ────────────────────────────────────────────
+    if (text.includes('nandi') || text.includes('नंदी') || text.includes('నంది')) spokenSubject = 'Nandi';
+    else if (text.includes('ganesha') || text.includes('ganesh') || text.includes('गणेश')) spokenSubject = 'Ganesha';
+    else if (text.includes('horse') || text.includes('ghoda') || text.includes('घोड़ा')) spokenSubject = 'Horse';
+    else if (text.includes('elephant') || text.includes('hathi') || text.includes('हाथी')) spokenSubject = 'Elephant';
+    else if (text.includes('peacock') || text.includes('mor') || text.includes('मोर')) spokenSubject = 'Peacock';
+    else if (text.includes('bull') || text.includes('bail') || text.includes('बैल')) spokenSubject = 'Bull';
+    else if (text.includes('tree of life') || text.includes('jeevan vriksha') || text.includes('जीवन वृक्ष')) spokenSubject = 'Tree of Life';
+    else if (text.includes('fish') || text.includes('machali') || text.includes('मछली')) spokenSubject = 'Fish';
+    else if (text.includes('bird') || text.includes('panchhi') || text.includes('पक्षी')) spokenSubject = 'Bird';
+
+    // ── 14. Build title from spoken facts only ────────────────────────────────
+    const titleParts: string[] = [];
+    if (spokenStyle) titleParts.push(spokenStyle);
+    if (weavingMethod && !titleParts.includes(weavingMethod)) titleParts.push(weavingMethod);
+    else if (spokenTechnique && !spokenStyle && !weavingMethod) titleParts.push(spokenTechnique);
+    if (spokenMaterial && spokenMaterial !== spokenProductType) titleParts.push(spokenMaterial);
+    if (spokenSubject) titleParts.push(spokenSubject);
+    if (spokenProductType) titleParts.push(spokenProductType);
+
+    const titleEn = titleParts.length > 0 ? titleParts.join(' ') : 'Handcrafted Heritage Artisan Product';
+    const titleHi = titleParts.length > 0 ? titleParts.join(' ') : 'हस्तनिर्मित कारीगर धरोहर उत्पाद';
+
+    // ── 15. Derive resolved technique / material / color for catalog ──────────
+    const craftTechnique = constructionMethod || weavingMethod || spokenTechnique || 'Traditional Handcrafted Artistry';
+    const primaryMaterial = fabricType || spokenMaterial || 'Authentic Artisan Material';
+    const color = spokenColor || 'Natural Finish';
+
+    // ── 16. Placeholder description (replaced by Gemini output) ──────────────
+    // This is briefly shown while Gemini generates. Contains no internal AI references.
+    const descriptionEn = 'Generating catalog description…';
+    const descriptionHi = 'कैटलॉग विवरण तैयार किया जा रहा है…';
+
+    // ── 17. SEO Keywords — from spoken facts only ─────────────────────────────
+    const seoKeywords: string[] = ['Handmade in India'];
+    if (category !== 'Other Heritage Craft') seoKeywords.unshift(category);
+    if (spokenStyle) seoKeywords.unshift(spokenStyle);
+    if (spokenProductType && spokenProductType !== spokenStyle) seoKeywords.unshift(spokenProductType);
+    if (weavingMethod) seoKeywords.push(weavingMethod);
+    if (spokenColor) seoKeywords.push(`${spokenColor} ${spokenProductType || ''} `.trim());
+    if (fabricType) seoKeywords.push(fabricType);
+    if (dyeType) seoKeywords.push(dyeType);
 
     const targetBuyers = [
       'B2B Wholesale Buyers',
@@ -145,13 +557,28 @@ Key Highlights:
       descriptionEn,
       descriptionHi,
       seoKeywords,
-      targetBuyers
+      targetBuyers,
+      // Rich attributes
+      productType: spokenProductType,
+      style: spokenStyle,
+      subject: spokenSubject,
+      weavingMethod,
+      constructionMethod,
+      pattern,
+      motif,
+      borderColor,
+      secondaryColors,
+      dyeType,
+      zariType,
+      fabricType,
+      finish,
+      artisanClaims,
+      isExplicitVoiceMatch,
     };
   }
 
   /**
    * Synthesize text-to-speech for low-literacy artisans
-   * Supports all 7 languages with natural voice selection
    */
   static speak(text: string, lang: string = 'en-IN'): Promise<void> {
     return new Promise((resolve) => {
@@ -160,38 +587,26 @@ Key Highlights:
         resolve();
         return;
       }
-
-      window.speechSynthesis.cancel(); // Stop any pending speech
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
-      utterance.rate = 0.95; // Slightly slower for low-literacy clarity
+      utterance.rate = 0.95;
       utterance.pitch = 1.0;
-
       utterance.onend = () => resolve();
       utterance.onerror = () => resolve();
-
-      // Try to find native voices
       const voices = window.speechSynthesis.getVoices();
       const langPrefix = lang.slice(0, 2);
       const matchingVoice = voices.find(v => v.lang.startsWith(langPrefix));
-      if (matchingVoice) {
-        utterance.voice = matchingVoice;
-      }
-
+      if (matchingVoice) utterance.voice = matchingVoice;
       window.speechSynthesis.speak(utterance);
     });
   }
 
-  /**
-   * Speak text in the user's selected language
-   */
   static speakInLanguage(text: string, language: Language): Promise<void> {
     return VoiceCatalogerEngine.speak(text, getSpeechLangCode(language));
   }
 
   static stopSpeaking() {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   }
 }
